@@ -1,0 +1,126 @@
+{
+  "project_info": {
+    "name": "Atlas NetCare — Campus Wi-Fi & IT Lab Operations Academic Demo",
+    "app_type": "saas_app dashboard",
+    "target_users": ["IT Assistants", "Network Engineers", "Administrators"],
+    "timezone": "Asia/Manila",
+    "dataset_scope": {
+      "labs": 3,
+      "access_points": 12,
+      "pcs": 30,
+      "accounts": 9,
+      "concurrent_eval_target": 10
+    }
+  },
+  "design_archetype": {
+    "name": "Swiss Precision & Tactical Telemetry",
+    "vibe": "Command-center clarity, high-contrast operational status, dense scannable data grids, professional NOC monitoring interface",
+    "theme_mode": "dark-preferred with light mode toggle",
+    "forbidden_colors": ["#1B93A4", "#7351B7"],
+    "forbidden_fonts": ["Space Grotesk", "Inter for Main Headings"]
+  },
+  "typography": {
+    "heading_font": "Outfit, sans-serif",
+    "body_font": "IBM Plex Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1_hero": "text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight",
+      "h2_section": "text-xl sm:text-2xl font-semibold tracking-tight",
+      "h3_card": "text-lg font-medium tracking-normal",
+      "body": "text-sm text-slate-300 leading-relaxed",
+      "caption_mono": "text-xs font-mono text-slate-400 tracking-wider uppercase"
+    }
+  },
+  "colors": {
+    "background": {
+      "dark": "#0B0F17",
+      "dark_card": "#131B2A",
+      "dark_card_hover": "#1A2438",
+      "light": "#F8FAFC",
+      "light_card": "#FFFFFF"
+    },
+    "brand_primary": {
+      "default": "#2563EB",
+      "hover": "#1D4ED8",
+      "active": "#1E40AF",
+      "accent_glow": "#3B82F6"
+    },
+    "status_indicators": {
+      "online_normal": {
+        "bg": "bg-emerald-500/10",
+        "border": "border-emerald-500/30",
+        "text": "text-emerald-400",
+        "badge": "bg-emerald-500/20 text-emerald-300"
+      },
+      "degraded_congestion": {
+        "bg": "bg-amber-500/10",
+        "border": "border-amber-500/30",
+        "text": "text-amber-400",
+        "badge": "bg-amber-500/20 text-amber-300"
+      },
+      "outage_failed": {
+        "bg": "bg-rose-500/10",
+        "border": "border-rose-500/30",
+        "text": "text-rose-400",
+        "badge": "bg-rose-500/20 text-rose-300"
+      },
+      "stale_feed_interruption": {
+        "bg": "bg-slate-500/10",
+        "border": "border-slate-500/30",
+        "text": "text-slate-400",
+        "badge": "bg-slate-800 text-slate-300"
+      }
+    }
+  },
+  "layout_and_grids": {
+    "container_padding": "p-4 sm:p-6 lg:p-8",
+    "bento_dashboard_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6",
+    "card_padding": "p-5 sm:p-6",
+    "card_border": "border border-slate-800 bg-slate-900/80 backdrop-blur-md rounded-xl shadow-lg",
+    "header_style": "z-50 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800 sticky top-0 shadow-sm"
+  },
+  "simulation_controls_panel": {
+    "visibility": "Always visible top-bar badge & control center drawer",
+    "badge_style": "border border-amber-500/40 bg-amber-500/10 text-amber-300 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-wider animate-pulse",
+    "controls": [
+      "Simulate Congestion",
+      "Simulate AP Outage",
+      "Simulate Feed Interruption (Stale/Unknown)",
+      "Trigger Telemetry Recovery"
+    ]
+  },
+  "role_views": {
+    "it_assistant": {
+      "primary_tasks": ["AP status overview", "Shift roster & ack reminders", "PC checklist submission", "Report incident"],
+      "layout": "Phone-friendly responsive form cards, quick status badges, action-heavy checklist matrix"
+    },
+    "network_engineer": {
+      "primary_tasks": ["Telemetry topology map", "Historical latency/load charts", "Ticket lifecycle & resolution notes", "Alert queue"],
+      "layout": "High-density multi-pane monitoring telemetry, Chart.js time-series charts, resolution modal forms"
+    },
+    "administrator": {
+      "primary_tasks": ["User provisioning & deactivation", "Lab asset management", "Manual shift rostering", "Audit history log", "Operational reports"],
+      "layout": "Data tables with filtering, user status badges, action menus, audit event timeline"
+    }
+  },
+  "image_urls": {
+    "hero_campus": "https://images.unsplash.com/photo-1562774053-701939374585?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHxfMTc4OTgxNTI3N3ww&ixlib=rb-4.1.0&q=85",
+    "campus_overview": "https://images.pexels.com/photos/8811593/pexels-photo-8811593.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  },
+  "testing_and_accessibility": {
+    "data_testid_convention": "kebab-case, role-based, e.g. data-testid='ap-status-card-ap-01', data-testid='checklist-submit-button', data-testid='sim-feed-interruption-toggle'",
+    "status_text_rule": "Every status badge MUST display readable text alongside color indicators (e.g. 'DEGRADED (CONGESTION)' not just yellow dot)",
+    "contrast_min": "4.5:1 for normal text, 3:1 for large display elements",
+    "last_updated_timestamp": "Mandatory display on telemetry feeds in Asia/Manila format (PHT)"
+  },
+  "instructions_to_main_agent": [
+    "Follow JS file format for component imports (React JavaScript codebase)",
+    "Use Shadcn UI components for dropdowns, dialogs, tabs, tables, toasts (sonner)",
+    "Use JetBrains Mono or monospace font for telemetry numbers, IP addresses, and timestamps",
+    "Ensure feed interruption clearly sets AP status to STALE/UNKNOWN rather than inferring an AP outage",
+    "Include simulated demo scenario controls banner at top of dashboard with interactive triggers",
+    "Implement idempotency feedback for checklist retries and display existing open ticket warning on duplicates",
+    "Include data-testid attributes on all key interactive elements, forms, and status cards"
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": "Avoid generic light SaaS visuals. Use rich dark slate textures with crisp status borders, explicit simulation badges, Asia/Manila timestamps, and responsive layouts for both mobile IT assistants and NOC engineers."
+}
