@@ -1,19 +1,266 @@
 # Atlas NetCare — Academic Demo
 
-React + TypeScript / FastAPI / MongoDB campus operations demonstration. **Not a production monitoring service.** Telemetry and notifications are simulated; operational records are persistent. No live network access, network configuration, real email, offline sync or closed-browser alarms.
+A campus network-operations demonstration: React + TypeScript on the front end, FastAPI on the back end, MongoDB for storage.
 
-## Setup
-Keep existing `MONGO_URL` and `REACT_APP_BACKEND_URL`. Required backend env: `DB_NAME`, `DEMO_MODE=true`, `JWT_SECRET`, `WEBHOOK_CRON_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DEMO_PASSWORD`, `FRONTEND_URL`, `CAMPUS_TIMEZONE=Asia/Manila`. Generate per-installation secrets; never commit env files.
-Install: `cd backend && pip install -r requirements.txt`, then `cd frontend && yarn install`. The provided supervisor serves FastAPI on `0.0.0.0:8001` and React on 3000. Use `supervisorctl restart backend frontend` after dependencies/env changes; code hot-reloads. `GET /api/health` verifies the database.
+> **This is not a production monitoring service.** Telemetry and notifications are *simulated*; operational records are *persistent*. There is no live network access, no network configuration, no real email, no offline sync, and no closed-browser alarms.
 
-## Isolated academic access
-Demo database uses the configured `DB_NAME` with `_atlas_demo` suffix; non-demo records are never read. Nine accounts: 2 admins (including owner), 2 engineers, 5 assistants. Dataset: 3 labs, 12 APs, 30 PCs, about 24 hours of historical synthetic samples.
+---
 
-Owner email uses the requested `ADMIN_EMAIL`; private password is `ADMIN_PASSWORD`. Fictional public accounts: `admin@atlas.demo`, `engineer@atlas.demo`, `assistant@atlas.demo`; shared demo password `AtlasDemo2026!` (from `DEMO_PASSWORD`). Explicit role buttons are available at sign-in. First workspace visit creates an isolated public demo-admin session; sign-out returns to sign-in. Do not enter real student/campus operational data. The owner email is the only user-requested real account identifier.
+## Table of contents
 
-Recovery is **SIMULATED**: generic acknowledgement, no email/token/password change. An admin can reset passwords in Team & access. Deactivation and resets revoke sessions.
+- [Quick start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Environment variables](#environment-variables)
+- [Running the app](#running-the-app)
+- [Demo accounts](#demo-accounts)
+- [Maintenance scheduler](#maintenance-scheduler)
+- [Resetting the demo data](#resetting-the-demo-data)
+- [Project layout](#project-layout)
+- [API reference](#api-reference)
+- [Permission matrix](#permission-matrix)
+- [Behavioral invariants](#behavioral-invariants)
+- [Evaluator walkthrough](#evaluator-walkthrough)
+- [Troubleshooting](#troubleshooting)
+- [Scope and limits](#scope-and-limits)
+
+---
+
+## Quick start
+
+From a clean checkout, with MongoDB already running:
+
+```bash
+# 1. Backend dependencies
+cd backend
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 2. Frontend dependencies
+cd ../frontend
+npm install
+
+# 3. Create backend/.env and frontend/.env  (see "Environment variables")
+
+# 4. Run the two servers in separate terminals
+cd backend  && .venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+cd frontend && npm start
+```
+
+Then open **http://localhost:3000** and sign in with `admin@atlas.demo` / `AtlasDemo2026!`.
+
+The backend seeds the demo database automatically on startup — no separate seed command is needed.
+
+---
+
+## Prerequisites
+
+| Requirement | Version used | Notes |
+|---|---|---|
+| Python | 3.12 | `motor` 3.3.1 / `pymongo` 4.6.3 pin the async driver; 3.12 is what the checked-in venv targets. |
+| Node.js | 24.x | Any modern LTS works. |
+| npm | ships with Node | `package-lock.json` is committed, so `npm install` is the supported install path. |
+| MongoDB | 8.x | Must be reachable at `MONGO_URL` before the backend starts. |
+
+Start MongoDB on macOS (Homebrew):
+
+```bash
+brew services start mongodb-community
+# verify it is listening
+nc -z localhost 27017 && echo "mongo is up"
+```
+
+---
+
+## Environment variables
+
+Both `.env` files are git-ignored. **Generate your own secrets per installation and never commit them.**
+
+### `backend/.env`
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `MONGO_URL` | MongoDB connection string | `mongodb://127.0.0.1:27017` |
+| `DB_NAME` | Base database name (a suffix is appended — see below) | `netcare` |
+| `DEMO_MODE` | Must be `true` for the isolated academic demo | `true` |
+| `JWT_SECRET` | Signs access and refresh tokens | *generate a random string* |
+| `WEBHOOK_CRON_SECRET` | Bearer secret for the maintenance endpoint | *generate a random string* |
+| `ADMIN_EMAIL` | Owner account's email (the one real identifier) | `you@example.com` |
+| `ADMIN_PASSWORD` | Owner account's private password | *generate* |
+| `DEMO_PASSWORD` | Shared password for the eight fictional accounts | `AtlasDemo2026!` |
+| `FRONTEND_URL` | Exact origin allowed by CORS | `http://localhost:3000` |
+| `CAMPUS_TIMEZONE` | Shift-entry timezone | `Asia/Manila` |
+| `PREVIEW_PROXY_ORIGIN` | *Optional.* Extra allowed origin when a preview proxy rewrites `Origin`. | — |
+
+**Database isolation:** the effective database name is `DB_NAME` + `_atlas_demo` when `DEMO_MODE=true` (so `netcare` → `netcare_atlas_demo`), and `DB_NAME` + `_atlas` otherwise. Demo data never shares collections with a non-demo installation.
+
+### `frontend/.env`
+
+```dotenv
+REACT_APP_BACKEND_URL=http://localhost:8001
+PORT=3000
+```
+
+`FRONTEND_URL` in the backend and the port the frontend actually serves on must match exactly, or every mutating request is rejected with a 403 by the origin guard.
+
+---
+
+## Running the app
+
+### Backend — FastAPI on port 8001
+
+```bash
+cd backend
+.venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+```
+
+On startup the lifespan hook runs `seed()`, which idempotently creates 9 accounts, 3 labs, 12 access points, 30 PCs, and roughly 24 hours of synthetic history at 15-minute intervals. Restarting never wipes existing records.
+
+Confirm the service and its database connection:
+
+```bash
+curl -s http://localhost:8001/api/health
+# {"status":"ok","service":"Atlas NetCare","mode":"academic-demo"}
+```
+
+Interactive API docs are at **http://localhost:8001/docs**.
+
+### Frontend — React dev server on port 3000
+
+```bash
+cd frontend
+npm start            # craco start; add BROWSER=none to suppress auto-open
+```
+
+Wait for `Compiled successfully!`, then open **http://localhost:3000**. Both servers hot-reload on save; restart only after changing dependencies or `.env`.
+
+### Calling the API directly
+
+Mutating requests from a browser context are guarded. A raw `curl` login needs both headers:
+
+```bash
+curl -s -X POST http://localhost:8001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -H 'X-Atlas-Request: 1' \
+  -H 'Origin: http://localhost:3000' \
+  -d '{"email":"admin@atlas.demo","password":"AtlasDemo2026!"}'
+```
+
+The React API client sends `X-Atlas-Request: 1` automatically, so this only matters for manual testing.
+
+---
+
+## Demo accounts
+
+Shared password for all fictional accounts: the value of `DEMO_PASSWORD` (`AtlasDemo2026!` by convention). The sign-in page also offers explicit role buttons.
+
+| Email | Name | Role |
+|---|---|---|
+| *your* `ADMIN_EMAIL` | Campus Owner | admin — password is `ADMIN_PASSWORD`, not the shared one |
+| `admin@atlas.demo` | Alex Morgan | admin |
+| `engineer@atlas.demo` | Daniel Reyes | engineer |
+| `sofia@atlas.demo` | Sofia Cruz | engineer |
+| `assistant@atlas.demo` | Jamie Santos | assistant |
+| `mika@atlas.demo` | Mika Flores | assistant |
+| `leo@atlas.demo` | Leo Garcia | assistant |
+| `nina@atlas.demo` | Nina Ramos | assistant |
+| `kai@atlas.demo` | Kai Mendoza | assistant |
+
+The first visit to the workspace creates an isolated public demo-admin session; signing out returns to sign-in. **Do not enter real student or campus operational data.**
+
+**Password recovery is simulated.** `POST /api/auth/forgot-password` returns a generic acknowledgement — no email, no token, no password change. An admin resets passwords from *Team & access*. Deactivation and resets revoke sessions.
+
+### Session security
+
+Access JWTs last 15 minutes, refresh JWTs 7 days; both ride in `Secure`/`httpOnly` cookies backed by persisted, revocable sessions. Role and active status are re-read server-side on every request. Sign-in is limited to 10 attempts per client/account per 15-minute bucket. Cookie-bearing mutations require `X-Atlas-Request: 1` and a valid `Origin`.
+
+---
+
+## Maintenance scheduler
+
+The 15-minute maintenance tick is **not** self-starting — nothing reconciles reminders or generates fresh telemetry until an external scheduler (cron, a systemd timer, or a hosted cron service) calls the endpoint:
+
+```bash
+curl -s -X POST http://localhost:8001/api/cron/maintain \
+  -H "Authorization: Bearer $WEBHOOK_CRON_SECRET" \
+  -H 'Content-Type: application/json' \
+  -H "X-Webhook-Id: $(uuidgen)" \
+  -d '{"event":"schedule.triggered"}'
+# {"accepted":true}
+```
+
+The request body must carry `event: "schedule.triggered"` and a run ID (either the `X-Webhook-Id` header or a `run_id` field). The endpoint acknowledges with `202` immediately and does the work in the background. Run IDs are deduplicated, so a replayed tick returns `{"accepted":true,"duplicate":true}` and does nothing. Interrupted job state is recorded and the next tick reconciles it; full durable retries are out of scope for this demo.
+
+A local crontab entry for every 15 minutes:
+
+```cron
+*/15 * * * * curl -sS -X POST http://localhost:8001/api/cron/maintain -H "Authorization: Bearer YOUR_SECRET" -H 'Content-Type: application/json' -H "X-Webhook-Id: $(uuidgen)" -d '{"event":"schedule.triggered"}'
+```
+
+---
+
+## Resetting the demo data
+
+**Destructive to demo records only.** Stop any evaluation in progress first, and never reset with requests in flight.
+
+```bash
+cd backend
+.venv/bin/python reset_demo.py --confirm RESET-ATLAS-DEMO
+```
+
+The script refuses to run unless `DEMO_MODE=true` *and* the database name ends in `_atlas_demo`. It drops the demo database, rebuilds indexes and fictional data, and invalidates all prior sessions. There is no public reset endpoint, and normal restarts never reset records.
+
+---
+
+## Project layout
+
+```
+netcare-lab/
+├── backend/
+│   ├── server.py        # FastAPI app, CORS, origin guard, /api/health
+│   ├── core.py          # env loading, Mongo client, demo-suffixed db, shared models
+│   ├── auth.py          # sign-in, sessions, refresh, simulated recovery
+│   ├── operations.py    # labs, assets, users, shifts, checklists, incidents, tickets
+│   ├── monitoring.py    # telemetry, simulation controls, alerts
+│   ├── reporting.py     # overview, audit, reports, cron maintenance
+│   ├── seed.py          # idempotent fixture data
+│   └── reset_demo.py    # explicit demo-only reset
+├── frontend/src/
+│   ├── pages/           # Login, Dashboard, Monitoring, Checklists, Tickets,
+│   │                    #   Shifts, Management, Insights
+│   ├── components/      # Layout, Telemetry, shared, ui/ (shadcn + Radix)
+│   ├── context.tsx      # auth/session context
+│   ├── hooks/ lib/ constants/
+│   └── App.tsx
+├── tests/               # package scaffold; pytest.ini configures xdist (-n 2, loadscope)
+└── design_guidelines.json
+```
+
+---
+
+## API reference
+
+All routes are prefixed with `/api`.
+
+**Auth** — `POST /auth/login` · `POST /auth/demo` · `GET /auth/me` · `POST /auth/logout` · `POST /auth/refresh` · `POST /auth/forgot-password`
+
+**Assets and labs** — `GET /labs` · `GET /assets` · `POST /assets` · `PATCH /assets/{id}/archive`
+
+**Users** — `GET /users` · `POST /users` · `PATCH /users/{id}`
+
+**Shifts** — `GET /shifts` · `POST /shifts` · `POST /shifts/{id}/acknowledge` · `POST /shifts/{id}/cancel`
+
+**Checklists and tickets** — `POST /checklists` · `GET /checklists` · `GET /checklists/{id}` · `POST /incidents` · `GET /tickets` · `GET /tickets/{id}` · `PATCH /tickets/{id}`
+
+**Monitoring** — `GET /monitoring` · `GET /monitoring/{id}/history` · `POST /monitoring/sample` · `POST /simulation` · `GET /alerts`
+
+**Reporting and ops** — `GET /overview` · `GET /audit` · `GET /reports` · `POST /cron/maintain` · `GET /health`
+
+Only `GET`, `POST`, and `PATCH` are allowed by CORS. There is no deletion endpoint for users or assets — archival and deactivation preserve history.
+
+---
 
 ## Permission matrix
+
 | Action | Assistant | Engineer | Admin |
 |---|---|---|---|
 | AP status and synthetic alerts | Yes | Yes | Yes |
@@ -27,30 +274,58 @@ Recovery is **SIMULATED**: generic acknowledgement, no email/token/password chan
 | Simulate telemetry | No | Yes | Yes |
 | Audit/report/export | No | No | Yes |
 
-Role and active status are reloaded server-side each request. Foreign assistant records return 404; forbidden role actions return 403. Users/assets have no deletion endpoint. Admins cannot demote/deactivate their current account. Sign-in allows 10 attempts/client/account/15-minute bucket. Access JWT (15 min) and refresh JWT (7 days) use Secure/httpOnly cookies and persisted revocable sessions. CORS allows configured frontend and optional explicit PREVIEW_PROXY_ORIGIN (the preview proxy rewrites Origin). Browser/cookie mutations require X-Atlas-Request: 1 and validate Origin. The React API client sends the custom header automatically.
+Foreign assistant records return `404`; forbidden role actions return `403`. Admins cannot demote or deactivate their own account.
 
-## Invariants
-- Checklist unique `(created_by, request_id)` plus Mongo lease and payload fingerprint. Same-key retry returns the same saved record. Uncertain transport errors retain and lock the original payload for retry. Drafts remain in tab memory across navigation, not disk/offline sync.
-- Ticket partial unique `active_key=asset_id:category`: concurrent fault reports link to one open ticket. Reporter access is added atomically. Resolution removes the active key for future recurrence. Lifecycle: open → in_progress → resolved. Resolution requires at least 10 note characters. Resolved tickets are read-only.
-- Shift entry timezone **Asia/Manila / PHT / UTC+8**; storage UTC ISO. End must follow start, max 24 hours. Per-assistant Mongo lease protects cross-midnight overlap checks. Adjacent shifts allowed; cancelled records retained.
-- Exactly one reminder per shift. Due 15 minutes before start; unacknowledged shifts show Missed once start passes. These are states, not duplicate alert rows. Acknowledgement preserves its first saved time. In-app only.
-- Deterministic normal, congestion (85%+ utilization), explicit outage, feed interruption, recovery. Interrupted or older-than-20-minute samples show **Stale / unknown**, never inferred outage. Interrupted feeds preserve last-seen. Recovery closes prior active alerts and resumes samples.
-- Telemetry bounded by **7 days and 20,000 rows** via TTL plus prune. Initial history is 24 hours/15-minute intervals. AP detail displays latest 200 samples. Manual controls create server-confirmed samples.
-- Maintenance runs every 15 minutes via any external scheduler (cron, systemd timer, hosted cron) issuing an authenticated `POST /api/cron/maintain` with the `WEBHOOK_CRON_SECRET`; immediate acknowledgement/background work, persistent run-ID deduplication. Interrupted job state is recorded; next tick reconciles reminders/telemetry. Full durable retries are outside this demo.
+---
 
-## Repeatable reset — destructive to demo records only
-Stop evaluations. Run `cd /app/backend && python reset_demo.py --confirm RESET-ATLAS-DEMO`. Refuses non-demo mode or a non-demo-suffixed database. No public reset endpoint. Rebuilds indexes/fictional data and invalidates old sessions. Normal restarts never reset records. Do not reset with requests in flight.
+## Behavioral invariants
+
+**Checklists.** Unique on `(created_by, request_id)`, backed by a Mongo lease and a payload fingerprint. A same-key retry returns the same saved record. Uncertain transport errors retain and lock the original payload for retry. Drafts live in tab memory across navigation — not on disk, and there is no offline sync.
+
+**Tickets.** A partial unique index on `active_key = asset_id:category` makes concurrent fault reports link to a single open ticket; reporter access is added atomically. Lifecycle is open → in_progress → resolved. Resolution requires at least 10 characters of notes and clears the active key so a future recurrence opens a fresh ticket. Resolved tickets are read-only.
+
+**Shifts.** Entered in Asia/Manila (PHT, UTC+8) and stored as UTC ISO strings. End must follow start, with a 24-hour maximum. A per-assistant Mongo lease protects the cross-midnight overlap check. Adjacent shifts are allowed; cancelled records are retained.
+
+**Reminders.** Exactly one per shift, due 15 minutes before start. An unacknowledged shift shows *Missed* once its start time passes. These are states, not duplicate alert rows, and acknowledgement preserves its first saved time. In-app only.
+
+**Telemetry.** Deterministic states: normal, congestion (85%+ utilization), explicit outage, feed interruption, and recovery. Samples that are interrupted or older than 20 minutes display **Stale / unknown** — never an inferred outage. Interrupted feeds preserve their last-seen value; recovery closes prior active alerts and resumes sampling. Retention is bounded by 7 days and 20,000 rows via TTL plus prune. Initial history is 24 hours at 15-minute intervals; AP detail shows the latest 200 samples. Manual controls create server-confirmed samples.
+
+---
 
 ## Evaluator walkthrough
-1. Open Overview as demo admin; inspect AP statuses, timestamps and simulation badges.
-2. Provision an assistant and add a PC. Duplicate email/tag should be rejected.
-3. Assign a shift, attempt overlapping/cross-midnight assignments (rejected), then sign in as that assistant and acknowledge it.
-4. Submit PC checklist: mark all passed, fail Network, add notes, submit. Follow the ticket link. Another same-category fault links to the existing open ticket.
-5. As engineer, start investigation, enter required resolution notes, resolve. Empty notes cannot resolve.
-6. As admin, confirm report and audit outcomes, export CSV. Archive PC/deactivate assistant; history remains and existing assistant session fails.
-7. Run congestion → outage → feed interruption → recovery on an AP. Verify interruption means unknown and preserves last-seen; recovery restores data and closes alerts.
-8. Block backend requests in browser. No false checklist success; draft remains. Unblock and retry original key.
-9. Restart backend; saved records must remain. Test permission denials through the real API, not UI visibility alone.
 
-## Evaluation
-Core interactions target **under 7 seconds** with the confirmed **10 concurrent users** and documented dataset. This is a measured demo target, not annual uptime. See `EVALUATION.md` and `/app/test_reports/` for evidence. Hosting remains unspecified; no deadline was requested. Future: authorized read-only telemetry, real notifications, offline sync and production availability engineering.
+1. Open **Overview** as the demo admin; inspect AP statuses, timestamps, and simulation badges.
+2. Provision an assistant and add a PC. Duplicate email or tag should be rejected.
+3. Assign a shift, attempt overlapping and cross-midnight assignments (both rejected), then sign in as that assistant and acknowledge it.
+4. Submit a PC checklist: mark all passed, fail *Network*, add notes, submit. Follow the ticket link. A second fault in the same category links to the existing open ticket.
+5. As an engineer, start the investigation, enter the required resolution notes, and resolve. Empty notes cannot resolve.
+6. As an admin, confirm report and audit outcomes and export CSV. Archive a PC and deactivate an assistant; history remains and the existing assistant session fails.
+7. Run congestion → outage → feed interruption → recovery on an AP. Interruption must read as unknown while preserving last-seen; recovery restores data and closes alerts.
+8. Block backend requests in the browser. There must be no false checklist success, and the draft must survive. Unblock and retry with the original key.
+9. Restart the backend; saved records must remain. Test permission denials through the real API, not UI visibility alone.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| Backend exits with `KeyError` on startup | A required variable is missing from `backend/.env`. Every name in the table above except `PREVIEW_PROXY_ORIGIN` is mandatory. |
+| `ServerSelectionTimeoutError` after ~4s | MongoDB is not running or `MONGO_URL` is wrong. Start it and re-check port 27017. |
+| Every write returns `403 Untrusted request origin` | The browser's origin does not match `FRONTEND_URL`. They must be byte-identical, scheme and port included. |
+| `403 Browser request safeguard is required` | A cookie-bearing or cross-origin mutation arrived without `X-Atlas-Request: 1`. Add the header for manual API calls. |
+| Frontend loads but all data calls fail | `REACT_APP_BACKEND_URL` is wrong, or it changed without restarting `npm start` — CRA inlines env vars at build time. |
+| `401 Invalid scheduler credentials` on the cron call | The bearer token does not match `WEBHOOK_CRON_SECRET`. |
+| Reminders and telemetry never advance | Expected: nothing calls `/api/cron/maintain` on its own. See [Maintenance scheduler](#maintenance-scheduler). |
+| `reset_demo.py` prints `REFUSED` | `DEMO_MODE` is not `true`, or the database name does not end in `_atlas_demo`. This guard is intentional. |
+| Port 3000 or 8001 already in use | `lsof -ti:8001 \| xargs kill` (or change `PORT` / `--port`, updating `FRONTEND_URL` and `REACT_APP_BACKEND_URL` to match). |
+
+---
+
+## Scope and limits
+
+Core interactions target **under 7 seconds** with the confirmed **10 concurrent users** and the documented dataset. That is a measured demo target, not an annual uptime commitment.
+
+Deliberately out of scope: live network access, network configuration, real email delivery, offline sync, closed-browser alarms, durable job retries, and production availability engineering. Hosting is unspecified. Future direction: authorized read-only telemetry, real notifications, offline sync.
+
+The `tests/` directory is a package scaffold — `backend/pytest.ini` fixes the xdist configuration (`-n 2 --dist loadscope`) for suites added later. Run them with `cd backend && .venv/bin/pytest`.
