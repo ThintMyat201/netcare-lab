@@ -1,13 +1,48 @@
 import os
 import math
-from datetime import timedelta
-from core import db, uid, stamp, now, DEMO, indexes
+from datetime import datetime, timedelta
+from core import db, uid, stamp, now, DEMO, indexes, CAMPUS_TZ
 from auth import hash_password
+
+def _to_myt(val):
+    if not isinstance(val, str) or not (val.endswith('+00:00') or val.endswith('Z')):
+        return val
+    try:
+        return datetime.fromisoformat(val).astimezone(CAMPUS_TZ).isoformat()
+    except ValueError:
+        return val
+
+async def _normalize_demo_timestamps():
+    for col_name, fields in [
+        ('assets', ['scenario_at', 'last_seen', 'created_at']),
+        ('tickets', ['created_at', 'updated_at', 'resolved_at']),
+        ('shifts', ['start', 'end', 'acknowledged_at', 'created_at']),
+        ('audit', ['timestamp']),
+        ('alerts', ['created_at', 'resolved_at']),
+        ('checklists', ['created_at']),
+    ]:
+        col = db[col_name]
+        for doc in await col.find({}, {'_id': 0}).to_list(2000):
+            updates = {}
+            for f in fields:
+                if doc.get(f) and (str(doc[f]).endswith('+00:00') or str(doc[f]).endswith('Z')):
+                    updates[f] = _to_myt(doc[f])
+            if col_name == 'tickets' and isinstance(doc.get('events'), list):
+                new_events = [{**ev, 'timestamp': _to_myt(ev.get('timestamp'))} for ev in doc['events']]
+                if new_events != doc['events']:
+                    updates['events'] = new_events
+            if updates and doc.get('id'):
+                await col.update_one({'id': doc['id']}, {'$set': updates})
 
 async def seed():
     await indexes()
-    if await db.meta.find_one({'key':'seeded'}): return
     if not DEMO: return
+    if await db.meta.find_one({'key':'seeded'}):
+        from monitoring import ensure_telemetry_history, sync_alerts
+        await _normalize_demo_timestamps()
+        await ensure_telemetry_history()
+        await sync_alerts()
+        return
     labs=[{'id':'lab-1','name':'Computing Lab A','building':'Technology Building','floor':'1st floor','code':'CL-A'}, {'id':'lab-2','name':'Computing Lab B','building':'Technology Building','floor':'2nd floor','code':'CL-B'}, {'id':'lab-3','name':'Innovation Lab','building':'Engineering Building','floor':'1st floor','code':'IL'}]
     for row in labs: await db.labs.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
     people=[('owner',os.environ['ADMIN_EMAIL'],'Campus Owner','admin'),('admin','admin@atlas.demo','Alex Morgan','admin'),('engineer','engineer@atlas.demo','Daniel Reyes','engineer'),('eng-2','sofia@atlas.demo','Sofia Cruz','engineer'),('assistant','assistant@atlas.demo','Jamie Santos','assistant'),('asst-2','mika@atlas.demo','Mika Flores','assistant'),('asst-3','leo@atlas.demo','Leo Garcia','assistant'),('asst-4','nina@atlas.demo','Nina Ramos','assistant'),('asst-5','kai@atlas.demo','Kai Mendoza','assistant')]
@@ -32,8 +67,9 @@ async def seed():
         row={'id':f'shift-seed-{i}','assistant_id':assistant,'assistant_name':people[4+i][2],'lab_id':labs[i]['id'],'lab_name':labs[i]['name'],'start':start.isoformat(),'end':(start+timedelta(hours=4)).isoformat(),'acknowledged_at':None,'created_at':stamp(),'created_by':'admin','cancelled':False}
         await db.shifts.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
     from monitoring import generate_sample, sync_alerts
-    for step in range(96,-1,-1): await generate_sample(now()-timedelta(minutes=15*step), seed_history=True)
+    base=now().replace(minute=(now().minute//15)*15,second=0,microsecond=0)
+    for step in range(96,-1,-1): await generate_sample(base-timedelta(minutes=15*step), seed_history=True)
     await sync_alerts()
-    for i,(action,detail,actor) in enumerate([('Campus initialized','3 labs · 12 access points · 30 workstations','Atlas Demo'),('Shift assigned','Jamie Santos → Computing Lab A','Alex Morgan'),('Ticket opened','PC-CL-A-03 · Network connection','Jamie Santos'),('Investigation started','INC-1001 assigned to engineering','Daniel Reyes')]):
-        await db.audit.insert_one({'id':uid(),'actor_id':'admin','actor':actor,'action':action,'detail':detail,'timestamp':(now()-timedelta(minutes=24-i*6)).isoformat()})
+    for i,(action,detail,actor) in enumerate([('Campus initialized','3 labs · 12 access points · 30 workstations','Atlas Demo'),('Shift assigned','Jamie Santos → Computing Lab A','Alex Morgan'),('Ticket opened','PC-CL-A-03 · Network connection','Jamie Santos'),('Scenario simulated','AP-CL-B-03 · congestion','Alex Morgan'),('Investigation started','INC-1001 assigned to engineering','Daniel Reyes')]):
+        await db.audit.insert_one({'id':uid(),'actor_id':'admin','actor':actor,'action':action,'detail':detail,'timestamp':(now()-timedelta(minutes=30-i*6)).isoformat()})
     await db.meta.update_one({'key':'seeded'},{'$set':{'value':True,'created_at':stamp()}},upsert=True)

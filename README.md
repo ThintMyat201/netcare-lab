@@ -88,7 +88,7 @@ Both `.env` files are git-ignored. **Generate your own secrets per installation 
 | `ADMIN_PASSWORD` | Owner account's private password | *generate* |
 | `DEMO_PASSWORD` | Shared password for the eight fictional accounts | `AtlasDemo2026!` |
 | `FRONTEND_URL` | Exact origin allowed by CORS | `http://localhost:3000` |
-| `CAMPUS_TIMEZONE` | Shift-entry timezone | `Asia/Manila` |
+| `CAMPUS_TIMEZONE` | Shift-entry timezone | `Asia/Kuala_Lumpur` |
 | `PREVIEW_PROXY_ORIGIN` | *Optional.* Extra allowed origin when a preview proxy rewrites `Origin`. | — |
 
 **Database isolation:** the effective database name is `DB_NAME` + `_atlas_demo` when `DEMO_MODE=true` (so `netcare` → `netcare_atlas_demo`), and `DB_NAME` + `_atlas` otherwise. Demo data never shares collections with a non-demo installation.
@@ -284,7 +284,7 @@ Foreign assistant records return `404`; forbidden role actions return `403`. Adm
 
 **Tickets.** A partial unique index on `active_key = asset_id:category` makes concurrent fault reports link to a single open ticket; reporter access is added atomically. Lifecycle is open → in_progress → resolved. Resolution requires at least 10 characters of notes and clears the active key so a future recurrence opens a fresh ticket. Resolved tickets are read-only.
 
-**Shifts.** Entered in Asia/Manila (PHT, UTC+8) and stored as UTC ISO strings. End must follow start, with a 24-hour maximum. A per-assistant Mongo lease protects the cross-midnight overlap check. Adjacent shifts are allowed; cancelled records are retained.
+**Shifts.** Entered in Asia/Kuala Lumpur (MYT, UTC+8) and stored as ISO strings. End must follow start, with a 24-hour maximum. A per-assistant Mongo lease protects the cross-midnight overlap check. Adjacent shifts are allowed; cancelled records are retained.
 
 **Reminders.** Exactly one per shift, due 15 minutes before start. An unacknowledged shift shows *Missed* once its start time passes. These are states, not duplicate alert rows, and acknowledgement preserves its first saved time. In-app only.
 

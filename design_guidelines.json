@@ -3,7 +3,7 @@
     "name": "Atlas NetCare — Campus Wi-Fi & IT Lab Operations Academic Demo",
     "app_type": "saas_app dashboard",
     "target_users": ["IT Assistants", "Network Engineers", "Administrators"],
-    "timezone": "Asia/Manila",
+    "timezone": "Asia/Kuala_Lumpur",
     "dataset_scope": {
       "labs": 3,
       "access_points": 12,
@@ -111,7 +111,7 @@
     "data_testid_convention": "kebab-case, role-based, e.g. data-testid='ap-status-card-ap-01', data-testid='checklist-submit-button', data-testid='sim-feed-interruption-toggle'",
     "status_text_rule": "Every status badge MUST display readable text alongside color indicators (e.g. 'DEGRADED (CONGESTION)' not just yellow dot)",
     "contrast_min": "4.5:1 for normal text, 3:1 for large display elements",
-    "last_updated_timestamp": "Mandatory display on telemetry feeds in Asia/Manila format (PHT)"
+    "last_updated_timestamp": "Mandatory display on telemetry feeds in Asia/Kuala Lumpur format (MYT)"
   },
   "instructions_to_main_agent": [
     "Follow JS file format for component imports (React JavaScript codebase)",
@@ -122,5 +122,5 @@
     "Implement idempotency feedback for checklist retries and display existing open ticket warning on duplicates",
     "Include data-testid attributes on all key interactive elements, forms, and status cards"
   ],
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": "Avoid generic light SaaS visuals. Use rich dark slate textures with crisp status borders, explicit simulation badges, Asia/Manila timestamps, and responsive layouts for both mobile IT assistants and NOC engineers."
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": "Avoid generic light SaaS visuals. Use rich dark slate textures with crisp status borders, explicit simulation badges, Asia/Kuala Lumpur (MYT) timestamps, and responsive layouts for both mobile IT assistants and NOC engineers."
 }

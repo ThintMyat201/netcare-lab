@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import HTTPException
@@ -12,11 +13,13 @@ from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, ConfigDict
 
 load_dotenv(Path(__file__).parent / '.env')
-client = AsyncIOMotorClient(os.environ['MONGO_URL'], serverSelectionTimeoutMS=4000)
+CAMPUS_TIMEZONE = os.environ.get('CAMPUS_TIMEZONE', 'Asia/Kuala_Lumpur')
+CAMPUS_TZ = ZoneInfo(CAMPUS_TIMEZONE)
+client = AsyncIOMotorClient(os.environ['MONGO_URL'], serverSelectionTimeoutMS=4000, tz_aware=True, tzinfo=CAMPUS_TZ)
 # Demo data never shares operational collections with a non-demo installation.
 DEMO = os.environ['DEMO_MODE'] == 'true'
 db = client[os.environ['DB_NAME'] + ('_atlas_demo' if DEMO else '_atlas')]
-def now(): return datetime.now(timezone.utc)
+def now(): return datetime.now(CAMPUS_TZ)
 def stamp(): return now().isoformat()
 def uid(): return str(uuid.uuid4())
 class Document(BaseModel):

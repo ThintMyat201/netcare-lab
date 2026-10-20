@@ -139,11 +139,10 @@ async def add_shift(body:ShiftInput,user=Depends(current)):
     await authorize(user,'shifts'); lab=await get_lab(body.lab_id)
     assistant=await db.users.find_one({'id':body.assistant_id,'role':'assistant','active':True},{'_id':0,'password_hash':0})
     if not assistant: raise HTTPException(422,'Choose an active IT assistant.')
-    zone=ZoneInfo(os.environ['CAMPUS_TIMEZONE'])
+    zone=ZoneInfo(os.environ.get('CAMPUS_TIMEZONE','Asia/Kuala_Lumpur'))
     start=body.start if body.start.tzinfo else body.start.replace(tzinfo=zone)
     end=body.end if body.end.tzinfo else body.end.replace(tzinfo=zone)
-    from datetime import timezone
-    start,end=start.astimezone(timezone.utc),end.astimezone(timezone.utc)
+    start,end=start.astimezone(zone),end.astimezone(zone)
     if end<=start or (end-start).total_seconds()>86400: raise HTTPException(422,'Shift end must follow its start, with a duration of at most 24 hours.')
     async with lease('roster:'+body.assistant_id):
         overlap=await db.shifts.find_one({'assistant_id':body.assistant_id,'cancelled':False,'start':{'$lt':end.isoformat()},'end':{'$gt':start.isoformat()}},{'_id':0})
