@@ -5,14 +5,22 @@ import { PageTitle, Button, Status, ErrorBox, Loading, Empty, SectionHead, useDa
 import { time } from '../lib/api';
 
 function downloadCSV(name: string, rows: any[][]) {
-  const escape = (v: any) => '"' + String(v ?? '').replace(/^[=+@-]/, "'").replace(/"/g, '""') + '"';
+  // A text cell that starts with = + - @ or a tab or carriage return is a formula to a spreadsheet,
+  // so it gets a leading quote. Numbers are left alone: -5 stays -5.
+  const escape = (v: any) => {
+    const text = String(v ?? '');
+    const safe = typeof v !== 'number' && /^[=+\-@\t\r]/.test(text) ? "'" + text : text;
+    return '"' + safe.replace(/"/g, '""') + '"';
+  };
   const blob = new Blob(['\ufeff' + rows.map(r => r.map(escape).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = name;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function Reports() {
