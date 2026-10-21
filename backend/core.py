@@ -32,7 +32,7 @@ async def audit(user, action, detail, resource_id=None):
     await db.audit.insert_one({'id': uid(), 'actor_id': user['id'], 'actor': user['name'], 'action': action, 'detail': detail, 'resource_id': resource_id, 'timestamp': stamp()})
 
 PERMS = {
- 'admin': {'view','inventory','users','shifts','ack','checklist','incident','tickets','simulate','audit','reports'},
+ 'admin': {'view','inventory','users','shifts','ack','incident','tickets','simulate','audit','reports'},
  'engineer': {'view','incident','tickets','simulate'},
  'assistant': {'view','ack','checklist','incident'},
  'scheduler': {'maintain'}

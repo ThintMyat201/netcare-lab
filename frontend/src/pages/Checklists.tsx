@@ -17,11 +17,12 @@ const drafts: Record<string, any> = {};
 
 export default function Checklists() {
   const { user } = useAuth();
+  const isAssistant = user?.role === 'assistant';
   const [params] = useSearchParams();
   const { data, error, busy, load } = useData('/checklists');
   const assets = useData('/assets');
 
-  const [open, setOpen] = useState(params.has('new'));
+  const [open, setOpen] = useState(() => isAssistant && params.has('new'));
   const [draft, setDraft] = useState(() => drafts[user.id] || { asset_id: '', checks: {}, notes: '', request_id: crypto.randomUUID() });
   const [sending, setSending] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -30,13 +31,28 @@ export default function Checklists() {
   const [selected, setSelected] = useState<any>(null);
 
   useEffect(() => {
+    if (!isAssistant && open) {
+      setOpen(false);
+    }
+  }, [isAssistant, open]);
+
+  useEffect(() => {
     drafts[user.id] = draft;
   }, [draft, user.id]);
 
   const update = (value: any) => setDraft({ ...draft, ...value });
 
+  const handleModalChange = (nextOpen: boolean) => {
+    if (!isAssistant) {
+      setOpen(false);
+      return;
+    }
+    setOpen(nextOpen);
+  };
+
   const submit = async (e: any) => {
     e.preventDefault();
+    if (!isAssistant) return;
     setSending(true);
     setLocked(true);
     setFormError('');
@@ -55,6 +71,7 @@ export default function Checklists() {
   };
 
   const start = () => {
+    if (!isAssistant) return;
     setSuccess(null);
     setOpen(true);
   };
@@ -65,9 +82,11 @@ export default function Checklists() {
         title="Equipment Checklists"
         subtitle="Daily workstation inspections and automated fault reporting."
       >
-        <Button id="new-checklist" variant="primary" onClick={start}>
-          <Plus size={16} />Start Inspection
-        </Button>
+        {isAssistant && (
+          <Button id="new-checklist" variant="primary" onClick={start}>
+            <Plus size={16} />Start Inspection
+          </Button>
+        )}
       </PageTitle>
 
       <ErrorBox error={error} retry={load} />
@@ -152,139 +171,141 @@ export default function Checklists() {
         <Empty text="No equipment inspections recorded yet." />
       )}
 
-      <Modal
-        open={open}
-        onClose={setOpen}
-        title={success ? 'Inspection Confirmed' : 'New Equipment Inspection'}
-        description="Workstation inspection · Campus operational record"
-        id="checklist-dialog"
-      >
-        {success ? (
-          <div className="checklist-success" data-testid="checklist-confirmation">
-            <span className="success-icon"><CheckCheck size={32} /></span>
-            <h3>{success.asset_tag}</h3>
-            <p>
-              {success.replayed
-                ? 'Existing inspection record confirmed.'
-                : 'Workstation inspection successfully recorded.'}
-            </p>
-            {success.tickets.length ? (
-              <>
-                <p>{success.tickets.length} incident ticket(s) automatically created or linked:</p>
-                {success.tickets.map((t: any) => (
-                  <Link
-                    className="linked-ticket"
-                    data-testid={`success-ticket-${t.id}`}
-                    key={t.id}
-                    to={`/tickets?ticket=${t.id}`}
-                  >
-                    {t.number} · {t.category}
-                    <ArrowUpRight size={15} />
-                  </Link>
-                ))}
-              </>
-            ) : (
-              <p>All five verification checks passed.</p>
-            )}
-            <Button id="checklist-done" variant="primary" onClick={() => setOpen(false)}>
-              Done
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <Field label="Workstation" id="checklist-asset">
-              <Select
-                id="checklist-asset"
-                value={draft.asset_id}
-                required
-                disabled={locked || sending}
-                onChange={(e: any) => update({ asset_id: e.target.value })}
-              >
-                <option value="">Select a workstation…</option>
-                {assets.data?.filter((a: any) => a.kind === 'PC' && !a.archived).map((a: any) => (
-                  <option value={a.id} key={a.id}>
-                    {a.tag} · {a.lab_name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <div className="checklist-subhead">
-              <span>INSPECTION CHECKLIST</span>
-              <button
-                type="button"
-                className="text-button"
-                data-testid="mark-all-passed"
-                disabled={locked || sending}
-                onClick={() => update({ checks: Object.fromEntries(categories.map(([c]) => [c, 'pass'])) })}
-              >
-                <CheckCheck size={14} />Pass All Checks
-              </button>
-            </div>
-
-            <div className="checklist-items">
-              {categories.map(([key, label, sub]) => (
-                <div className="checklist-item" key={key}>
-                  <div>
-                    <strong>{label}</strong>
-                    <small>{sub}</small>
-                  </div>
-                  <div className="check-choices">
-                    {['pass', 'fail'].map(v => (
-                      <button
-                        type="button"
-                        disabled={locked || sending}
-                        key={v}
-                        className={draft.checks[key] === v ? `selected ${v}` : ''}
-                        aria-pressed={draft.checks[key] === v}
-                        data-testid={`check-${key}-${v}`}
-                        onClick={() => update({ checks: { ...draft.checks, [key]: v } })}
-                      >
-                        {v === 'pass' ? <Check size={15} /> : <X size={15} />}
-                        <span>{v === 'pass' ? 'Pass' : 'Fail'}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Field label="Inspection Notes (Optional)" id="checklist-notes">
-              <textarea
-                data-testid="checklist-notes"
-                id="checklist-notes"
-                maxLength={2000}
-                value={draft.notes}
-                disabled={locked || sending}
-                onChange={e => update({ notes: e.target.value })}
-                placeholder="Add observations, hardware issues, or notes…"
-                rows={3}
-              />
-            </Field>
-
-            <ErrorBox error={formError || assets.error} />
-
-            {locked && !sending && (
-              <p className="notice" data-testid="draft-retry-notice">
-                Draft retained. Retry the same submission to confirm whether it was saved.
+      {isAssistant && (
+        <Modal
+          open={isAssistant && open}
+          onClose={handleModalChange}
+          title={success ? 'Inspection Confirmed' : 'New Equipment Inspection'}
+          description="Workstation inspection · Campus operational record"
+          id="checklist-dialog"
+        >
+          {success ? (
+            <div className="checklist-success" data-testid="checklist-confirmation">
+              <span className="success-icon"><CheckCheck size={32} /></span>
+              <h3>{success.asset_tag}</h3>
+              <p>
+                {success.replayed
+                  ? 'Existing inspection record confirmed.'
+                  : 'Workstation inspection successfully recorded.'}
               </p>
-            )}
-
-            <div className="form-footer">
-              <span>{Object.keys(draft.checks).length} / 5 checks completed</span>
-              <Button
-                type="submit"
-                id="submit-checklist"
-                variant="primary"
-                disabled={sending || !draft.asset_id || Object.keys(draft.checks).length !== 5}
-              >
-                <Send size={15} />
-                {sending ? 'Saving…' : locked ? 'Retry Submission' : 'Submit Inspection'}
+              {success.tickets.length ? (
+                <>
+                  <p>{success.tickets.length} incident ticket(s) automatically created or linked:</p>
+                  {success.tickets.map((t: any) => (
+                    <Link
+                      className="linked-ticket"
+                      data-testid={`success-ticket-${t.id}`}
+                      key={t.id}
+                      to={`/tickets?ticket=${t.id}`}
+                    >
+                      {t.number} · {t.category}
+                      <ArrowUpRight size={15} />
+                    </Link>
+                  ))}
+                </>
+              ) : (
+                <p>All five verification checks passed.</p>
+              )}
+              <Button id="checklist-done" variant="primary" onClick={() => setOpen(false)}>
+                Done
               </Button>
             </div>
-          </form>
-        )}
-      </Modal>
+          ) : (
+            <form onSubmit={submit}>
+              <Field label="Workstation" id="checklist-asset">
+                <Select
+                  id="checklist-asset"
+                  value={draft.asset_id}
+                  required
+                  disabled={locked || sending}
+                  onChange={(e: any) => update({ asset_id: e.target.value })}
+                >
+                  <option value="">Select a workstation…</option>
+                  {assets.data?.filter((a: any) => a.kind === 'PC' && !a.archived).map((a: any) => (
+                    <option value={a.id} key={a.id}>
+                      {a.tag} · {a.lab_name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+
+              <div className="checklist-subhead">
+                <span>INSPECTION CHECKLIST</span>
+                <button
+                  type="button"
+                  className="text-button"
+                  data-testid="mark-all-passed"
+                  disabled={locked || sending}
+                  onClick={() => update({ checks: Object.fromEntries(categories.map(([c]) => [c, 'pass'])) })}
+                >
+                  <CheckCheck size={14} />Pass All Checks
+                </button>
+              </div>
+
+              <div className="checklist-items">
+                {categories.map(([key, label, sub]) => (
+                  <div className="checklist-item" key={key}>
+                    <div>
+                      <strong>{label}</strong>
+                      <small>{sub}</small>
+                    </div>
+                    <div className="check-choices">
+                      {['pass', 'fail'].map(v => (
+                        <button
+                          type="button"
+                          disabled={locked || sending}
+                          key={v}
+                          className={draft.checks[key] === v ? `selected ${v}` : ''}
+                          aria-pressed={draft.checks[key] === v}
+                          data-testid={`check-${key}-${v}`}
+                          onClick={() => update({ checks: { ...draft.checks, [key]: v } })}
+                        >
+                          {v === 'pass' ? <Check size={15} /> : <X size={15} />}
+                          <span>{v === 'pass' ? 'Pass' : 'Fail'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Field label="Inspection Notes (Optional)" id="checklist-notes">
+                <textarea
+                  data-testid="checklist-notes"
+                  id="checklist-notes"
+                  maxLength={2000}
+                  value={draft.notes}
+                  disabled={locked || sending}
+                  onChange={e => update({ notes: e.target.value })}
+                  placeholder="Add observations, hardware issues, or notes…"
+                  rows={3}
+                />
+              </Field>
+
+              <ErrorBox error={formError || assets.error} />
+
+              {locked && !sending && (
+                <p className="notice" data-testid="draft-retry-notice">
+                  Draft retained. Retry the same submission to confirm whether it was saved.
+                </p>
+              )}
+
+              <div className="form-footer">
+                <span>{Object.keys(draft.checks).length} / 5 checks completed</span>
+                <Button
+                  type="submit"
+                  id="submit-checklist"
+                  variant="primary"
+                  disabled={sending || !draft.asset_id || Object.keys(draft.checks).length !== 5}
+                >
+                  <Send size={15} />
+                  {sending ? 'Saving…' : locked ? 'Retry Submission' : 'Submit Inspection'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      )}
 
       <Modal
         open={!!selected}

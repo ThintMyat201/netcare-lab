@@ -321,4 +321,28 @@ def test_rapid_sampling_buckets_within_minute(monkeypatch):
     asyncio.run(_run())
 
 
+def test_checklist_rbac_restricts_submission_to_assistants(monkeypatch):
+    import core
+    from fastapi import HTTPException
+
+    fake_db = FakeDB()
+    monkeypatch.setattr(core, "db", fake_db)
+
+    assert "checklist" in core.PERMS["assistant"]
+    assert "checklist" not in core.PERMS["admin"]
+    assert "checklist" not in core.PERMS["engineer"]
+
+    async def _run():
+        await core.authorize({"id": "assistant", "name": "Jamie Santos", "role": "assistant"}, "checklist")
+        for role in ("admin", "engineer"):
+            try:
+                await core.authorize({"id": role, "name": role.title(), "role": role}, "checklist")
+                assert False, f"{role} should not be authorized for checklist submission"
+            except HTTPException as exc:
+                assert exc.status_code == 403
+
+    asyncio.run(_run())
+
+
+
 
