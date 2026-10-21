@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Download, Search, RefreshCw, TriangleAlert, ArrowUpRight, CheckCheck, FlaskConical } from 'lucide-react';
-import { PageTitle, Button, Status, ErrorBox, Loading, Empty, SectionHead, useData } from '../components/shared';
-import { time } from '../lib/api';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Download, Search, RefreshCw, TriangleAlert, ArrowUpRight, CheckCheck, FlaskConical, Printer, Wrench, Ticket, CircleCheck, ListChecks } from 'lucide-react';
+import { PageTitle, Button, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import { useAuth } from '../context';
+import { time, CAMPUS_TIMEZONE } from '../lib/api';
 
 function downloadCSV(name: string, rows: any[][]) {
   // A text cell that starts with = + - @ or a tab or carriage return is a formula to a spreadsheet,
@@ -23,41 +26,161 @@ function downloadCSV(name: string, rows: any[][]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const BAND_COLOURS: Record<string, string> = {
+  low: 'var(--risk-low)',
+  medium: 'var(--risk-medium)',
+  high: 'var(--risk-high)',
+  critical: 'var(--risk-critical)'
+};
+
+// Short names on the chart axis: on paper the chart is half a page wide and "Critical risk" collides
+// with its neighbour. The table beside the chart carries the full names.
+const BAND_SHORT: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' };
+
+const longDate = (value: string) =>
+  new Intl.DateTimeFormat('en-GB', { timeZone: CAMPUS_TIMEZONE, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(value));
+
+// Recharts measures its box on screen. While the browser prepares a printout the charts are drawn
+// again at a fixed size that fits half an A4 column, then go back to measuring when printing ends.
+function usePrinting() {
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => flushSync(() => setPrinting(true));
+    const after = () => setPrinting(false);
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    return () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
+    };
+  }, []);
+  return printing;
+}
+
+type ChartRow = { label: string; value: number; colour: string };
+
+function ReportChart({ data, label, printing, percent = false }: { data: ChartRow[]; label: string; printing: boolean; percent?: boolean }) {
+  const axis = { stroke: 'var(--chart-axis)' };
+  const ticks = { fill: 'var(--chart-text)', fontSize: 10, fontWeight: 600 };
+  // Recharts animates from script, which the stylesheet's reduced-motion rule cannot stop.
+  const still = printing || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const chart = (size?: { width: number; height: number }) => (
+    <BarChart {...size} data={data} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
+      <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 4" vertical={false} />
+      <XAxis dataKey="label" tick={ticks} axisLine={axis} tickLine={false} interval={0} />
+      <YAxis width={38} allowDecimals={false} domain={percent ? [0, 100] : [0, 'auto']} tick={ticks} axisLine={axis} tickLine={false}
+        tickFormatter={(v: number) => (percent ? `${v}%` : `${v}`)} />
+      {!printing && (
+        <Tooltip cursor={{ fill: 'var(--panel-hover)' }} formatter={(v: any) => [percent ? `${v}%` : v, percent ? 'Pass rate' : 'Assets']}
+          contentStyle={{ background: 'var(--panel)', border: '2px solid var(--line-strong)', borderRadius: 6, fontSize: 12, fontWeight: 600, color: 'var(--text)' }} />
+      )}
+      <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={64} isAnimationActive={!still}>
+        {data.map(d => <Cell key={d.label} fill={d.colour} />)}
+      </Bar>
+    </BarChart>
+  );
+  return (
+    <figure className="report-chart" role="img" aria-label={`${label}: ${data.map(d => `${d.label} ${d.value}${percent ? '%' : ''}`).join(', ')}`}>
+      {printing ? chart({ width: 300, height: 190 }) : <ResponsiveContainer width="100%" height={240}>{chart()}</ResponsiveContainer>}
+    </figure>
+  );
+}
+
+function ReportSection({ id, title, subtitle, children }: { id: string; title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <section className="report-card" data-testid={id}>
+      <header className="report-card-head">
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </header>
+      <div className="report-card-body">{children}</div>
+    </section>
+  );
+}
+
+type Header = string | [string, 'num'];
+
+function ReportTable({ headers, children }: { headers: Header[]; children: React.ReactNode }) {
+  return (
+    <div className="table-wrap">
+      <table className="data-table report-table">
+        <thead>
+          <tr>{headers.map(h => (Array.isArray(h) ? <th key={h[0]} className="num">{h[0]}</th> : <th key={h}>{h}</th>))}</tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
 export function Reports() {
+  const { user } = useAuth();
   const { data, error, busy, load } = useData('/reports');
+  const printing = usePrinting();
+
+  const f = data?.figures;
+  const scoredAny = data?.risk.some((r: any) => r.band !== 'unscored' && r.total > 0);
+  const priorities: { key: string; label: string }[] = data?.priorities || [];
+
+  const figures = f ? [
+    {
+      label: 'Assets at high risk or worse', icon: Wrench, value: f.at_risk, unit: `of ${f.scored} scored`,
+      note: f.at_risk > 0 ? 'Worth a preventive visit' : '', tone: 'urgent'
+    },
+    { label: 'Tickets raised', icon: Ticket, value: f.tickets_raised, unit: '', note: '', tone: '' },
+    {
+      label: 'Tickets resolved', icon: CircleCheck, value: f.tickets_resolved, unit: '',
+      note: f.resolution_on_target == null ? '' : f.resolution_on_target ? 'Every priority within target' : 'A priority is over target',
+      tone: f.resolution_on_target ? 'healthy' : 'attention'
+    },
+    {
+      label: 'Inspection pass rate', icon: ListChecks, value: f.pass_rate ?? '—', unit: f.inspected ? `% of ${f.inspected}` : '',
+      note: '', tone: ''
+    }
+  ] : [];
 
   const exportReport = () => {
-    if (data) {
-      downloadCSV('atlas-operational-report.csv', [
-        ['Atlas NetCare Operational Report', 'Generated at', data.generated_at],
-        ['Metric', 'Value'],
-        ['Total Tickets', data.tickets_total],
-        ['Open', data.open],
-        ['In Progress', data.in_progress],
-        ['Resolved', data.resolved],
-        ['Inspections Completed', data.checklists_total],
-        ['Passed', data.passed],
-        ['Failed', data.failed],
-        ['Missed Acknowledgements', data.missed_acknowledgements],
-        ['Mean Resolution Minutes', data.mean_resolution_minutes ?? 'No resolutions'],
-        [],
-        ['Lab', 'Active Hardware', 'Inspections', 'Open Issues'],
-        ...data.labs.map((l: any) => [l.name, l.assets, l.inspections, l.open_tickets])
-      ]);
-    }
+    if (!data) return;
+    downloadCSV('atlas-operations-report.csv', [
+      ['Atlas NetCare operations report', 'Generated', data.generated_at],
+      [],
+      ['Figure', 'Value'],
+      ['Assets at high risk or worse', `${f.at_risk} of ${f.scored} scored`],
+      ['Tickets raised', f.tickets_raised],
+      ['Tickets resolved', f.tickets_resolved],
+      ['Inspection pass rate', f.pass_rate == null ? 'No inspections' : `${f.pass_rate}% of ${f.inspected}`],
+      [],
+      ['Band', 'Lab PCs', 'Access points', 'Total'],
+      ...data.risk.map((r: any) => [r.label, r.lab_pcs, r.access_points, r.total]),
+      [],
+      ['Category', ...priorities.map(p => p.label), 'Total'],
+      ...data.ticket_volume.map((r: any) => [r.label, ...priorities.map(p => r[p.key]), r.total]),
+      [],
+      ['Priority', 'Resolved', 'Mean hours', 'Target hours', 'Against target'],
+      ...data.resolution.map((r: any) => [r.label, r.resolved, r.mean_hours ?? '', r.target_hours, r.mean_hours == null ? 'Nothing resolved yet' : r.within_target ? 'Within target' : 'Over target']),
+      [],
+      ['Lab', 'Passed', 'Failed', 'Pass rate %'],
+      ...data.inspections.map((r: any) => [r.lab, r.passed, r.failed, r.rate]),
+      [],
+      ['Lab', 'Access points', 'Mean uptime %', 'Mean latency ms', 'Peak clients'],
+      ...data.access_points.map((r: any) => [r.lab, r.access_points, r.uptime, r.latency ?? '', r.peak_clients])
+    ]);
   };
 
   return (
-    <>
+    <div className="report">
       <PageTitle
         title="Operational Reports"
-        subtitle="Consolidated metrics, service performance, and inspection outcomes."
+        subtitle={data ? `How the campus is doing, from every module at once. Generated ${time(data.generated_at, true)} MYT.` : 'How the campus is doing, from every module at once.'}
       >
-        <Button id="refresh-reports" onClick={load}>
-          <RefreshCw size={15} />Refresh Data
+        <Button id="refresh-reports" onClick={load} disabled={busy}>
+          <RefreshCw size={15} />Refresh
         </Button>
-        <Button id="export-report" variant="primary" disabled={!data} onClick={exportReport}>
-          <Download size={15} />Export CSV Report
+        <Button id="export-report" disabled={!data} onClick={exportReport}>
+          <Download size={15} />Export CSV
+        </Button>
+        <Button id="print-report" variant="primary" disabled={!data} onClick={() => window.print()}>
+          <Printer size={15} />Print or Save as PDF
         </Button>
       </PageTitle>
 
@@ -67,103 +190,149 @@ export function Reports() {
         <Loading />
       ) : data && (
         <>
-          <div className="monitor-status-strip">
-            <span className="feed-label">
-              <FlaskConical size={13} /> OPERATIONS SUMMARY
-            </span>
-            <span data-testid="report-generated">Generated {time(data.generated_at, true)} MYT</span>
-            <span>Cumulative Operational Records</span>
-          </div>
+          {/* Paper only. On screen the page title above says the same thing next to its buttons. */}
+          <header className="report-print-head" aria-hidden="true">
+            <p className="report-print-brand">Atlas NetCare</p>
+            <h1>Operations report</h1>
+            <p className="report-print-lead">
+              How the campus is doing, from every module at once: maintenance risk, tickets, inspections and access point health.
+            </p>
+            <dl>
+              <div><dt>Generated</dt><dd>{longDate(data.generated_at)} campus time</dd></div>
+              <div><dt>Prepared by</dt><dd>{user?.name}</dd></div>
+              <div><dt>Period</dt><dd>All records to date. Access points: last {data.telemetry_days} days.</dd></div>
+            </dl>
+          </header>
 
-          <div className="report-grid">
-            {[
-              ['Inspections Completed', data.checklists_total, `${data.passed} passed · ${data.failed} with faults`],
-              ['Tickets Resolved', data.resolved, `${data.tickets_total} total tickets reported`],
-              [
-                'Average Resolution Time',
-                data.mean_resolution_minutes == null ? '—' : `${data.mean_resolution_minutes}m`,
-                'From report submission to verified resolution'
-              ],
-              [
-                'Unacknowledged Shifts',
-                data.missed_acknowledgements,
-                `${data.acknowledged_shifts} shifts confirmed on schedule`
-              ]
-            ].map(([title, value, sub], i) => (
-              <div className="report-stat" data-testid={`report-stat-${i}`} key={title as string}>
-                <span>{title}</span>
-                <strong>{value}</strong>
-                <small>{sub}</small>
+          <div className="metric-grid report-figures">
+            {figures.map((m, i) => (
+              <div className="metric-card report-figure" data-testid={`report-figure-${i}`} key={m.label}>
+                <div className="metric-top"><span>{m.label}</span><m.icon size={17} /></div>
+                <div className="metric-value">{m.value}{m.unit && <span>{m.unit}</span>}</div>
+                {m.note && <p className={`report-figure-note ${m.tone}`}>{m.note}</p>}
               </div>
             ))}
           </div>
 
-          <div className="report-two">
-            <section>
-              <SectionHead title="Ticket Outcomes" />
-              <div className="distribution" data-testid="ticket-outcomes-chart">
-                {[data.open, data.in_progress, data.resolved].map((v: number, i: number) => (
-                  <i key={i} style={{ flex: v }} />
-                ))}
+          <ReportSection id="report-risk" title="Assets by risk band" subtitle="Predictive maintenance risk across every asset in service.">
+            {!scoredAny ? (
+              <Empty text="Nothing has been scored yet. Assets are scored from their tickets, inspections and telemetry." />
+            ) : (
+              <div className="report-pair">
+                <ReportChart
+                  label="Assets in each risk band"
+                  printing={printing}
+                  data={data.risk.filter((r: any) => r.band !== 'unscored').map((r: any) => ({ label: BAND_SHORT[r.band], value: r.total, colour: BAND_COLOURS[r.band] }))}
+                />
+                <ReportTable headers={['Band', ['Lab PCs', 'num'], ['Access points', 'num'], ['Total', 'num']]}>
+                  {data.risk.map((r: any) => (
+                    <tr key={r.band} className={r.band === 'unscored' ? 'report-row-muted' : ''}>
+                      <td>{r.label}</td>
+                      <td className="num">{r.lab_pcs}</td>
+                      <td className="num">{r.access_points}</td>
+                      <td className="num strong">{r.total}</td>
+                    </tr>
+                  ))}
+                </ReportTable>
               </div>
-              <div className="distribution-legend">
-                <span>Open · {data.open}</span>
-                <span>In Progress · {data.in_progress}</span>
-                <span>Resolved · {data.resolved}</span>
-              </div>
-            </section>
+            )}
+          </ReportSection>
 
-            <section>
-              <SectionHead title="Workstation Inspection Outcomes" />
-              {data.checklists_total ? (
-                <>
-                  <div className="distribution" data-testid="inspection-outcomes-chart">
-                    <i style={{ flex: data.passed, background: 'var(--green)' }} />
-                    <i style={{ flex: data.failed }} />
-                  </div>
-                  <div className="distribution-legend">
-                    <span>All Checks Passed · {data.passed}</span>
-                    <span>Faults Reported · {data.failed}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="muted small" data-testid="reports-no-inspections">
-                  No equipment inspections recorded yet.
-                </p>
-              )}
-            </section>
-          </div>
-
-          <SectionHead title="Lab Performance & Health" />
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>LAB</th>
-                  <th>ACTIVE HARDWARE</th>
-                  <th>INSPECTIONS</th>
-                  <th>OPEN ISSUES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.labs.map((l: any, i: number) => (
-                  <tr key={l.name} data-testid={`report-lab-${i}`}>
-                    <td>{l.name}</td>
-                    <td className="mono">{l.assets}</td>
-                    <td className="mono">{l.inspections}</td>
-                    <td className="mono">{l.open_tickets}</td>
+          <ReportSection id="report-tickets" title="Ticket volume" subtitle={`${f.tickets_raised} tickets by category and priority.`}>
+            {f.tickets_raised === 0 ? (
+              <Empty text="No tickets yet." />
+            ) : (
+              <ReportTable headers={['Category', ...priorities.map(p => [p.label, 'num'] as Header), ['Total', 'num']]}>
+                {data.ticket_volume.map((r: any) => (
+                  <tr key={r.category}>
+                    <td>{r.label}</td>
+                    {priorities.map(p => <td key={p.key} className="num">{r[p.key]}</td>)}
+                    <td className="num strong">{r.total}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </ReportTable>
+            )}
+            {data.simulator_tickets_excluded > 0 && (
+              <p className="report-note">
+                {data.simulator_tickets_excluded === 1 ? '1 simulator ticket is' : `${data.simulator_tickets_excluded} simulator tickets are`} left out of every figure on this page. Simulator tickets record a demonstration, not a fault somebody reported.
+              </p>
+            )}
+          </ReportSection>
 
-          <p className="permission-notice" data-testid="report-scope">
-            Resolution times and metrics describe campus network operations and lab equipment management.
-          </p>
+          <ReportSection id="report-resolution" title="Mean time to resolution" subtitle="Measured from when a ticket was opened until it was resolved.">
+            <ReportTable headers={['Priority', ['Resolved', 'num'], ['Mean hours', 'num'], ['Target', 'num'], 'Against target']}>
+              {data.resolution.map((r: any) => (
+                <tr key={r.priority}>
+                  <td>{r.label}</td>
+                  <td className="num">{r.resolved}</td>
+                  <td className="num">{r.mean_hours == null ? '—' : r.mean_hours.toFixed(1)}</td>
+                  <td className="num report-faint">{r.target_hours} h</td>
+                  <td>
+                    {r.mean_hours == null ? (
+                      <span className="report-faint">Nothing resolved yet</span>
+                    ) : (
+                      <span className={`status ${r.within_target ? 'online' : 'offline'}`}><i />{r.within_target ? 'Within target' : 'Over target'}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </ReportTable>
+            <p className="report-note">
+              This is the average for each priority. An average inside its target can still hide one ticket that took a week.
+            </p>
+          </ReportSection>
+
+          <ReportSection id="report-inspections" title="Inspection pass rate by lab" subtitle="Every submitted workstation inspection, by lab.">
+            {data.inspections.length === 0 ? (
+              <Empty text="No inspections yet." />
+            ) : (
+              <div className="report-pair">
+                <ReportChart
+                  label="Percentage of inspections passed, by lab"
+                  printing={printing}
+                  percent
+                  data={data.inspections.map((r: any) => ({ label: r.code, value: r.rate, colour: 'var(--risk-low)' }))}
+                />
+                <ReportTable headers={['Lab', ['Passed', 'num'], ['Failed', 'num'], ['Rate', 'num']]}>
+                  {data.inspections.map((r: any) => (
+                    <tr key={r.lab}>
+                      <td>{r.lab}</td>
+                      <td className="num">{r.passed}</td>
+                      <td className="num">{r.failed}</td>
+                      <td className="num strong">{r.rate}%</td>
+                    </tr>
+                  ))}
+                </ReportTable>
+              </div>
+            )}
+          </ReportSection>
+
+          <ReportSection id="report-access-points" title="Access point uptime and congestion" subtitle={`Last ${data.telemetry_days} days, by lab.`}>
+            {data.access_points.length === 0 ? (
+              <Empty text={`No telemetry in the last ${data.telemetry_days} days.`} />
+            ) : (
+              <>
+                <ReportTable headers={['Lab', ['APs', 'num'], ['Mean uptime', 'num'], ['Mean latency', 'num'], ['Peak clients', 'num']]}>
+                  {data.access_points.map((r: any) => (
+                    <tr key={r.lab}>
+                      <td>{r.lab}</td>
+                      <td className="num">{r.access_points}</td>
+                      <td className="num">{r.uptime}%</td>
+                      <td className="num">{r.latency == null ? '—' : `${r.latency} ms`}</td>
+                      <td className="num">{r.peak_clients}</td>
+                    </tr>
+                  ))}
+                </ReportTable>
+                <p className="report-note">
+                  Uptime counts the samples in which an access point answered. Samples with no telemetry are unknown, so they count neither way.
+                  Peak clients adds up every access point in a lab at its busiest sample, an upper bound on how many people were online there at once.
+                </p>
+              </>
+            )}
+          </ReportSection>
         </>
       )}
-    </>
+    </div>
   );
 }
 

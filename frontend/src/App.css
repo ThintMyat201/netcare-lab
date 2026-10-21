@@ -3240,3 +3240,434 @@
     transition: none !important;
   }
 }
+
+/*
+ | Operational report. On screen it uses the app's own panels and tokens. On paper it is a
+ | document: a title block, the four figures in a row between rules, and each section titled
+ | with a rule above it and its chart beside its table. Everything here is scoped to .report,
+ | so no other page changes when printed.
+ */
+.report {
+  --risk-low: var(--green);
+  --risk-medium: var(--amber);
+  --risk-high: #f39651;
+  --risk-critical: var(--red);
+  --chart-grid: var(--line);
+  --chart-axis: var(--line-strong);
+  --chart-text: var(--muted);
+}
+
+.report-figure-note {
+  font-weight: 650;
+}
+
+.report-figure-note.urgent {
+  color: var(--red);
+}
+
+.report-figure-note.healthy {
+  color: var(--green);
+}
+
+.report-figure-note.attention {
+  color: var(--amber);
+}
+
+.report-card {
+  border: 2px solid var(--line);
+  background: var(--panel);
+  border-radius: 7px;
+  box-shadow: 0 2px 6px #00000020;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+
+.report-card-head {
+  padding: 17px 21px 15px;
+  border-bottom: 2px solid var(--line);
+}
+
+.report-card-head h2 {
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.report-card-head p {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.report-card-body {
+  padding: 21px;
+}
+
+.report-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 25px;
+  align-items: center;
+}
+
+.report-chart {
+  margin: 0;
+  min-width: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.report-table th {
+  text-transform: uppercase;
+}
+
+.report-table th,
+.report-table td {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.report-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-table td.num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.report-table td.strong {
+  font-weight: 750;
+}
+
+.report-row-muted td {
+  color: var(--faint);
+}
+
+.report-faint {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.report-note {
+  margin-top: 13px;
+  max-width: 90ch;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.report-print-head {
+  display: none;
+}
+
+/* Below this width the sidebar leaves too little room for a chart and a table side by side. */
+@media (max-width: 1200px) {
+  .report-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .report-card-head {
+    padding: 14px 15px 12px;
+  }
+
+  .report-card-body {
+    padding: 15px;
+  }
+}
+
+/* The page margins carry their own footer, which also stops the browser printing its date,
+   title and URL there. */
+@page report {
+  size: A4;
+  margin: 16mm 15mm 18mm;
+
+  @top-left { content: ""; }
+  @top-right { content: ""; }
+
+  @bottom-left {
+    content: "Atlas NetCare operations report";
+    font: 8pt 'IBM Plex Sans', sans-serif;
+    color: #5a6372;
+  }
+
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font: 8pt 'IBM Plex Sans', sans-serif;
+    color: #5a6372;
+  }
+}
+
+@media print {
+  /* On the body, not on .report: a named page on a nested element forces a page break before it. */
+  body:has(.report) {
+    page: report;
+    background: #fff;
+  }
+
+  .app-shell:has(.report) {
+    display: block;
+    min-height: 0;
+    background: #fff;
+  }
+
+  .app-shell:has(.report) .sidebar,
+  .app-shell:has(.report) .topbar,
+  .app-shell:has(.report) .app-footer,
+  .app-shell:has(.report) .nav-scrim,
+  .report .page-title,
+  .report .error-box {
+    display: none !important;
+  }
+
+  .app-shell:has(.report) .main-shell {
+    display: block;
+    margin: 0;
+    min-height: 0;
+  }
+
+  .app-shell:has(.report) .main-content {
+    padding: 0;
+    max-width: none;
+    animation: none;
+  }
+
+  /* Paper is white whatever theme the person printing uses. */
+  .report {
+    --bg: #fff;
+    --panel: #fff;
+    --panel-hover: #fff;
+    --line: #d5dbe3;
+    --line-strong: #aeb7c4;
+    --text: #172033;
+    --muted: #4b5565;
+    --faint: #6b7584;
+    --green: #15803d;
+    --amber: #b45309;
+    --red: #b91c1c;
+    --risk-low: #34a37a;
+    --risk-medium: #e0a23a;
+    --risk-high: #e8823a;
+    --risk-critical: #d64545;
+    --chart-grid: #e2e7ee;
+    --chart-axis: #aeb7c4;
+    --chart-text: #6b7584;
+    color: var(--text);
+    font-size: 9.5pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-print-head {
+    display: block;
+    margin-bottom: 8mm;
+    padding-top: 5mm;
+    border-top: 3px solid #2f5bd3;
+  }
+
+  .report-print-brand {
+    font-size: 10pt;
+    font-weight: 650;
+    color: #2f5bd3;
+  }
+
+  .report-print-head h1 {
+    margin-top: 1mm;
+    font-family: 'Outfit', sans-serif;
+    font-size: 24pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .report-print-lead {
+    margin-top: 2mm;
+    max-width: 150mm;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .report-print-head dl {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6mm;
+    margin-top: 6mm;
+    font-size: 8.5pt;
+  }
+
+  .report-print-head dt {
+    color: var(--muted);
+  }
+
+  .report-print-head dd {
+    margin: 0.5mm 0 0;
+    font-weight: 650;
+    color: var(--text);
+  }
+
+  /* The four figures: a row of numbers between rules, not four boxes. */
+  .report .report-figures {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin: 0 0 8mm;
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    break-inside: avoid;
+  }
+
+  .report .report-figure {
+    border: 0;
+    border-left: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    padding: 4mm 4mm 4mm 5mm;
+  }
+
+  .report .report-figure:first-child {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .report .report-figure svg {
+    display: none;
+  }
+
+  .report .metric-top {
+    font-size: 9pt;
+  }
+
+  .report .metric-value {
+    margin: 2mm 0 1mm;
+    font-size: 20pt;
+  }
+
+  .report .metric-value > span {
+    font-size: 10pt;
+  }
+
+  .report .report-figure-note {
+    font-size: 8.5pt;
+    white-space: normal;
+  }
+
+  /* A card is a screen device. On paper each section is titled under a rule and may run on. */
+  .report .report-card {
+    margin: 0 0 7mm;
+    border: 0;
+    border-top: 1px solid var(--line-strong);
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    break-inside: auto;
+  }
+
+  .report .report-card-head {
+    padding: 3mm 0 2mm;
+    border: 0;
+    break-after: avoid;
+  }
+
+  .report .report-card-head h2 {
+    font-size: 12pt;
+  }
+
+  .report .report-card-head p {
+    font-size: 9pt;
+  }
+
+  .report .report-card-body {
+    padding: 0;
+  }
+
+  /* A chart and its table stay together, side by side. */
+  .report .report-pair {
+    grid-template-columns: 1fr 1fr;
+    gap: 6mm;
+    break-inside: avoid;
+  }
+
+  .report .report-chart svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Tables on paper: flat, a hairline under each row, kept whole. */
+  .report .table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .report .data-table {
+    font-size: 9pt;
+    white-space: normal;
+    break-inside: avoid;
+  }
+
+  .report .data-table thead {
+    display: table-header-group;
+  }
+
+  .report .data-table th {
+    padding: 1.6mm 2mm;
+    border-bottom: 1px solid var(--line-strong);
+    background: none;
+    color: var(--muted);
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .report .data-table td {
+    padding: 1.6mm 2mm;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .report .data-table th:first-child,
+  .report .data-table td:first-child {
+    padding-left: 0;
+  }
+
+  .report .data-table th:last-child,
+  .report .data-table td:last-child {
+    padding-right: 0;
+  }
+
+  .report .data-table tr {
+    break-inside: avoid;
+  }
+
+  .report .data-table tr:hover td {
+    background: none;
+  }
+
+  .report .data-table td.num {
+    font-size: 9pt;
+  }
+
+  .report .status {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .report .report-note {
+    font-size: 8.5pt;
+  }
+
+  .report .empty {
+    padding: 2mm 0;
+    border: 0;
+  }
+}
