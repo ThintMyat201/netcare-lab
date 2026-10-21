@@ -3241,6 +3241,134 @@
   }
 }
 
+/* Roster controls on the Shift Schedule page: the week shown, and the week-level actions. */
+.roster-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.week-nav {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.week-nav > span {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-left: 2px solid var(--line);
+  border-right: 2px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.week-nav .icon-button {
+  width: 36px;
+  height: 34px;
+  border-radius: 0;
+}
+
+.week-nav .icon-button:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.roster-toolbar .clear-week {
+  margin-left: auto;
+}
+
+.roster-notice {
+  margin-bottom: 20px;
+}
+
+.shift-card-reassign {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.shift-card-reassign .select-wrap {
+  flex: 1;
+}
+
+/* As tall as the select beside it. */
+.shift-card-reassign .btn {
+  height: auto;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.template-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.template-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-list strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.template-list small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.template-list li.inactive {
+  opacity: .6;
+}
+
+.template-active {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+
+.template-active input {
+  width: auto;
+  accent-color: #528bf0;
+}
+
+@media (max-width: 760px) {
+  .roster-toolbar .clear-week {
+    margin-left: 0;
+  }
+}
+
 /*
  | Operational report. On screen it uses the app's own panels and tokens. On paper it is a
  | document: a title block, the four figures in a row between rules, and each section titled
