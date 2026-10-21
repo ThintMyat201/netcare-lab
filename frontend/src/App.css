@@ -4360,3 +4360,358 @@ input[aria-invalid="true"] {
   .team-toolbar .count-label { margin-left: 0; }
   .team-toolbar .search-field { max-width: none; }
 }
+
+/* ==========================================================================
+   Device Monitoring UX & Layout Refactor
+   ========================================================================== */
+
+/* Unified Telemetry Control Bar */
+.monitor-status-strip.monitor-unified-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.telemetry-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.sample-timestamp {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sample-retention-info {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.monitor-unified-bar .monitor-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.monitor-poll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sim-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Simulation Active Banner */
+.simulation-active-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: page-in 0.2s ease-out;
+  flex-wrap: wrap;
+}
+
+.sim-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.sim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.24);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sim-banner-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: #fde68a;
+  margin-bottom: 3px;
+}
+
+.sim-banner-text p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(254, 243, 199, 0.88);
+}
+
+.sim-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sim-banner-reset-btn {
+  background: #f59e0b !important;
+  border-color: #d97706 !important;
+  color: #1e1b4b !important;
+  font-weight: 750 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.sim-banner-reset-btn:hover {
+  background: #fbbf24 !important;
+}
+
+.sim-banner-dismiss {
+  font-size: 11px;
+  color: #fef08a;
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+}
+
+/* Status Filter Pill Tabs (Never clipped, wraps gracefully) */
+.monitoring-filter-tabs {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  flex-wrap: balance !important;
+  gap: 8px !important;
+  align-items: safe center !important;
+  border-bottom: none !important;
+  margin-bottom: 22px !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.monitoring-filter-tabs button {
+  border: 1px solid var(--line) !important;
+  background: var(--panel) !important;
+  padding: 7px 14px !important;
+  border-radius: 9999px !important;
+  color: var(--muted) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  min-inline-size: 0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.monitoring-filter-tabs button:hover {
+  background: var(--panel-hover, rgba(255, 255, 255, 0.05)) !important;
+  border-color: var(--line-strong, rgba(255, 255, 255, 0.2)) !important;
+  color: var(--text) !important;
+}
+
+.monitoring-filter-tabs button.active {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-color: var(--blue) !important;
+  color: #93c5fd !important;
+  font-weight: 750 !important;
+  box-shadow: 0 0 0 1px var(--blue), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.monitoring-filter-tabs button.active:after {
+  display: none !important;
+}
+
+.monitoring-filter-tabs button > span {
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 9999px !important;
+  padding: 1px 7px !important;
+  color: var(--text) !important;
+  line-height: 1.4 !important;
+}
+
+.monitoring-filter-tabs button.active > span {
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+  color: #ffffff !important;
+}
+
+/* Action Column Buttons in AP Table */
+.ap-ticket-btn {
+  font-size: 11px !important;
+  padding: 5px 11px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.ap-ping-btn {
+  font-size: 11px !important;
+  padding: 5px 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--muted) !important;
+}
+
+.ap-ping-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text) !important;
+  border-color: var(--line-strong, rgba(255, 255, 255, 0.2)) !important;
+}
+
+.ap-ticket-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.ap-ticket-link-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+  color: #bfdbfe;
+}
+
+/* Light Theme Support */
+.light-theme .simulation-active-banner {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.light-theme .sim-badge {
+  background: #fde68a;
+  border-color: #d97706;
+  color: #92400e;
+}
+
+.light-theme .sim-banner-text strong {
+  color: #78350f;
+}
+
+.light-theme .sim-banner-text p {
+  color: #92400e;
+}
+
+.light-theme .sim-banner-reset-btn {
+  background: #d97706 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+.light-theme .sim-banner-reset-btn:hover {
+  background: #b45309 !important;
+}
+
+.light-theme .sim-banner-dismiss {
+  color: #78350f;
+}
+
+.light-theme .monitoring-filter-tabs button {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light-theme .monitoring-filter-tabs button:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.light-theme .monitoring-filter-tabs button.active {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 1px #3b82f6, 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-theme .monitoring-filter-tabs button > span {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.light-theme .monitoring-filter-tabs button.active > span {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.light-theme .ap-ping-btn {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.light-theme .ap-ping-btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.light-theme .ap-ticket-link-btn {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.light-theme .ap-ticket-link-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}

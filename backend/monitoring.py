@@ -164,8 +164,39 @@ async def _write_scenario_sequence(assets,scenario,at_now):
             row_update={'asset_id':asset['id'],'lab_id':asset['lab_id'],'timestamp':slot.isoformat(),**m,'expires_at':slot+timedelta(days=7),'synthetic':True}
             await db.telemetry.update_one({'asset_id':asset['id'],'timestamp':slot.isoformat()},{'$set':row_update,'$setOnInsert':{'id':uid()}},upsert=True)
 
+async def ensure_access_points():
+    labs = [
+        {'id': 'lab-1', 'name': 'Computing Lab A', 'code': 'CL-A'},
+        {'id': 'lab-2', 'name': 'Computing Lab B', 'code': 'CL-B'},
+        {'id': 'lab-3', 'name': 'Innovation Lab', 'code': 'IL'},
+    ]
+    now_ts = stamp()
+    for i in range(12):
+        lab = labs[i // 4]
+        n = i + 1
+        ap_id = f'ap-{n:02}'
+        tag = f'AP-{lab["code"]}-{i % 4 + 1:02}'
+        row = {
+            'id': ap_id,
+            'tag': tag,
+            'name': f'{lab["name"]} · AP {i % 4 + 1:02}',
+            'kind': 'AP',
+            'lab_id': lab['id'],
+            'lab_name': lab['name'],
+            'ip': f'10.20.{i // 4 + 1}.{n + 10}',
+            'model': 'Aruba AP-515',
+            'archived': False,
+            'scenario': 'normal',
+            'scenario_at': now_ts,
+            'last_seen': now_ts,
+            'created_at': now_ts,
+        }
+        await db.assets.update_one({'id': ap_id}, {'$setOnInsert': row}, upsert=True)
+        await db.assets.update_one({'id': ap_id, 'archived': True}, {'$set': {'archived': False}})
+
 async def ensure_telemetry_history():
     if not DEMO: return
+    await ensure_access_points()
     active_aps=await db.assets.find({'kind':'AP','archived':False},{'_id':0}).sort('tag',1).to_list(500)
     if len(active_aps)>=4 and all(a.get('scenario') in ('congestion','degradation') for a in active_aps):
         latest_scen=max((a.get('scenario_at','') for a in active_aps),default='')
