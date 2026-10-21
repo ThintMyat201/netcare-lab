@@ -231,7 +231,7 @@ netcare-lab/
 │   ├── context.tsx      # auth/session context
 │   ├── hooks/ lib/ constants/
 │   └── App.tsx
-├── tests/               # package scaffold; pytest.ini configures xdist (-n 2, loadscope)
+├── tests/               # pytest suite, run from the repository root
 └── design_guidelines.json
 ```
 
@@ -328,4 +328,4 @@ Core interactions target **under 7 seconds** with the confirmed **10 concurrent 
 
 Deliberately out of scope: live network access, network configuration, real email delivery, offline sync, closed-browser alarms, durable job retries, and production availability engineering. Hosting is unspecified. Future direction: authorized read-only telemetry, real notifications, offline sync.
 
-The `tests/` directory is a package scaffold — `backend/pytest.ini` fixes the xdist configuration (`-n 2 --dist loadscope`) for suites added later. Run them with `cd backend && .venv/bin/pytest`.
+Run the tests from the repository root with `backend/.venv/bin/pytest tests` (`backend\.venv\Scripts\pytest tests` on Windows).
