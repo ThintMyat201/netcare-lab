@@ -1643,6 +1643,29 @@
   letter-spacing: .5px;
 }
 
+.feed-label .tiny-dot {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.feed-label .tiny-dot.feed-live {
+  box-shadow: 0 0 8px var(--green);
+}
+
+.feed-label .tiny-dot.feed-pulse {
+  transform: scale(1.45);
+  box-shadow: 0 0 0 4px #48d59d35, 0 0 12px var(--green);
+}
+
+.sample-timestamp-flash {
+  color: var(--green);
+  transition: color .25s ease;
+}
+
+.sample-btn-active {
+  border-color: var(--blue) !important;
+  color: var(--text) !important;
+}
+
 .filter-tabs {
   display: flex;
   align-items: center;

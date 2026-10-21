@@ -25,6 +25,8 @@ LAB_PROFILES={
     'lab-3':{'base_clients':46,'client_span':14,'base_load':48,'load_span':18,'tp_factor':1.22},
 }
 
+_SAMPLE_SEQ=0
+
 def _ap_num(asset)->int:
     digits=''.join(filter(str.isdigit,str(asset.get('id','1'))))
     return int(digits) if digits else 1
@@ -32,19 +34,21 @@ def _ap_num(asset)->int:
 def metrics(asset,at=None):
     at=at or now()
     phase=int(at.timestamp()//900)
-    live_tick=int(at.timestamp()*2) if (at.second or at.microsecond) else 0
+    live_tick=(int(at.timestamp()*2)+_SAMPLE_SEQ*7) if (at.second or at.microsecond or _SAMPLE_SEQ) else 0
     ap_num=_ap_num(asset)
     n=sum(map(ord,str(asset.get('id','ap-01'))))+ap_num*17
     lab_id=asset.get('lab_id','lab-1')
     prof=LAB_PROFILES.get(lab_id,LAB_PROFILES['lab-1'])
 
-    wave_c=round(math.sin(phase*0.65+ap_num*1.3)*6+math.cos(phase*0.3+ap_num*0.7)*3+(math.sin(live_tick*0.9+ap_num*1.7)*2.5 if live_tick else 0))
+    campus_c=round(math.sin(live_tick*0.85)*2.5+math.cos(live_tick*0.5)*1.5) if live_tick else 0
+    campus_l=round(math.sin(live_tick*0.75)*3+math.cos(live_tick*0.45)*2) if live_tick else 0
+    wave_c=round(math.sin(phase*0.65+ap_num*1.3)*6+math.cos(phase*0.3+ap_num*0.7)*3+(math.sin(live_tick*0.9+ap_num*1.7)*3+campus_c if live_tick else 0))
     normal_clients=max(8,prof['base_clients']+(ap_num*5)%prof['client_span']+wave_c)
-    wave_l=round(math.sin(phase*0.55+ap_num*1.1)*7+math.cos(phase*0.25+ap_num)*4+(math.cos(live_tick*0.8+ap_num*1.3)*3 if live_tick else 0))
+    wave_l=round(math.sin(phase*0.55+ap_num*1.1)*7+math.cos(phase*0.25+ap_num)*4+(math.cos(live_tick*0.8+ap_num*1.3)*3.5+campus_l if live_tick else 0))
     normal_load=max(12,min(78,prof['base_load']+(ap_num*4)%prof['load_span']+wave_l))
     normal_latency=max(5,8+(ap_num*3+phase+live_tick)%12+(4 if lab_id=='lab-3' else 0))
     normal_queue=max(2,8+(ap_num*3+phase+live_tick)%14)
-    normal_tp=round(normal_clients*(prof['tp_factor']+math.sin(phase+ap_num+(live_tick*0.2 if live_tick else 0))*0.14),1)
+    normal_tp=round(normal_clients*(prof['tp_factor']+math.sin(phase+ap_num+(live_tick*0.25 if live_tick else 0))*0.14),1)
 
     scenario=asset.get('scenario','normal')
     last_seen_raw=asset.get('last_seen')
@@ -57,11 +61,13 @@ def metrics(asset,at=None):
         return {'status':'offline','clients':0,'load':0,'latency':None,'throughput':0.0,'queue_depth':0}
 
     if scenario=='congestion':
-        clients=(84 if lab_id=='lab-3' else 72)+(ap_num*5+phase)%15
-        load=min(98,88+(ap_num*3+phase)%10)
-        latency=122+(ap_num*7+phase)%35
-        queue_depth=260+(ap_num*29+phase*19)%180
-        tp=round(clients*(0.88+math.sin(phase+n)*0.15),1)
+        jitter_c=round(math.sin(live_tick*0.95+ap_num)*4+campus_c) if live_tick else 0
+        jitter_l=round(math.cos(live_tick*0.8+ap_num)*3) if live_tick else 0
+        clients=max(62,(84 if lab_id=='lab-3' else 72)+(ap_num*5+phase)%15+jitter_c)
+        load=min(98,max(85,88+(ap_num*3+phase)%10+jitter_l))
+        latency=122+(ap_num*7+phase+live_tick)%35
+        queue_depth=260+(ap_num*29+phase*19+live_tick*13)%180
+        tp=round(clients*(0.88+math.sin(phase+n+(live_tick*0.3 if live_tick else 0))*0.15),1)
         return {'status':'congested','clients':clients,'load':load,'latency':latency,'throughput':tp,'queue_depth':queue_depth}
 
     if scenario=='flapping':
@@ -106,6 +112,9 @@ def metrics(asset,at=None):
     return {'status':'online','clients':normal_clients,'load':normal_load,'latency':normal_latency,'throughput':normal_tp,'queue_depth':normal_queue}
 
 async def generate_sample(at=None,seed_history=False,overwrite=False):
+    global _SAMPLE_SEQ
+    if overwrite and not seed_history:
+        _SAMPLE_SEQ+=1
     raw_at=at or now()
     slot_at=raw_at if seed_history else raw_at.replace(second=0,microsecond=0)
     slot_iso=slot_at.isoformat()
@@ -157,6 +166,22 @@ async def _write_scenario_sequence(assets,scenario,at_now):
 
 async def ensure_telemetry_history():
     if not DEMO: return
+    active_aps=await db.assets.find({'kind':'AP','archived':False},{'_id':0}).sort('tag',1).to_list(500)
+    if len(active_aps)>=4 and all(a.get('scenario') in ('congestion','degradation') for a in active_aps):
+        latest_scen=max((a.get('scenario_at','') for a in active_aps),default='')
+        should_reset=True
+        if latest_scen:
+            try:
+                should_reset=(now()-datetime.fromisoformat(latest_scen)).total_seconds()>120
+            except ValueError:
+                should_reset=True
+        if should_reset:
+            ts_now=stamp()
+            congested_target='ap-07' if any(a['id']=='ap-07' for a in active_aps) else active_aps[-2]['id']
+            await db.assets.update_many({'kind':'AP','archived':False,'id':{'$ne':congested_target}},{'$set':{'scenario':'normal','scenario_at':ts_now,'last_seen':ts_now},'$unset':{'degradation_progress':'','flap_state':'','synthetic_override':''}})
+            await db.assets.update_one({'id':congested_target},{'$set':{'scenario':'congestion','scenario_at':ts_now,'last_seen':ts_now}})
+            repaired_aps=await db.assets.find({'kind':'AP','archived':False,'id':{'$ne':congested_target}},{'_id':0}).to_list(500)
+            await _write_scenario_sequence(repaired_aps,'normal',now())
     all_ts=await db.telemetry.distinct('timestamp')
     stale_ts=[]
     for t in all_ts:
@@ -336,7 +361,7 @@ async def simulation(body:Scenario,user=Depends(current)):
 @router.post('/monitoring/sample')
 async def sample(user=Depends(current)):
     await authorize(user,'simulate');await generate_sample(overwrite=True);await sync_alerts()
-    return {'message':'Synthetic sample generated. Interrupted feeds remain unknown.'}
+    return {'message':'Synthetic sample generated. Interrupted feeds remain unknown.','sampled_at':stamp()}
 
 @router.get('/alerts',response_model=list[Document])
 async def alerts(user=Depends(current)):
