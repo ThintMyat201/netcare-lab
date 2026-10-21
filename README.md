@@ -328,4 +328,4 @@ Core interactions target **under 7 seconds** with the confirmed **10 concurrent 
 
 Deliberately out of scope: live network access, network configuration, real email delivery, offline sync, closed-browser alarms, durable job retries, and production availability engineering. Hosting is unspecified. Future direction: authorized read-only telemetry, real notifications, offline sync.
 
-Run the tests from the repository root with `backend/.venv/bin/pytest tests` (`backend\.venv\Scripts\pytest tests` on Windows).
+Run the tests from the repository root with `backend/.venv/bin/pytest tests` (`backend\.venv\Scripts\pytest tests` on Windows). The roster tests need MongoDB, and pytest skips them when it is not running. Each test starts from an empty `netcare_test_atlas` database (`netcare_test_atlas_demo` when `DEMO_MODE=true`) and drops it at the end.

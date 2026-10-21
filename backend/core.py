@@ -60,8 +60,10 @@ async def lease(key):
     finally: await db.locks.delete_one({'key': key, 'token': token})
 
 async def indexes():
-    for name in ['users','assets','labs','tickets','shifts','checklists','audit','alerts','sessions']:
+    for name in ['users','assets','labs','tickets','shifts','shift_templates','checklists','audit','alerts','sessions']:
         await db[name].create_index('id', unique=True)
+    # One shift per template slot (template:date:seat). Removing a shift unsets its key, so generating the week fills the seat again.
+    await db.shifts.create_index('slot_key', unique=True, partialFilterExpression={'slot_key': {'$type': 'string'}})
     await db.users.create_index('email', unique=True)
     await db.assets.create_index('tag', unique=True)
     await db.locks.create_index('key', unique=True)

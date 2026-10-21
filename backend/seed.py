@@ -66,6 +66,11 @@ async def seed():
         start=now().replace(minute=0,second=0,microsecond=0)+timedelta(hours=i-1)
         row={'id':f'shift-seed-{i}','assistant_id':assistant,'assistant_name':people[4+i][2],'lab_id':labs[i]['id'],'lab_name':labs[i]['name'],'start':start.isoformat(),'end':(start+timedelta(hours=4)).isoformat(),'acknowledged_at':None,'created_at':stamp(),'created_by':'admin','cancelled':False}
         await db.shifts.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
+    # Weekly patterns for the roster generator. day_of_week: 0 = Monday ... 6 = Sunday.
+    templates=[(f'tpl-cla-am-{d}','Morning lab cover',d,'08:00','12:00','lab-1',1) for d in range(5)]+[(f'tpl-clb-pm-{d}','Afternoon lab cover',d,'13:00','17:00','lab-2',1) for d in range(5)]+[(f'tpl-il-{d}','Innovation Lab open hours',d,'10:00','16:00','lab-3',2) for d in (1,3)]
+    for id,name,day,start,end,lab_id,needed in templates:
+        lab=next(l for l in labs if l['id']==lab_id)
+        await db.shift_templates.update_one({'id':id},{'$setOnInsert':{'id':id,'name':name,'day_of_week':day,'start_time':start,'end_time':end,'lab_id':lab_id,'lab_name':lab['name'],'required_assistants':needed,'active':True,'created_at':stamp(),'updated_at':stamp()}},upsert=True)
     from monitoring import generate_sample, sync_alerts
     base=now().replace(minute=(now().minute//15)*15,second=0,microsecond=0)
     for step in range(96,-1,-1): await generate_sample(base-timedelta(minutes=15*step), seed_history=True)

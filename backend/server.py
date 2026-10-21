@@ -9,6 +9,7 @@ from auth import router as auth_router
 from operations import router as operations_router
 from monitoring import router as monitoring_router
 from reporting import router as reporting_router
+from roster import router as roster_router
 
 @asynccontextmanager
 async def lifespan(app):
@@ -30,7 +31,7 @@ async def guard_origin(request:Request,call_next):
             return JSONResponse({'detail':'Browser request safeguard is required.'},status_code=403)
         if request.cookies.get('access_token') and not origin and request.headers.get('sec-fetch-site')=='cross-site': return JSONResponse({'detail':'Origin is required.'},status_code=403)
     return await call_next(request)
-for router in [auth_router,operations_router,monitoring_router,reporting_router]: app.include_router(router)
+for router in [auth_router,operations_router,monitoring_router,reporting_router,roster_router]: app.include_router(router)
 @app.get('/api/health')
 async def health():
     await db.command('ping');return {'status':'ok','service':'Atlas NetCare','mode':'academic-demo'}

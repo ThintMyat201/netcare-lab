@@ -127,12 +127,31 @@ def shift_status(s):
     if (start-now()).total_seconds()<=900: return 'pending'
     return 'upcoming'
 
+def shift_view(s):
+    """A shift as the pages show it. Removable only before it starts: from then on it is the attendance record. Reassignable until it ends, so somebody can cover the rest."""
+    live=not s.get('cancelled')
+    return {**s,'status':shift_status(s),'removable':live and datetime.fromisoformat(s['start'])>now(),'reassignable':live and datetime.fromisoformat(s['end'])>now()}
+
+async def overlapping_shift(assistant_id,start_iso,end_iso,exclude_id=None):
+    """Any live shift of this assistant that overlaps [start, end). Callers hold the lease 'roster:<assistant id>'."""
+    query={'assistant_id':assistant_id,'cancelled':False,'start':{'$lt':end_iso},'end':{'$gt':start_iso}}
+    if exclude_id: query['id']={'$ne':exclude_id}
+    return await db.shifts.find_one(query,{'_id':0})
+
+async def remove_shift(row,user):
+    if row.get('cancelled'): raise HTTPException(409,'This shift has already been removed.')
+    if datetime.fromisoformat(row['start'])<=now(): raise HTTPException(409,'This shift has already started, so it stays on the roster as a record of who was there.')
+    # Unsetting the slot key frees the template seat, so generating the week fills it again.
+    result=await db.shifts.update_one({'id':row['id'],'cancelled':False},{'$set':{'cancelled':True,'cancelled_at':stamp(),'cancelled_by':user['id']},'$unset':{'slot_key':''}})
+    if not result.modified_count: raise HTTPException(409,'This shift has already been removed.')
+    await audit(user,'Shift cancelled',f'{row["assistant_name"]} · {row["lab_name"]}',row['id'])
+
 @router.get('/shifts',response_model=list[Document])
 async def shifts(user=Depends(current)):
     await authorize(user,'view'); await make_reminders()
     query={'assistant_id':user['id']} if user['role']!='admin' else {}
     rows=await db.shifts.find(query,{'_id':0}).sort('start',1).to_list(500)
-    return [{**s,'status':shift_status(s)} for s in rows]
+    return [shift_view(s) for s in rows]
 
 @router.post('/shifts',response_model=Document)
 async def add_shift(body:ShiftInput,user=Depends(current)):
@@ -145,11 +164,10 @@ async def add_shift(body:ShiftInput,user=Depends(current)):
     start,end=start.astimezone(zone),end.astimezone(zone)
     if end<=start or (end-start).total_seconds()>86400: raise HTTPException(422,'Shift end must follow its start, with a duration of at most 24 hours.')
     async with lease('roster:'+body.assistant_id):
-        overlap=await db.shifts.find_one({'assistant_id':body.assistant_id,'cancelled':False,'start':{'$lt':end.isoformat()},'end':{'$gt':start.isoformat()}},{'_id':0})
-        if overlap: raise HTTPException(409,'This assistant already has an overlapping shift, including across midnight.')
+        if await overlapping_shift(body.assistant_id,start.isoformat(),end.isoformat()): raise HTTPException(409,'This assistant already has an overlapping shift, including across midnight.')
         row={'id':uid(),'assistant_id':body.assistant_id,'assistant_name':assistant['name'],'lab_id':lab['id'],'lab_name':lab['name'],'start':start.isoformat(),'end':end.isoformat(),'acknowledged_at':None,'created_at':stamp(),'created_by':user['id'],'cancelled':False}
         await db.shifts.insert_one(row.copy())
-    await make_reminders();await audit(user,'Shift assigned',f'{assistant["name"]} → {lab["name"]}',row['id']); return {**row,'status':shift_status(row)}
+    await make_reminders();await audit(user,'Shift assigned',f'{assistant["name"]} → {lab["name"]}',row['id']); return shift_view(row)
 
 @router.post('/shifts/{id}/acknowledge',response_model=Document)
 async def ack(id:str,user=Depends(current)):
@@ -162,15 +180,15 @@ async def ack(id:str,user=Depends(current)):
         result=await db.shifts.update_one({'id':id,'acknowledged_at':None},{'$set':{'acknowledged_at':at}})
         await db.reminders.update_one({'shift_id':id},{'$set':{'acknowledged_at':at}})
         if result.modified_count: await audit(user,'Shift acknowledged',row['lab_name'],id)
-    row=await db.shifts.find_one({'id':id},{'_id':0});return {**row,'status':shift_status(row)}
+    row=await db.shifts.find_one({'id':id},{'_id':0});return shift_view(row)
 
 @router.post('/shifts/{id}/cancel')
 async def cancel_shift(id:str,user=Depends(current)):
     await authorize(user,'shifts')
     row=await db.shifts.find_one({'id':id},{'_id':0})
     if not row: raise HTTPException(404,'Shift not found.')
-    await db.shifts.update_one({'id':id},{'$set':{'cancelled':True}})
-    await audit(user,'Shift cancelled',row['assistant_name'],id);return {'message':'Shift cancelled. History retained.'}
+    await remove_shift(row,user)
+    return {'message':'Shift cancelled. History retained.'}
 
 async def open_ticket(asset,category,title,description,user,priority='medium'):
     key=f'{asset["id"]}:{category}'
