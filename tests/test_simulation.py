@@ -49,6 +49,8 @@ def _match(doc, query):
                 return False
             if "$lt" in v and (val is None or val >= v["$lt"]):
                 return False
+            if "$gt" in v and (val is None or val <= v["$gt"]):
+                return False
         else:
             if doc.get(k) != v:
                 return False
@@ -344,5 +346,100 @@ def test_checklist_rbac_restricts_submission_to_assistants(monkeypatch):
     asyncio.run(_run())
 
 
+def test_live_diagnostics_and_remediation_endpoints(monkeypatch):
+    fake_db = FakeDB()
+    monkeypatch.setattr(monitoring, "db", fake_db)
+    import core
+
+    monkeypatch.setattr(core, "db", fake_db)
+
+    async def _run():
+        # Put ap-07 into congestion and run diagnostic
+        await simulation(Scenario(asset_id="ap-07", scenario="congestion"), user=ADMIN_USER)
+        diag = await monitoring.diagnose_ap("ap-07", user=ADMIN_USER)
+        assert diag["asset_id"] == "ap-07"
+        assert diag["status"] == "congested"
+        assert diag["packet_loss_pct"] == 8
+        assert "Ch 149" in diag["channel_5ghz"]
+
+        # Remediate ap-07 and verify it restores to online
+        rem = await monitoring.remediate_ap(
+            "ap-07", monitoring.RemediateAction(action="rebalance_channel"), user=ADMIN_USER
+        )
+        assert rem["status"] == "online"
+        assert rem["asset"]["status"] == "online"
+
+    asyncio.run(_run())
 
 
+
+
+
+
+
+
+def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
+    import core
+    import operations
+    from fastapi import HTTPException
+
+    fake_db = FakeDB()
+    fake_db.users = FakeCollection(
+        [
+            {"id": "owner", "name": "Campus Owner", "email": "owner@campus.edu.my", "role": "admin", "active": True, "created_at": "1"},
+            {"id": "admin", "name": "Alex Morgan", "email": "admin@atlas.demo", "role": "admin", "active": True, "created_at": "2"},
+            {"id": "assistant", "name": "Jamie Santos", "email": "assistant@atlas.demo", "role": "assistant", "active": True, "created_at": "3"},
+        ]
+    )
+    fake_db.sessions = FakeCollection()
+    fake_db.shifts = FakeCollection()
+    monkeypatch.setattr(core, "db", fake_db)
+    monkeypatch.setattr(operations, "db", fake_db)
+
+    async def expect_conflict(coro):
+        try:
+            await coro
+            assert False, "expected protected-account conflict"
+        except HTTPException as exc:
+            assert exc.status_code == 409
+
+    async def _run():
+        listed = await operations.users(user=ADMIN_USER)
+        assert {u["id"]: u["scope"] for u in listed}["assistant"] == "Computing Lab A"
+        assert all("password_hash" not in u for u in listed)
+
+        created = await operations.add_user(
+            operations.UserInput(name="Aisyah Rahman", email="Aisyah@campus.edu.my", role="assistant", scope="Innovation Lab", active=True),
+            user=ADMIN_USER,
+        )
+        assert created["email"] == "aisyah@campus.edu.my" and created["scope"] == "Innovation Lab"
+        assert "password_hash" not in created
+        assert any("Added team member Aisyah Rahman as IT Assistant" in a["detail"] for a in fake_db.audit.docs)
+
+        # Duplicate email is rejected
+        await expect_conflict(
+            operations.add_user(operations.UserInput(name="Dup", email="aisyah@campus.edu.my", role="engineer"), user=ADMIN_USER)
+        )
+
+        # Edit name/email/role/scope and suspend
+        updated = await operations.update_user(
+            created["id"],
+            operations.UserPatch(name="Aisyah R.", role="engineer", scope="Campus Core Network", active=False),
+            user=ADMIN_USER,
+        )
+        assert updated["name"] == "Aisyah R." and updated["role"] == "engineer" and updated["active"] is False
+        assert fake_db.audit.docs[-1]["action"] == "Team member suspended"
+
+        # Owner and self are protected from suspend / demote / delete
+        await expect_conflict(operations.update_user("owner", operations.UserPatch(active=False), user=ADMIN_USER))
+        await expect_conflict(operations.update_user("admin", operations.UserPatch(role="engineer"), user=ADMIN_USER))
+        await expect_conflict(operations.remove_user("owner", user=ADMIN_USER))
+        await expect_conflict(operations.remove_user("admin", user=ADMIN_USER))
+
+        # Remove a standard member
+        removed = await operations.remove_user(created["id"], user=ADMIN_USER)
+        assert removed["ok"] is True
+        assert await fake_db.users.find_one({"id": created["id"]}) is None
+        assert fake_db.audit.docs[-1]["action"] == "Team member removed"
+
+    asyncio.run(_run())

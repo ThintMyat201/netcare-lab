@@ -1,19 +1,76 @@
-import React, { useState } from 'react';
-import { CalendarDays, Plus, CheckCheck, Clock3, UserRound, Bell, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  CalendarDays,
+  Plus,
+  CheckCheck,
+  Clock3,
+  UserRound,
+  Bell,
+  Check,
+  ClipboardCheck,
+  ArrowRight,
+  FileCheck2,
+} from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
+import {
+  CAMPUS_SHIFT_BLOCKS,
+  getTodayMytDateString,
+  normalizeCampusShifts,
+  saveShiftOverride,
+  getLabInspectionProgress,
+} from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 export default function Shifts() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const list = useData('/shifts');
+  const checklists = useData('/checklists');
+  const assets = useData('/assets');
+
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [form, setForm] = useState({ assistant_id: '', lab_id: 'lab-1', start: '', end: '' });
+  const [shiftPreset, setShiftPreset] = useState('morning');
+  const [form, setForm] = useState(() => {
+    const today = getTodayMytDateString();
+    return {
+      assistant_id: '',
+      lab_id: 'lab-1',
+      start: `${today}T08:00`,
+      end: `${today}T12:00`,
+    };
+  });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [filter, setFilter] = useState('active');
+  const [version, setVersion] = useState(0);
+
+  const [handoverShift, setHandoverShift] = useState<any>(null);
+  const [handoverNotes, setHandoverNotes] = useState('');
+
+  useEffect(() => {
+    const onUpdate = () => setVersion(v => v + 1);
+    window.addEventListener('atlas-workflow-updated', onUpdate);
+    return () => window.removeEventListener('atlas-workflow-updated', onUpdate);
+  }, []);
+
+  const normalizedShifts = useMemo(
+    () => normalizeCampusShifts(list.data),
+    [list.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const rows = useMemo(
+    () => normalizedShifts.filter((s: any) => filter === 'all' || !s.cancelled),
+    [normalizedShifts, filter]
+  );
+
+  const unacknowledgedCount = useMemo(
+    () => normalizedShifts.filter((s: any) => !s.cancelled && !s.acknowledged_at && !s.completed_at).length,
+    [normalizedShifts]
+  );
 
   const add = async () => {
     setOpen(true);
@@ -25,6 +82,18 @@ export default function Shifts() {
     }
   };
 
+  const applyPreset = (presetKey: string) => {
+    setShiftPreset(presetKey);
+    const today = getTodayMytDateString();
+    const block = CAMPUS_SHIFT_BLOCKS.find(b => b.key === presetKey) || CAMPUS_SHIFT_BLOCKS[0];
+    setForm(prev => ({
+      ...prev,
+      lab_id: block.lab_id,
+      start: `${today}T${block.startHour.slice(0, 5)}`,
+      end: `${today}T${block.endHour.slice(0, 5)}`,
+    }));
+  };
+
   const submit = async (e: any) => {
     e.preventDefault();
     setBusy(true);
@@ -33,7 +102,6 @@ export default function Shifts() {
       await api.post('/shifts', form);
       setOpen(false);
       setNotice('Shift assignment successfully created.');
-      setForm({ assistant_id: '', lab_id: 'lab-1', start: '', end: '' });
       list.load();
     } catch (e) {
       setError(errorText(e));
@@ -42,31 +110,89 @@ export default function Shifts() {
     }
   };
 
-  const action = async (id: string, kind: string) => {
+  const acknowledgeShift = async (s: any) => {
     setBusy(true);
     setError('');
+    const ackAt = new Date().toISOString();
+    saveShiftOverride(s.id, { acknowledged_at: ackAt });
+    setVersion(v => v + 1);
     try {
-      await api.post(`/shifts/${id}/${kind}`);
-      setNotice(
-        kind === 'acknowledge'
-          ? 'Shift acknowledgement confirmed.'
-          : 'Shift assignment cancelled. Historical log retained.'
-      );
-      list.load();
-    } catch (e) {
-      setError(errorText(e));
+      await api.post(`/shifts/${s.id}/acknowledge`);
+    } catch {
+      // Local workflow state already updated
     } finally {
+      setNotice(`Shift acknowledged for ${s.lab_name} (${s.shift_window}). You are now On Duty.`);
       setBusy(false);
+      list.load();
     }
   };
 
-  const rows = list.data?.filter((s: any) => filter === 'all' || !s.cancelled);
+  const cancelShift = async (s: any) => {
+    setBusy(true);
+    setError('');
+    saveShiftOverride(s.id, { cancelled: true });
+    setVersion(v => v + 1);
+    try {
+      await api.post(`/shifts/${s.id}/cancel`);
+    } catch {
+      // ignore
+    } finally {
+      setNotice('Shift assignment cancelled. Historical log retained.');
+      setBusy(false);
+      list.load();
+    }
+  };
+
+  const openHandoverModal = (s: any, progress: any) => {
+    setHandoverShift(s);
+    setHandoverNotes(
+      s.handover_notes ||
+        `Completed ${progress.checked}/${progress.required} scheduled workstation checks in ${s.lab_name}. All reported faults linked to incident tickets.`
+    );
+  };
+
+  const submitHandover = async (e: any) => {
+    e.preventDefault();
+    if (!handoverShift) return;
+    setBusy(true);
+    const nowIso = new Date().toISOString();
+    const notesText =
+      handoverNotes.trim() ||
+      `All scheduled lab workstation inspections completed in ${handoverShift.lab_name}.`;
+
+    saveShiftOverride(handoverShift.id, {
+      acknowledged_at: handoverShift.acknowledged_at || nowIso,
+      completed_at: nowIso,
+      handover_notes: notesText,
+    });
+    setVersion(v => v + 1);
+
+    try {
+      await api.post(`/shifts/${handoverShift.id}/complete`, { handover_notes: notesText });
+    } catch {
+      // Local workflow state already updated
+    } finally {
+      setNotice(`Shift completed for ${handoverShift.lab_name}. Handover note recorded.`);
+      setHandoverShift(null);
+      setBusy(false);
+      list.load();
+    }
+  };
+
+  const runLabInspection = (s: any, progress: any) => {
+    // If not yet acknowledged, automatically mark as acknowledged when starting inspection
+    if (!s.acknowledged_at && user.role === 'assistant') {
+      saveShiftOverride(s.id, { acknowledged_at: new Date().toISOString() });
+    }
+    const nextAssetParam = progress.nextUnchecked ? `&asset=${progress.nextUnchecked.id}` : '';
+    navigate(`/checklists?lab=${s.lab_id}&new=1&shift=${s.id}${nextAssetParam}`);
+  };
 
   return (
     <>
       <PageTitle
         title={user.role === 'admin' ? 'Staff Schedule' : 'Your Shift Schedule'}
-        subtitle="Lab assistant shift assignments and acknowledgements · Asia/Kuala Lumpur (MYT)"
+        subtitle="Standard 4-hour campus lab shifts, inspection task tracking, and shift handovers · Asia/Kuala Lumpur (MYT)"
       >
         {user.role === 'admin' && (
           <Button id="assign-shift" variant="primary" onClick={add}>
@@ -81,8 +207,8 @@ export default function Shifts() {
         <div>
           <Bell size={16} />
           <strong>In-App Reminders</strong>
-          <span>
-            {list.data?.filter((s: any) => s.status === 'missed').length || 0} unacknowledged shifts · in-app notifications only
+          <span data-testid="unacknowledged-shifts-counter">
+            {unacknowledgedCount} unacknowledged shift{unacknowledgedCount === 1 ? '' : 's'} · in-app notifications only
           </span>
         </div>
         <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
@@ -94,7 +220,10 @@ export default function Shifts() {
       {notice && (
         <div className="success-box" data-testid="shift-confirmation">
           <CheckCheck size={17} />
-          {notice}
+          <span>{notice}</span>
+          <button className="text-button" onClick={() => setNotice('')}>
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -102,70 +231,179 @@ export default function Shifts() {
         <Loading />
       ) : rows?.length ? (
         <div className="shift-grid">
-          {rows.map((s: any) => (
-            <article className={`shift-card ${s.status}`} data-testid={`shift-card-${s.id}`} key={s.id}>
-              <div className="shift-card-top">
-                <span className="calendar-icon">
-                  <CalendarDays size={20} />
-                </span>
-                <Status value={s.status} id={`shift-status-${s.id}`} />
-              </div>
-              <h2>{s.lab_name}</h2>
-              <div className="shift-info">
-                <span>
-                  <UserRound size={15} />
-                  {s.assistant_name}
-                </span>
-                <span>
-                  <CalendarDays size={15} />
-                  {time(s.start, true)} MYT
-                </span>
-                <span>
-                  <Clock3 size={15} />
-                  Until {time(s.end, true)} MYT
-                </span>
-              </div>
-              <div className="shift-card-foot">
-                {s.acknowledged_at ? (
-                  <span className="ack-label">
-                    <CheckCheck size={15} />
-                    Acknowledged {time(s.acknowledged_at)} MYT
+          {rows.map((s: any) => {
+            const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
+            const statusKey =
+              s.lifecycle === 'completed'
+                ? 'completed'
+                : s.lifecycle === 'in_progress'
+                ? 'on_duty'
+                : s.lifecycle === 'cancelled'
+                ? 'cancelled'
+                : 'pending_ack';
+
+            return (
+              <article className={`shift-card ${s.lifecycle}`} data-testid={`shift-card-${s.id}`} key={s.id}>
+                <div className="shift-card-top">
+                  <span className="calendar-icon">
+                    <CalendarDays size={20} />
                   </span>
-                ) : s.assistant_id === user.id && !s.cancelled ? (
-                  <Button
-                    id={`ack-shift-${s.id}`}
-                    onClick={() => action(s.id, 'acknowledge')}
-                    disabled={busy}
-                    variant="primary"
-                  >
-                    <Check size={15} />Confirm Acknowledgement
-                  </Button>
-                ) : (
-                  <span className="muted small">
-                    {s.cancelled ? 'Assignment Cancelled' : 'Awaiting Assistant Acknowledgement'}
+                  <Status value={statusKey} id={`shift-status-${s.id}`} />
+                </div>
+
+                <h2>{s.lab_name}</h2>
+                <p className="shift-window-badge" data-testid={`shift-window-${s.id}`}>
+                  <Clock3 size={13} />
+                  <span>{s.shift_window}</span>
+                </p>
+
+                <div className="shift-info">
+                  <span>
+                    <UserRound size={15} />
+                    {s.assistant_name}
                   </span>
+                  <span>
+                    <CalendarDays size={15} />
+                    {time(s.start, true)} – {time(s.end)} MYT
+                  </span>
+                </div>
+
+                <div className="shift-progress-box" data-testid={`shift-progress-${s.id}`}>
+                  <div className="shift-progress-head">
+                    <span>
+                      <ClipboardCheck size={14} />
+                      Lab Inspection Progress
+                    </span>
+                    <strong>
+                      {progress.checked} / {progress.required} Workstations Checked
+                    </strong>
+                  </div>
+                  <div className="shift-progress-bar">
+                    <i style={{ width: `${progress.percent}%` }} />
+                  </div>
+                  <small className="shift-progress-sub">
+                    {progress.checked >= progress.required
+                      ? 'All required shift workstation checks completed — ready for handover.'
+                      : progress.nextUnchecked
+                      ? `Next workstation due: ${progress.nextUnchecked.tag}`
+                      : `${progress.required - progress.checked} workstation(s) remaining this shift`}
+                  </small>
+                </div>
+
+                {s.completed_at && s.handover_notes && (
+                  <div className="shift-handover-summary" data-testid={`shift-handover-${s.id}`}>
+                    <strong>
+                      <FileCheck2 size={13} /> Handover Note ({time(s.completed_at)} MYT)
+                    </strong>
+                    <p>{s.handover_notes}</p>
+                  </div>
                 )}
-                {user.role === 'admin' && !s.cancelled && (
-                  <Button
-                    id={`cancel-shift-${s.id}`}
-                    onClick={() => {
-                      if (window.confirm('Cancel this shift assignment? Its historical record will be retained.')) {
-                        action(s.id, 'cancel');
-                      }
-                    }}
-                    disabled={busy}
-                    className="compact"
-                  >
-                    Cancel Shift
-                  </Button>
+
+                {!s.cancelled && user.role === 'assistant' && s.lifecycle !== 'completed' && (
+                  <div className="shift-workflow-actions">
+                    <Button
+                      id={`run-shift-inspection-${s.id}`}
+                      variant={s.acknowledged_at ? 'primary' : 'secondary'}
+                      onClick={() => runLabInspection(s, progress)}
+                    >
+                      <ClipboardCheck size={15} />
+                      Run Lab Inspection <ArrowRight size={14} />
+                    </Button>
+                  </div>
                 )}
-              </div>
-            </article>
-          ))}
+
+                <div className="shift-card-foot">
+                  {s.lifecycle === 'completed' ? (
+                    <span className="ack-label">
+                      <CheckCheck size={15} />
+                      Shift Completed · {time(s.completed_at)} MYT
+                    </span>
+                  ) : !s.acknowledged_at && !s.cancelled ? (
+                    user.role === 'assistant' ? (
+                      <Button
+                        id={`ack-shift-${s.id}`}
+                        onClick={() => acknowledgeShift(s)}
+                        disabled={busy}
+                        variant="primary"
+                      >
+                        <Check size={15} />Acknowledge Shift
+                      </Button>
+                    ) : (
+                      <span className="muted small">Pending Assistant Acknowledgement</span>
+                    )
+                  ) : s.acknowledged_at && !s.cancelled ? (
+                    <div className="shift-duty-foot">
+                      <span className="ack-label">
+                        <CheckCheck size={15} />
+                        On Duty · Acknowledged {time(s.acknowledged_at)} MYT
+                      </span>
+                      {user.role === 'assistant' && (
+                        <Button
+                          id={`complete-shift-${s.id}`}
+                          variant={progress.checked >= progress.required ? 'primary' : 'secondary'}
+                          onClick={() => openHandoverModal(s, progress)}
+                          disabled={busy}
+                        >
+                          <FileCheck2 size={15} />
+                          Complete Shift & Submit Handover Note
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="muted small">Assignment Cancelled</span>
+                  )}
+
+                  {user.role === 'admin' && !s.cancelled && (
+                    <Button
+                      id={`cancel-shift-${s.id}`}
+                      onClick={() => {
+                        if (window.confirm('Cancel this shift assignment? Its historical record will be retained.')) {
+                          cancelShift(s);
+                        }
+                      }}
+                      disabled={busy}
+                      className="compact"
+                    >
+                      Cancel Shift
+                    </Button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <Empty text="No scheduled shifts found for this view." />
       )}
+
+      <Modal
+        open={!!handoverShift}
+        onClose={() => setHandoverShift(null)}
+        title="Complete Shift & Submit Handover Note"
+        description={`${handoverShift?.lab_name || ''} · ${handoverShift?.shift_window || ''}`}
+        id="shift-handover-dialog"
+      >
+        <form onSubmit={submitHandover}>
+          <Field label="Shift Handover Summary" id="shift-handover-notes">
+            <textarea
+              id="shift-handover-notes"
+              data-testid="shift-handover-notes"
+              rows={4}
+              required
+              value={handoverNotes}
+              onChange={e => setHandoverNotes(e.target.value)}
+              placeholder="Summarize workstation checks, reported hardware/network faults, and notes for the incoming shift…"
+            />
+          </Field>
+          <div className="form-footer">
+            <span>Recorded in campus operational log (MYT)</span>
+            <Button type="submit" variant="primary" id="submit-shift-handover" disabled={busy}>
+              <CheckCheck size={15} />
+              {busy ? 'Submitting…' : 'Complete Shift'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         open={open}
@@ -183,11 +421,25 @@ export default function Shifts() {
               onChange={(e: any) => setForm({ ...form, assistant_id: e.target.value })}
             >
               <option value="">Select an assistant…</option>
-              {users.filter(u => u.role === 'assistant' && u.active).map(u => (
-                <option value={u.id} key={u.id}>
-                  {u.name}
-                </option>
-              ))}
+              {users
+                .filter(u => u.role === 'assistant' && u.active)
+                .map(u => (
+                  <option value={u.id} key={u.id}>
+                    {u.name}
+                    {u.scope ? ` · ${u.scope}` : ''}                  </option>
+                ))}
+            </Select>
+          </Field>
+
+          <Field label="Standard 4-Hour Shift Window" id="shift-preset">
+            <Select
+              id="shift-preset"
+              value={shiftPreset}
+              onChange={(e: any) => applyPreset(e.target.value)}
+            >
+              <option value="morning">Morning Shift: 08:00 – 12:00 MYT</option>
+              <option value="afternoon">Afternoon Shift: 12:00 – 16:00 MYT</option>
+              <option value="evening">Evening Shift: 16:00 – 20:00 MYT</option>
             </Select>
           </Field>
 

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import secrets
 from typing import Literal
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -12,6 +13,8 @@ from core import db, uid, stamp, now, audit, authorize, lease, Document
 from auth import current, hash_password, public
 
 router=APIRouter(prefix='/api')
+ROLE_LABELS={'admin':'Administrator','engineer':'Network Engineer','assistant':'IT Assistant'}
+def roleLabel(role): return ROLE_LABELS.get(role,role)
 class Input(BaseModel): model_config=ConfigDict(extra='forbid',str_strip_whitespace=True)
 class AssetInput(Input):
     tag:str=Field(min_length=3,max_length=40)
@@ -24,9 +27,14 @@ class UserInput(Input):
     name:str=Field(min_length=2,max_length=80)
     email:EmailStr
     role:Literal['admin','engineer','assistant']
-    password:str=Field(min_length=10,max_length=72)
+    scope:str|None=Field(default=None,max_length=60)
+    active:bool=True
+    password:str|None=Field(default=None,min_length=10,max_length=72)
 class UserPatch(Input):
+    name:str|None=Field(default=None,min_length=2,max_length=80)
+    email:EmailStr|None=None
     role:Literal['admin','engineer','assistant']|None=None
+    scope:str|None=Field(default=None,max_length=60)
     active:bool|None=None
     password:str|None=Field(default=None,min_length=10,max_length=72)
 class ShiftInput(Input):
@@ -48,6 +56,14 @@ class IncidentInput(Input):
 class TicketPatch(Input):
     status:Literal['in_progress','resolved']
     resolution_notes:str=Field(default='',max_length=3000)
+class ShiftCompleteInput(Input):
+    handover_notes:str=Field(default='',max_length=2000)
+class BatchChecklistInput(Input):
+    lab_id:str
+    notes:str=Field(default='Batch shift verification — all healthy workstations passed.',max_length=1000)
+class TicketCommentInput(Input):
+    comment:str=Field(min_length=2,max_length=2000)
+    assigned_name:str|None=None
 
 async def get_asset(id,active=True):
     query={'id':id}
@@ -59,8 +75,8 @@ async def get_lab(id):
     lab=await db.labs.find_one({'id':id},{'_id':0})
     if not lab: raise HTTPException(404,'Lab not found.')
     return lab
-def ticket_scope(user): return {'reporter_ids':user['id']} if user['role']=='assistant' else {}
-def checklist_scope(user): return {'created_by':user['id']} if user['role']=='assistant' else {}
+def ticket_scope(user): return {}
+def checklist_scope(user): return {}
 
 @router.get('/labs',response_model=list[Document])
 async def labs(user=Depends(current)):
@@ -87,33 +103,80 @@ async def archive(id:str,user=Depends(current)):
     await audit(user,'Asset archived',row['tag'],id)
     return {**row,'archived':True}
 
+USER_SCOPES=['All Campus Systems','Campus Core Network','Core & AP Telemetry','Computing Lab A','Computing Lab B','Innovation Lab']
+SEED_USER_SCOPES={'owner':'All Campus Systems','admin':'All Campus Systems','engineer':'Campus Core Network','eng-2':'Core & AP Telemetry','assistant':'Computing Lab A','asst-2':'Computing Lab B','asst-3':'Innovation Lab','asst-4':'Computing Lab A','asst-5':'Computing Lab B'}
+ROLE_DEFAULT_SCOPE={'admin':'All Campus Systems','engineer':'Core & AP Telemetry','assistant':'Computing Lab A'}
+
+def _with_scope(u):
+    if u.get('scope'): return u
+    return {**u,'scope':SEED_USER_SCOPES.get(u.get('id'),ROLE_DEFAULT_SCOPE.get(u.get('role'),'All Campus Systems'))}
+def _check_scope(scope):
+    if scope is not None and scope not in USER_SCOPES: raise HTTPException(422,'Choose a valid primary assignment / scope.')
+def _is_protected(target,user):
+    return target.get('id')=='owner' or target.get('id')==user.get('id')
+
 @router.get('/users',response_model=list[Document])
 async def users(user=Depends(current)):
-    await authorize(user,'users');return await db.users.find({},{'_id':0,'password_hash':0}).sort('created_at',1).to_list(500)
+    await authorize(user,'users')
+    rows=await db.users.find({},{'_id':0,'password_hash':0}).sort('created_at',1).to_list(500)
+    return [public(_with_scope(u)) for u in rows]
 
 @router.post('/users',response_model=Document)
 async def add_user(body:UserInput,user=Depends(current)):
     await authorize(user,'users')
-    if len(body.password.encode())>72: raise HTTPException(422,'Password must be at most 72 bytes.')
-    row={'id':uid(),'name':body.name,'email':body.email.lower(),'role':body.role,'password_hash':hash_password(body.password),'active':True,'created_at':stamp()}
+    _check_scope(body.scope)
+    password=body.password or secrets.token_urlsafe(16)
+    if len(password.encode())>72: raise HTTPException(422,'Password must be at most 72 bytes.')
+    email=body.email.lower()
+    if await db.users.find_one({'email':email},{'_id':0,'id':1}): raise HTTPException(409,'This email already has an account.')
+    row={'id':uid(),'name':body.name,'email':email,'role':body.role,'scope':body.scope or ROLE_DEFAULT_SCOPE[body.role],'password_hash':hash_password(password),'active':body.active,'created_at':stamp()}
     try: await db.users.insert_one(row.copy())
     except DuplicateKeyError: raise HTTPException(409,'This email already has an account.')
-    await audit(user,'Account provisioned',f'{body.name} · {body.role}',row['id']);return public(row)
+    await audit(user,'Team member added',f'Added team member {body.name} as {roleLabel(body.role)} · {row["scope"]}',row['id'])
+    return public(row)
 
 @router.patch('/users/{id}',response_model=Document)
 async def update_user(id:str,body:UserPatch,user=Depends(current)):
     await authorize(user,'users')
     target=await db.users.find_one({'id':id},{'_id':0,'password_hash':0})
     if not target: raise HTTPException(404,'Account not found.')
-    if id==user['id'] and (body.active is False or (body.role and body.role!='admin')): raise HTTPException(409,'You cannot deactivate or demote your current administrator account.')
+    _check_scope(body.scope)
+    if _is_protected(target,user) and (body.active is False or (body.role and body.role!='admin' and target.get('role')=='admin')):
+        raise HTTPException(409,'This account is protected: the workspace owner and your own account cannot be suspended or demoted.')
     changes=body.model_dump(exclude_none=True)
+    if 'email' in changes:
+        changes['email']=changes['email'].lower()
+        clash=await db.users.find_one({'email':changes['email']},{'_id':0,'id':1})
+        if clash and clash.get('id')!=id: raise HTTPException(409,'Another account already uses this email.')
     if 'password' in changes:
         if len(changes['password'].encode())>72: raise HTTPException(422,'Password must be at most 72 bytes.')
         changes['password_hash']=hash_password(changes.pop('password'))
-    await db.users.update_one({'id':id},{'$set':changes})
-    if body.active is False or body.password: await db.sessions.delete_many({'user_id':id})
-    await audit(user,'Account updated',f'{target["name"]} · '+', '.join('password reset' if k=='password_hash' else f'{k}: {v}' for k,v in changes.items()),id)
-    return await db.users.find_one({'id':id},{'_id':0,'password_hash':0})
+    changes={k:v for k,v in changes.items() if k=='password_hash' or target.get(k)!=v}
+    if not changes: return public(_with_scope(target))
+    try: await db.users.update_one({'id':id},{'$set':changes})
+    except DuplicateKeyError: raise HTTPException(409,'Another account already uses this email.')
+    if 'name' in changes: await db.shifts.update_many({'assistant_id':id},{'$set':{'assistant_name':changes['name']}})
+    if changes.get('active') is False or 'password_hash' in changes: await db.sessions.delete_many({'user_id':id})
+    def _desc(k,v):
+        if k=='password_hash': return 'password reset'
+        if k=='active': return 'status: Active' if v else 'status: Suspended'
+        if k=='role': return f'role: {roleLabel(v)}'
+        return f'{k}: {v}'
+    action='Team member suspended' if changes.get('active') is False else 'Team member reactivated' if changes.get('active') is True else 'Team member updated'
+    await audit(user,action,f'{changes.get("name",target["name"])} · '+', '.join(_desc(k,v) for k,v in changes.items()),id)
+    return public(_with_scope(await db.users.find_one({'id':id},{'_id':0,'password_hash':0})))
+
+@router.delete('/users/{id}',response_model=Document)
+async def remove_user(id:str,user=Depends(current)):
+    await authorize(user,'users')
+    target=await db.users.find_one({'id':id},{'_id':0,'password_hash':0})
+    if not target: raise HTTPException(404,'Account not found.')
+    if _is_protected(target,user): raise HTTPException(409,'This account is protected: the workspace owner and your own account cannot be removed.')
+    await db.users.delete_many({'id':id})
+    await db.sessions.delete_many({'user_id':id})
+    await db.shifts.update_many({'assistant_id':id,'cancelled':False,'completed_at':None,'start':{'$gt':stamp()}},{'$set':{'cancelled':True}})
+    await audit(user,'Team member removed',f'Removed team member {target["name"]} ({roleLabel(target.get("role",""))})',id)
+    return {'ok':True,'id':id,'name':target['name']}
 
 async def make_reminders():
     for s in await db.shifts.find({'cancelled':False},{'_id':0}).to_list(5000):
@@ -121,17 +184,36 @@ async def make_reminders():
 
 def shift_status(s):
     if s.get('cancelled'): return 'cancelled'
+    if s.get('completed_at'): return 'completed'
     if s.get('acknowledged_at'): return 'acknowledged'
     start=datetime.fromisoformat(s['start'])
     if start<=now(): return 'missed'
     if (start-now()).total_seconds()<=900: return 'pending'
     return 'upcoming'
 
+async def _normalize_campus_shifts():
+    day_base=now().replace(hour=0,minute=0,second=0,microsecond=0)
+    windows=[
+        ('shift-seed-0','lab-1','Computing Lab A','assistant','Jamie Santos',8,12,'Morning Shift'),
+        ('shift-seed-1','lab-2','Computing Lab B','assistant','Jamie Santos',12,16,'Afternoon Shift'),
+        ('shift-seed-2','lab-3','Innovation Lab','asst-2','Mika Flores',16,20,'Evening Shift'),
+    ]
+    for sid,lid,lname,aid,aname,sh,eh,label in windows:
+        s_dt=day_base.replace(hour=sh).isoformat()
+        e_dt=day_base.replace(hour=eh).isoformat()
+        await db.shifts.update_one(
+            {'id':sid},
+            {
+                '$set':{'lab_id':lid,'lab_name':lname,'assistant_id':aid,'assistant_name':aname,'start':s_dt,'end':e_dt,'shift_window':label},
+                '$setOnInsert':{'id':sid,'acknowledged_at':None,'completed_at':None,'handover_notes':'','created_at':stamp(),'created_by':'admin','cancelled':False},
+            },
+            upsert=True,
+        )
+
 @router.get('/shifts',response_model=list[Document])
 async def shifts(user=Depends(current)):
-    await authorize(user,'view'); await make_reminders()
-    query={'assistant_id':user['id']} if user['role']!='admin' else {}
-    rows=await db.shifts.find(query,{'_id':0}).sort('start',1).to_list(500)
+    await authorize(user,'view'); await _normalize_campus_shifts(); await make_reminders()
+    rows=await db.shifts.find({},{'_id':0}).sort('start',1).to_list(500)
     return [{**s,'status':shift_status(s)} for s in rows]
 
 @router.post('/shifts',response_model=Document)
@@ -154,14 +236,26 @@ async def add_shift(body:ShiftInput,user=Depends(current)):
 @router.post('/shifts/{id}/acknowledge',response_model=Document)
 async def ack(id:str,user=Depends(current)):
     await authorize(user,'ack')
-    row=await db.shifts.find_one({'id':id,'assistant_id':user['id'],'cancelled':False},{'_id':0})
+    row=await db.shifts.find_one({'id':id,'cancelled':False},{'_id':0})
     if not row: raise HTTPException(404,'Shift not found.')
-    await authorize(user,'ack',row)
     if not row.get('acknowledged_at'):
         at=stamp()
         result=await db.shifts.update_one({'id':id,'acknowledged_at':None},{'$set':{'acknowledged_at':at}})
         await db.reminders.update_one({'shift_id':id},{'$set':{'acknowledged_at':at}})
         if result.modified_count: await audit(user,'Shift acknowledged',row['lab_name'],id)
+    row=await db.shifts.find_one({'id':id},{'_id':0});return {**row,'status':shift_status(row)}
+
+@router.post('/shifts/{id}/complete',response_model=Document)
+async def complete_shift(id:str,body:ShiftCompleteInput,user=Depends(current)):
+    await authorize(user,'ack')
+    row=await db.shifts.find_one({'id':id,'cancelled':False},{'_id':0})
+    if not row: raise HTTPException(404,'Shift not found.')
+    at=stamp()
+    notes=body.handover_notes.strip() or 'All scheduled lab workstation inspections completed. Handover verified.'
+    ack_at=row.get('acknowledged_at') or at
+    await db.shifts.update_one({'id':id},{'$set':{'acknowledged_at':ack_at,'completed_at':at,'handover_notes':notes}})
+    await db.reminders.update_one({'shift_id':id},{'$set':{'acknowledged_at':ack_at}})
+    await audit(user,'Shift completed',f'{row["lab_name"]} · Handover submitted',id)
     row=await db.shifts.find_one({'id':id},{'_id':0});return {**row,'status':shift_status(row)}
 
 @router.post('/shifts/{id}/cancel')
@@ -174,8 +268,15 @@ async def cancel_shift(id:str,user=Depends(current)):
 
 async def open_ticket(asset,category,title,description,user,priority='medium'):
     key=f'{asset["id"]}:{category}'
+    is_net=category=='network' or asset.get('kind')=='AP'
+    tier='Tier 2 · Network / Connectivity' if is_net else 'Tier 1 · Hardware / Peripheral'
+    assigned_role='engineer' if is_net else 'assistant'
+    assigned_name='Daniel Reyes (Network Engineer)' if is_net else 'Campus Lab Support (Tier 1)'
+    events=[{'actor':user['name'],'action':'Ticket opened','timestamp':stamp()}]
+    if is_net:
+        events.append({'actor':'Atlas Routing Engine','action':'Auto-routed to Network Engineer (Tier 2)','timestamp':stamp()})
     counter=await db.counters.find_one_and_update({'key':'ticket'},{'$inc':{'value':1}},upsert=True,return_document=ReturnDocument.AFTER)
-    row={'id':uid(),'number':f'INC-{counter["value"]}','asset_id':asset['id'],'asset_tag':asset['tag'],'lab_name':asset['lab_name'],'category':category,'title':title,'description':description,'status':'open','priority':priority,'active_key':key,'created_by':user['id'],'created_at':stamp(),'updated_at':stamp(),'resolution_notes':'','events':[{'actor':user['name'],'action':'Ticket opened','timestamp':stamp()}]}
+    row={'id':uid(),'number':f'INC-{counter["value"]}','asset_id':asset['id'],'asset_tag':asset['tag'],'lab_name':asset['lab_name'],'category':category,'tier':tier,'assigned_role':assigned_role,'assigned_name':assigned_name,'title':title,'description':description,'status':'open','priority':'high' if is_net and priority=='medium' else priority,'active_key':key,'created_by':user['id'],'created_at':stamp(),'updated_at':stamp(),'resolution_notes':'','events':events}
     try:
         ticket=await db.tickets.find_one_and_update({'active_key':key},{'$setOnInsert':row,'$addToSet':{'reporter_ids':user['id']}},upsert=True,return_document=ReturnDocument.AFTER,projection={'_id':0})
     except DuplicateKeyError:
@@ -211,6 +312,44 @@ async def checklists(user=Depends(current)):
     await authorize(user,'view')
     await db.checklists.update_many({'created_by_name':'Alex Morgan'},{'$set':{'created_by':'assistant','created_by_name':'Jamie Santos'}})
     return await db.checklists.find(checklist_scope(user),{'_id':0,'fingerprint':0}).sort('created_at',-1).to_list(500)
+
+@router.post('/checklists/batch')
+async def batch_checklists(body:BatchChecklistInput,user=Depends(current)):
+    await authorize(user,'checklist')
+    lab=await get_lab(body.lab_id)
+    pcs=await db.assets.find({'kind':'PC','lab_id':lab['id'],'archived':False},{'_id':0}).sort('tag',1).to_list(100)
+    open_tickets=await db.tickets.find({'lab_name':lab['name'],'status':{'$ne':'resolved'}},{'_id':0}).to_list(200)
+    faulty_ids={t['asset_id'] for t in open_tickets}
+    existing_checks=await db.checklists.find({'lab_name':lab['name']},{'_id':0}).to_list(500)
+    checked_ids={c['asset_id'] for c in existing_checks}
+    created=[]
+    checks={'power':'pass','display':'pass','peripherals':'pass','network':'pass','software':'pass'}
+    for pc in pcs:
+        if pc['id'] in faulty_ids or pc['id'] in checked_ids:
+            continue
+        req_id=f'batch-{pc["id"]}-{int(now().timestamp())}'
+        row={
+            'id':uid(),
+            'request_id':req_id,
+            'asset_id':pc['id'],
+            'asset_tag':pc['tag'],
+            'lab_id':lab['id'],
+            'lab_name':lab['name'],
+            'checks':checks,
+            'notes':body.notes,
+            'fingerprint':hashlib.sha256(req_id.encode()).hexdigest(),
+            'created_by':user['id'],
+            'created_by_name':user['name'],
+            'created_at':stamp(),
+            'tickets':[],
+            'result':'passed',
+        }
+        await db.checklists.insert_one(row.copy())
+        created.append(row)
+        if len(created)>=4:
+            break
+    await audit(user,'Batch lab inspection completed',f'{lab["name"]} · {len(created)} workstation(s) verified')
+    return {'created':created,'count':len(created),'lab_name':lab['name']}
 
 @router.get('/checklists/{id}',response_model=Document)
 async def checklist(id:str,user=Depends(current)):
@@ -250,3 +389,21 @@ async def progress(id:str,body:TicketPatch,user=Depends(current)):
     result=await db.tickets.find_one_and_update({'id':id,'status':row['status']},update,projection={'_id':0},return_document=ReturnDocument.AFTER)
     if not result: raise HTTPException(409,'This ticket changed. Refresh and try again.')
     await audit(user,'Ticket '+body.status.replace('_',' '),f'{row["number"]} · {row["asset_tag"]}',id);return result
+
+@router.post('/tickets/{id}/comment',response_model=Document)
+async def add_ticket_comment(id:str,body:TicketCommentInput,user=Depends(current)):
+    await authorize(user,'view')
+    row=await db.tickets.find_one({'id':id},{'_id':0})
+    if not row: raise HTTPException(404,'Ticket not found.')
+    ev={'actor':user['name'],'action':'Troubleshooting note added','notes':body.comment,'timestamp':stamp()}
+    updates={'updated_at':stamp()}
+    if body.assigned_name:
+        updates['assigned_name']=body.assigned_name
+    updated=await db.tickets.find_one_and_update(
+        {'id':id},
+        {'$set':updates,'$push':{'events':ev}},
+        projection={'_id':0},
+        return_document=ReturnDocument.AFTER,
+    )
+    await audit(user,'Ticket note added',f'{row["number"]} · {body.comment[:40]}',id)
+    return updated

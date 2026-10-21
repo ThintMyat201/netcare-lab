@@ -1,5 +1,22 @@
-import React, { useState } from 'react';
-import { Plus, Search, Monitor, Wifi, Archive, UserRoundCog, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Plus,
+  Search,
+  Monitor,
+  Wifi,
+  Archive,
+  UserRoundCog,
+  Save,
+  Lock,
+  Pencil,
+  UserX,
+  UserCheck,
+  Trash2,
+  ShieldCheck,
+  CheckCheck,
+  X,
+} from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useAuth } from '../context';
 import { api, errorText, roleLabel } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
@@ -254,252 +271,546 @@ export function Assets() {
   );
 }
 
+const USER_SCOPES = [
+  'All Campus Systems',
+  'Campus Core Network',
+  'Core & AP Telemetry',
+  'Computing Lab A',
+  'Computing Lab B',
+  'Innovation Lab',
+];
+const ROLE_DEFAULT_SCOPE: Record<string, string> = {
+  admin: 'All Campus Systems',
+  engineer: 'Core & AP Telemetry',
+  assistant: 'Computing Lab A',
+};
+const ROLE_FILTERS: [string, string][] = [
+  ['all', 'All'],
+  ['admin', 'Administrators'],
+  ['engineer', 'Network Engineers'],
+  ['assistant', 'IT Assistants'],
+];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const initialsOf = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?';
+
+type MemberForm = {
+  name: string;
+  email: string;
+  role: string;
+  scope: string;
+  active: boolean;
+  password: string;
+};
+
+const blankMember: MemberForm = {
+  name: '',
+  email: '',
+  role: 'assistant',
+  scope: ROLE_DEFAULT_SCOPE.assistant,
+  active: true,
+  password: '',
+};
+
 export function Team() {
   const { user } = useAuth();
   const list = useData('/users');
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<any>(null);
+  const [members, setMembers] = useState<any[] | null>(null);
+  const [roleFilter, setRoleFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [mode, setMode] = useState<'create' | 'edit' | null>(null);
+  const [selected, setSelected] = useState<any>(null);
+  const [form, setForm] = useState<MemberForm>(blankMember);
+  const [removing, setRemoving] = useState<any>(null);
   const [error, setError] = useState('');
+  const [rowError, setRowError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const initial = { name: '', email: '', role: 'assistant', password: '' };
-  const [form, setForm] = useState(initial);
-  const [edit, setEdit] = useState({ role: 'assistant', active: true, password: '' });
 
-  const submit = async (e: any) => {
+  useEffect(() => {
+    if (Array.isArray(list.data)) setMembers(list.data);
+  }, [list.data]);
+
+  const all = useMemo(() => members || [], [members]);
+  const isOwner = (u: any) => u?.id === 'owner';
+  const isSelf = (u: any) => u?.id === user.id;
+  const isProtected = (u: any) => isOwner(u) || isSelf(u);
+  const protectedReason = (u: any) =>
+    isOwner(u)
+      ? 'Protected · Workspace Owner account cannot be suspended, demoted, or removed'
+      : 'Protected · You cannot suspend, demote, or remove your own account';
+
+  const counts = useMemo(
+    () => ({
+      all: all.length,
+      admin: all.filter(u => u.role === 'admin').length,
+      engineer: all.filter(u => u.role === 'engineer').length,
+      assistant: all.filter(u => u.role === 'assistant').length,
+    }),
+    [all]
+  );
+  const activeCount = all.filter(u => u.active).length;
+
+  const rows = all.filter(
+    u =>
+      (roleFilter === 'all' || u.role === roleFilter) &&
+      `${u.name} ${u.email} ${u.role} ${roleLabel(u.role)} ${u.scope || ''}`.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  const upsertLocal = (row: any) =>
+    setMembers(prev => {
+      const current = prev || [];
+      return current.some(u => u.id === row.id) ? current.map(u => (u.id === row.id ? { ...u, ...row } : u)) : [...current, row];
+    });
+
+  const openCreate = () => {
+    setSelected(null);
+    setForm(blankMember);
+    setError('');
+    setMode('create');
+  };
+
+  const openEdit = (u: any) => {
+    setSelected(u);
+    setForm({
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      scope: u.scope || ROLE_DEFAULT_SCOPE[u.role],
+      active: !!u.active,
+      password: '',
+    });
+    setError('');
+    setMode('edit');
+  };
+
+  const closeForm = () => {
+    setMode(null);
+    setSelected(null);
+  };
+
+  const changeRole = (role: string) =>
+    setForm(prev => ({
+      ...prev,
+      role,
+      // Follow the role's default scope unless the admin already picked a custom assignment
+      scope: !prev.scope || prev.scope === ROLE_DEFAULT_SCOPE[prev.role] ? ROLE_DEFAULT_SCOPE[role] : prev.scope,
+    }));
+
+  const emailTrimmed = form.email.trim().toLowerCase();
+  const emailFormatError = emailTrimmed && !EMAIL_PATTERN.test(emailTrimmed) ? 'Enter a valid email address (e.g. name@campus.edu.my).' : '';
+  const emailTaken =
+    emailTrimmed && all.some(u => u.email?.toLowerCase() === emailTrimmed && u.id !== selected?.id)
+      ? 'Another team member already uses this email address.'
+      : '';
+  const emailError = emailFormatError || emailTaken;
+  const lockRole = mode === 'edit' && isProtected(selected) && selected?.role === 'admin';
+  const lockStatus = mode === 'edit' && isProtected(selected);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailError || form.name.trim().length < 2) {
+      setError(emailError || 'Full name must be at least 2 characters.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      if (selected) {
-        await api.patch(`/users/${selected.id}`, {
-          role: edit.role,
-          active: edit.active,
-          ...(edit.password ? { password: edit.password } : {})
-        });
-        setNotice(`Account permissions updated for ${selected.name}.`);
+      if (mode === 'edit' && selected) {
+        const payload: any = {
+          name: form.name.trim(),
+          email: emailTrimmed,
+          scope: form.scope,
+          ...(lockRole ? {} : { role: form.role }),
+          ...(lockStatus ? {} : { active: form.active }),
+          ...(form.password ? { password: form.password } : {}),
+        };
+        const r = await api.patch(`/users/${selected.id}`, payload);
+        upsertLocal(r.data);
+        setNotice(`Updated ${r.data.name} · ${roleLabel(r.data.role)} · ${r.data.scope}.`);
       } else {
-        await api.post('/users', form);
-        setNotice('User account successfully created.');
-        setForm(initial);
+        const r = await api.post('/users', {
+          name: form.name.trim(),
+          email: emailTrimmed,
+          role: form.role,
+          scope: form.scope,
+          active: form.active,
+          ...(form.password ? { password: form.password } : {}),
+        });
+        upsertLocal(r.data);
+        setNotice(`Added team member ${r.data.name} as ${roleLabel(r.data.role)}.`);
       }
-      setOpen(false);
-      setSelected(null);
+      closeForm();
       list.load();
-    } catch (e) {
-      setError(errorText(e));
+    } catch (err) {
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
   };
 
-  const rows = list.data?.filter((u: any) =>
-    (u.name + ' ' + u.email + ' ' + u.role).toLowerCase().includes(search.toLowerCase())
-  );
+  const toggleStatus = async (u: any) => {
+    if (isProtected(u)) return;
+    setRowError('');
+    try {
+      const r = await api.patch(`/users/${u.id}`, { active: !u.active });
+      upsertLocal(r.data);
+      setNotice(`${r.data.name} is now ${r.data.active ? 'Active' : 'Suspended'}.`);
+      list.load();
+    } catch (err) {
+      setRowError(errorText(err));
+    }
+  };
+
+  const confirmRemove = async () => {
+    if (!removing || isProtected(removing)) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.delete(`/users/${removing.id}`);
+      setMembers(prev => (prev || []).filter(u => u.id !== removing.id));
+      setNotice(`Removed team member ${removing.name}.`);
+      setRemoving(null);
+      list.load();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
-      <PageTitle
-        title="Team & Access"
-        subtitle="User accounts, permissions, and operational access roles."
-      >
-        <Button id="provision-user" variant="primary" onClick={() => { setSelected(null); setOpen(true); setError(''); }}>
-          <Plus size={16} />Add Team Member
+      <PageTitle title="Team & Access" subtitle="Manage team member accounts, operational roles, campus assignments, and access status.">
+        <Button id="provision-user" variant="primary" onClick={openCreate}>
+          <Plus size={16} />
+          Add Team Member
         </Button>
       </PageTitle>
 
-      <ErrorBox error={list.error} retry={list.load} />
+      <ErrorBox error={list.error || rowError} retry={list.error ? list.load : undefined} />
 
       {notice && (
         <div className="success-box" data-testid="user-confirmation">
-          {notice}
+          <CheckCheck size={16} />
+          <span>{notice}</span>
+          <button className="text-button" data-testid="dismiss-user-confirmation" onClick={() => setNotice('')}>
+            Dismiss
+          </button>
         </div>
       )}
 
-      <div className="page-search">
+      <div className="team-toolbar">
         <div className="search-field">
           <Search size={15} />
           <input
+            type="search"
             data-testid="user-search"
+            aria-label="Search team members"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search team members by name, email, or role…"
           />
         </div>
+        <div className="role-pills" role="group" aria-label="Filter by role">
+          {ROLE_FILTERS.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              data-testid={`role-filter-${key}`}
+              aria-pressed={roleFilter === key}
+              className={roleFilter === key ? 'active' : ''}
+              onClick={() => setRoleFilter(key)}
+            >
+              {label}
+              <span>{(counts as any)[key]}</span>
+            </button>
+          ))}
+        </div>
         <span className="count-label" data-testid="team-count">
-          {list.data?.filter((u: any) => u.active).length || 0} active · {list.data?.length || 0} total accounts
+          {activeCount} active · {all.length} total accounts
         </span>
       </div>
 
-      {list.busy && !list.data ? (
+      {list.busy && !members ? (
         <Loading />
-      ) : rows?.length ? (
+      ) : rows.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table team-table">
             <thead>
               <tr>
-                <th>TEAM MEMBER</th>
+                <th className="pl-6">TEAM MEMBER</th>
                 <th>ASSIGNED ROLE</th>
+                <th>OPERATIONAL SCOPE / ASSIGNMENT</th>
                 <th>STATUS</th>
                 <th>ACCOUNT TYPE</th>
-                <th />
+                <th aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
-              {rows.map((u: any) => (
-                <tr data-testid={`user-row-${u.id}`} key={u.id}>
-                  <td>
-                    <div className="user-name">
-                      <span className="avatar">
-                        {u.name.split(' ').map((s: string) => s[0]).slice(0, 2).join('')}
-                      </span>
-                      <div>
-                        <strong>{u.name}{u.id === user.id ? ' (you)' : ''}</strong>
-                        <small>{u.email}</small>
+              {rows.map((u, index) => {
+                const locked = isProtected(u);
+                const isNearBottom = index >= rows.length - 2;
+                return (
+                  <tr data-testid={`user-row-${u.id}`} key={u.id} className={u.active ? '' : 'is-suspended'}>
+                    <td className="pl-6">
+                      <div className="user-name">
+                        <span className="avatar w-9 h-9">{initialsOf(u.name)}</span>
+                        <div>
+                          <strong>
+                            {u.name}
+                            {isSelf(u) && <span className="you-badge">you</span>}
+                          </strong>
+                          <small>{u.email}</small>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>{roleLabel(u.role)}</td>
-                  <td>
-                    <Status value={u.active ? 'active' : 'inactive'} id={`user-status-${u.id}`} />
-                  </td>
-                  <td className="muted">{u.id === 'owner' ? 'Workspace Owner' : 'Standard Account'}</td>
-                  <td>
-                    <button
-                      className="icon-button"
-                      title="Edit account permissions"
-                      aria-label={`Edit ${u.name}`}
-                      data-testid={`edit-user-${u.id}`}
-                      onClick={() => {
-                        setSelected(u);
-                        setEdit({ role: u.role, active: u.active, password: '' });
-                        setError('');
-                        setOpen(true);
-                      }}
-                    >
-                      <UserRoundCog size={17} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <span className={`role-badge role-${u.role}`} data-testid={`user-role-${u.id}`}>
+                        {roleLabel(u.role)}
+                      </span>
+                    </td>
+                    <td className="scope-cell">{u.scope || ROLE_DEFAULT_SCOPE[u.role]}</td>
+                    <td>
+                      <span className={`member-status ${u.active ? 'active' : 'suspended'}`} data-testid={`user-status-${u.id}`}>
+                        <i />
+                        {u.active ? 'Active' : 'Suspended'}
+                      </span>
+                    </td>
+                    <td className="muted">
+                      {isOwner(u) ? (
+                        <span className="owner-type">
+                          <ShieldCheck size={13} /> Workspace Owner
+                        </span>
+                      ) : (
+                        'Standard Account'
+                      )}
+                    </td>
+                    <td>
+                      <DropdownMenu.Root modal={false}>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            className="icon-button"
+                            title="Manage member"
+                            aria-label={`Manage ${u.name}`}
+                            data-testid={`edit-user-${u.id}`}
+                          >
+                            <UserRoundCog size={17} />
+                          </button>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            className="member-menu z-50 bg-slate-900 border border-slate-700/80 shadow-2xl shadow-black/80 opacity-100"
+                            side={isNearBottom ? 'top' : 'bottom'}
+                            align="end"
+                            sideOffset={6}
+                            collisionPadding={16}
+                            avoidCollisions
+                          >
+                            <DropdownMenu.Label className="member-menu-label">{u.name}</DropdownMenu.Label>
+                            <DropdownMenu.Item className="member-menu-item" data-testid={`menu-edit-${u.id}`} onSelect={() => openEdit(u)}>
+                              <Pencil size={14} /> Edit Member
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              className="member-menu-item"
+                              data-testid={`menu-status-${u.id}`}
+                              disabled={locked}
+                              title={locked ? protectedReason(u) : undefined}
+                              onSelect={() => toggleStatus(u)}
+                            >
+                              {u.active ? <UserX size={14} /> : <UserCheck size={14} />}
+                              {u.active ? 'Suspend Access' : 'Reactivate Access'}
+                              {locked && (
+                                <span className="menu-protected">
+                                  <Lock size={11} /> Protected
+                                </span>
+                              )}
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Separator className="member-menu-sep" />
+                            <DropdownMenu.Item
+                              className="member-menu-item danger"
+                              data-testid={`menu-remove-${u.id}`}
+                              disabled={locked}
+                              title={locked ? protectedReason(u) : undefined}
+                              onSelect={() => {
+                                setError('');
+                                setRemoving(u);
+                              }}
+                            >
+                              <Trash2 size={14} /> Remove Member
+                              {locked && (
+                                <span className="menu-protected">
+                                  <Lock size={11} /> Protected
+                                </span>
+                              )}
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
-        <Empty text="No team members match your search." />
+        <Empty text="No team members match your search or role filter." />
       )}
 
       <Modal
-        open={open}
-        onClose={setOpen}
-        title={selected ? 'Edit Account Permissions' : 'Create Team Account'}
-        description={selected ? selected.email : 'Campus operations portal · create and assign account'}
+        open={!!mode}
+        onClose={(open: boolean) => !open && closeForm()}
+        title={mode === 'edit' ? 'Edit Team Member' : 'Add Team Member'}
+        description={
+          mode === 'edit' ? `${selected?.email || ''} · update profile, role, assignment, and access` : 'Create a campus operations account and assign its role and scope'
+        }
         id="user-dialog"
       >
-        <form onSubmit={submit}>
-          {selected ? (
-            <>
-              <Field label="Assigned Role" id="edit-user-role">
-                <Select
-                  id="edit-user-role"
-                  value={edit.role}
-                  disabled={selected.id === user.id}
-                  onChange={(e: any) => setEdit({ ...edit, role: e.target.value })}
-                >
-                  {['assistant', 'engineer', 'admin'].map(r => (
-                    <option key={r} value={r}>{roleLabel(r)}</option>
-                  ))}
-                </Select>
-              </Field>
+        <form onSubmit={submit} noValidate>
+          <div className="member-preview">
+            <span className="avatar">{initialsOf(form.name)}</span>
+            <div>
+              <strong>{form.name.trim() || 'New team member'}</strong>
+              <span className={`role-badge role-${form.role}`}>{roleLabel(form.role)}</span>
+            </div>
+          </div>
 
-              <Field label="Account Status" id="edit-user-active">
-                <Select
-                  id="edit-user-active"
-                  disabled={selected.id === user.id}
-                  value={String(edit.active)}
-                  onChange={(e: any) => setEdit({ ...edit, active: e.target.value === 'true' })}
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Deactivated (Access Revoked)</option>
-                </Select>
-              </Field>
+          <div className="form-grid">
+            <Field label="Full Name" id="user-name">
+              <input
+                data-testid="user-name"
+                id="user-name"
+                required
+                minLength={2}
+                maxLength={80}
+                autoComplete="name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Aisyah Rahman"
+              />
+            </Field>
 
-              <Field label="Reset Password (Leave empty to keep current)" id="edit-user-password">
-                <input
-                  type="password"
-                  id="edit-user-password"
-                  data-testid="edit-user-password"
-                  minLength={10}
-                  maxLength={72}
-                  value={edit.password}
-                  onChange={e => setEdit({ ...edit, password: e.target.value })}
-                  placeholder="New password (10+ characters)"
-                />
-              </Field>
-
-              <p className="permission-notice">
-                Deactivation and password resets revoke active sessions immediately. Role updates apply on next session reload.
-              </p>
-            </>
-          ) : (
-            <>
-              <Field label="Full Name" id="user-name">
-                <input
-                  data-testid="user-name"
-                  id="user-name"
-                  required
-                  minLength={2}
-                  maxLength={80}
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Maria Santos"
-                />
-              </Field>
-
-              <Field label="Campus Email Address" id="user-email">
-                <input
-                  type="email"
-                  id="user-email"
-                  data-testid="user-email"
-                  required
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  placeholder="name@campus.edu.my"
-                />
-              </Field>
-
-              <Field label="Assigned Role" id="user-role">
-                <Select id="user-role" value={form.role} onChange={(e: any) => setForm({ ...form, role: e.target.value })}>
-                  {['assistant', 'engineer', 'admin'].map(r => (
-                    <option key={r} value={r}>{roleLabel(r)}</option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Initial Password" id="user-password">
-                <input
-                  type="password"
-                  data-testid="user-password"
-                  id="user-password"
-                  required
-                  minLength={10}
-                  maxLength={72}
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                  placeholder="Minimum 10 characters"
-                />
-              </Field>
-            </>
+            <Field label="Email Address" id="user-email">
+              <input
+                type="email"
+                id="user-email"
+                data-testid="user-email"
+                required
+                autoComplete="email"
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? 'user-email-error' : undefined}
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="name@campus.edu.my"
+              />
+            </Field>
+          </div>
+          {emailError && (
+            <p className="field-error" id="user-email-error" data-testid="user-email-error">
+              {emailError}
+            </p>
           )}
+
+          <div className="form-grid">
+            <Field label="Assigned Role" id="user-role">
+              <Select id="user-role" value={form.role} disabled={lockRole} onChange={(e: any) => changeRole(e.target.value)}>
+                {['admin', 'engineer', 'assistant'].map(r => (
+                  <option key={r} value={r}>
+                    {roleLabel(r)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Primary Assignment / Scope" id="user-scope">
+              <Select id="user-scope" value={form.scope} onChange={(e: any) => setForm({ ...form, scope: e.target.value })}>
+                {USER_SCOPES.map(s => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <Field label={mode === 'edit' ? 'Account Status' : 'Initial Status'} id="user-active">
+            <Select
+              id="user-active"
+              value={String(form.active)}
+              disabled={lockStatus}
+              onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
+            >
+              <option value="true">Active</option>
+              <option value="false">Inactive / Suspended</option>
+            </Select>
+          </Field>
+
+          {(lockRole || lockStatus) && (
+            <p className="protected-note" data-testid="user-protected-note">
+              <Lock size={13} /> {protectedReason(selected)}. Name, email, and scope can still be edited.
+            </p>
+          )}
+
+          <Field label={mode === 'edit' ? 'Reset Password (optional)' : 'Initial Password (optional)'} id="user-password">
+            <input
+              type="password"
+              id="user-password"
+              data-testid="user-password"
+              minLength={10}
+              maxLength={72}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+              placeholder={mode === 'edit' ? 'Leave blank to keep current password' : 'Leave blank to auto-generate a secure temporary password'}
+            />
+          </Field>
+
+          <p className="permission-notice">
+            Suspending an account or resetting its password signs the member out immediately. Every change is recorded in the Activity Log.
+          </p>
 
           <ErrorBox error={error} />
 
-          <Button variant="primary" id="save-user" disabled={busy} type="submit">
+          <Button variant="primary" id="save-user" disabled={busy || !!emailError} type="submit">
             <Save size={15} />
-            {busy ? 'Saving…' : selected ? 'Save Account Changes' : 'Create Account'}
+            {busy ? 'Saving…' : mode === 'edit' ? 'Save Member Changes' : 'Add Team Member'}
           </Button>
         </form>
+      </Modal>
+
+      <Modal
+        open={!!removing}
+        onClose={(open: boolean) => !open && setRemoving(null)}
+        title="Remove Team Member"
+        description="This permanently deletes the account and signs the member out."
+        id="remove-user-dialog"
+      >
+        {removing && (
+          <>
+            <p className="remove-confirm" data-testid="remove-user-confirm-text">
+              Are you sure you want to remove <strong>{removing.name}</strong> ({roleLabel(removing.role)} · {removing.scope})? Their
+              upcoming shifts will be cancelled; past tickets and inspection records are kept for audit.
+            </p>
+            <ErrorBox error={error} />
+            <div className="confirm-actions">
+              <Button id="cancel-remove-user" onClick={() => setRemoving(null)}>
+                <X size={15} /> Cancel
+              </Button>
+              <Button variant="primary" className="danger-button" id="confirm-remove-user" disabled={busy} onClick={confirmRemove}>
+                <Trash2 size={15} /> {busy ? 'Removing…' : 'Remove Member'}
+              </Button>
+            </div>
+          </>
+        )}
       </Modal>
     </>
   );

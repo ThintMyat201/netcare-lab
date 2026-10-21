@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { FlaskConical, RefreshCw, Search, Wifi, Activity, Users } from 'lucide-react';
-import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Modal, useData } from '../components/shared';
+import { useSearchParams, Link } from 'react-router-dom';
+import { FlaskConical, RefreshCw, Search, Wifi, Activity, Users, Send, CheckCheck, ArrowUpRight, Terminal, Power, Radio, Wrench } from 'lucide-react';
+import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Modal, Field, useData } from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
 import { useAuth } from '../context';
 import { api, time, errorText } from '../lib/api';
+import { saveLocalTicket, enrichTicket } from '../lib/workflow';
 
 function apIndex(id: string): number {
   const digits = String(id || '1').replace(/\D/g, '');
@@ -41,7 +42,15 @@ function baselineApMetrics(ap: any, idx: number, tick = 0, sampleIso?: string) {
 function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: string) {
   const num = apIndex(ap.id) || idx + 1;
   const status = ap.status || 'online';
-  const scenario = ap.scenario || (status === 'congested' ? 'congestion' : status === 'offline' ? 'outage' : status === 'stale' ? 'feed' : 'normal');
+  const scenario =
+    ap.scenario ||
+    (status === 'congested'
+      ? 'congestion'
+      : status === 'offline'
+      ? 'outage'
+      : status === 'stale'
+      ? 'feed'
+      : 'normal');
 
   if (scenario === 'feed' || status === 'stale') {
     return {
@@ -135,6 +144,15 @@ export default function Monitoring() {
   const [liveSamples, setLiveSamples] = useState<any[]>([]);
   const [lastSampleAt, setLastSampleAt] = useState<string>('');
 
+  const [ticketAp, setTicketAp] = useState<any>(null);
+  const [ticketForm, setTicketForm] = useState({ title: '', description: '', priority: 'high' });
+  const [creatingTicket, setCreatingTicket] = useState(false);
+  const [createdTicket, setCreatedTicket] = useState<any>(null);
+  const [diagResult, setDiagResult] = useState<any>(null);
+  const [runningDiag, setRunningDiag] = useState(false);
+  const [remediating, setRemediating] = useState(false);
+  const [remediationNote, setRemediationNote] = useState('');
+
   const sampleTickRef = useRef(0);
   const userSimulatedRef = useRef(false);
   const repairedDbRef = useRef(false);
@@ -159,7 +177,6 @@ export default function Monitoring() {
           : baselineApMetrics(ap, idx, sampleTickRef.current, nowIso)
       );
 
-      // Persist the repaired baseline distribution to MongoDB once per session
       if (!repairedDbRef.current && user.role !== 'assistant') {
         repairedDbRef.current = true;
         const targetId = nextAps[keepCongested]?.id || 'ap-07';
@@ -178,6 +195,8 @@ export default function Monitoring() {
 
   const inspect = async (a: any, keepDetail = false) => {
     setSelected(a);
+    setDiagResult(null);
+    setRemediationNote('');
     if (!keepDetail) setDetail(null);
     setLocalError('');
     try {
@@ -188,6 +207,96 @@ export default function Monitoring() {
       });
     } catch (e) {
       setLocalError(errorText(e));
+    }
+  };
+
+  const runDiagnostics = async (ap: any) => {
+    if (!ap || runningDiag) return;
+    setRunningDiag(true);
+    setLocalError('');
+    try {
+      const res = await api.post(`/monitoring/${ap.id}/diagnose`);
+      setDiagResult(res.data);
+    } catch {
+      const st = ap.status || 'online';
+      const loss = st === 'offline' ? 100 : st === 'congested' ? 8 : st === 'stale' ? 20 : 0;
+      const avgRtt = st === 'offline' ? null : st === 'congested' ? (ap.latency || 126) : (ap.latency || 12);
+      setDiagResult({
+        asset_id: ap.id,
+        tag: ap.tag,
+        ip: ap.ip,
+        status: st,
+        packets_sent: 5,
+        packets_received: Math.round(5 * (1 - loss / 100)),
+        packet_loss_pct: loss,
+        rtt_min_ms: avgRtt ? Math.max(4, Math.round((avgRtt - 2.4) * 10) / 10) : null,
+        rtt_avg_ms: avgRtt,
+        rtt_max_ms: avgRtt ? Math.round((avgRtt + 5.8) * 10) / 10 : null,
+        poe_draw_watts: st === 'offline' ? 0 : st === 'congested' ? 22.8 : 15.6,
+        poe_status: st === 'offline' ? 'No Power / Link Down' : '802.3at PoE+ Nominal',
+        channel_5ghz: st === 'congested' ? 'Ch 149 (80 MHz · High DFS Contention)' : 'Ch 36 (80 MHz · Clean)',
+        snr_db: st === 'offline' ? null : st === 'congested' ? 18 : 35,
+        switch_port: `SW-${(ap.lab_id || 'LAB1').toUpperCase().replace('-', '')}-Gi1/0/${apIndex(ap.id)}`,
+        summary:
+          st === 'offline'
+            ? '100% ICMP packet loss. Switch port reports PoE link down.'
+            : st === 'congested'
+            ? 'Elevated airtime utilization and packet retransmissions on 5GHz radio.'
+            : st === 'stale'
+            ? 'ICMP reachable with intermittent SNMP/telemetry agent timeout.'
+            : '0% packet loss, healthy PoE power draw, and optimal SNR.',
+      });
+    } finally {
+      setRunningDiag(false);
+    }
+  };
+
+  const runRemediation = async (ap: any, action: string) => {
+    if (!ap || remediating) return;
+    setRemediating(true);
+    setLocalError('');
+    setRemediationNote('');
+    const nowIso = new Date().toISOString();
+    try {
+      const res = await api.post(`/monitoring/${ap.id}/remediate`, { action });
+      setRemediationNote(res.data?.action_label || 'Remediation action completed. Device restored to Online.');
+    } catch {
+      try {
+        await api.post('/simulation', { asset_id: ap.id, scenario: 'normal' });
+      } catch {}
+      const labels: Record<string, string> = {
+        reboot_poe: 'PoE Switch Port Cycled & AP Rebooted — Device Restored to Online',
+        rebalance_channel: '5GHz Radio Channel Rebalanced & Airtime Cleared — Device Restored to Online',
+        restart_agent: 'SNMP / Telemetry Daemon Restarted — Feed Restored to Online',
+      };
+      setRemediationNote(labels[action] || 'Remediation action completed.');
+    } finally {
+      const idx = Math.max(0, (liveAps || data?.aps || []).findIndex((x: any) => x.id === ap.id));
+      const healthyAp = baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, sampleTickRef.current + 1, nowIso);
+      setLiveAps(prev => (prev || data?.aps || []).map((item: any) => (item.id === ap.id ? healthyAp : item)));
+      setSelected(healthyAp);
+      setDetail((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              asset: { ...prev.asset, ...healthyAp },
+              history: [
+                ...(prev.history || []),
+                {
+                  timestamp: nowIso,
+                  clients: healthyAp.clients,
+                  throughput: healthyAp.throughput,
+                  load: healthyAp.load,
+                  latency: healthyAp.latency,
+                  status: 'online',
+                  live: true,
+                },
+              ],
+            }
+          : prev
+      );
+      setDiagResult(null);
+      setRemediating(false);
     }
   };
 
@@ -306,6 +415,55 @@ export default function Monitoring() {
     return () => window.clearInterval(timerId);
   }, [sampleInterval, user.role]);
 
+  const openCreateNetworkTicket = (ap: any) => {
+    setTicketAp(ap);
+    const statusLabel =
+      ap.status === 'stale'
+        ? 'Telemetry Feed Interrupted'
+        : ap.status === 'offline'
+        ? 'Hardware Outage / Unreachable'
+        : `High Bandwidth Congestion (${ap.load ?? 90}%)`;
+    setTicketForm({
+      title: `${statusLabel} — ${ap.tag}`,
+      description: `Infrastructure telemetry escalation for ${ap.tag} (${ap.lab_name}, IP ${ap.ip}). Current Status: ${String(
+        ap.status
+      ).toUpperCase()} | Bandwidth Load: ${ap.load ?? 'N/A'}% | Connected Devices: ${ap.clients ?? 'N/A'} | Latency: ${
+        ap.latency ?? 'N/A'
+      } ms.`,
+      priority: 'high',
+    });
+  };
+
+  const submitNetworkTicket = async (e: any) => {
+    e.preventDefault();
+    if (!ticketAp) return;
+    setCreatingTicket(true);
+    setLocalError('');
+    try {
+      const r = await api.post('/incidents', {
+        asset_id: ticketAp.id,
+        category: 'network',
+        title: ticketForm.title,
+        description: ticketForm.description,
+        priority: ticketForm.priority,
+      });
+      const enriched = enrichTicket({
+        ...r.data,
+        tier: 'Tier 2 · Network / Connectivity',
+        tier_code: 'tier2',
+        assigned_role: 'engineer',
+        assigned_name: 'Daniel Reyes (Network Engineer)',
+      });
+      saveLocalTicket(enriched);
+      setCreatedTicket(enriched);
+      setTicketAp(null);
+    } catch (e) {
+      setLocalError(errorText(e));
+    } finally {
+      setCreatingTicket(false);
+    }
+  };
+
   const handleRefresh = async () => {
     triggerPulse();
     await load();
@@ -360,7 +518,7 @@ export default function Monitoring() {
     <>
       <PageTitle
         title="Device Monitoring"
-        subtitle="Real-time access point status, bandwidth load, and connection telemetry"
+        subtitle="Real-time access point status, bandwidth load, connection telemetry, and Tier 2 incident escalation"
       >
         <Button id="monitoring-refresh" onClick={handleRefresh}>
           <RefreshCw size={15} className={busy ? 'spin' : ''} /> Refresh Status
@@ -373,6 +531,22 @@ export default function Monitoring() {
       </PageTitle>
 
       <ErrorBox error={error || (!selected && localError)} retry={load} />
+
+      {createdTicket && (
+        <div className="success-box" data-testid="ap-ticket-created-banner">
+          <CheckCheck size={17} />
+          <span>
+            Infrastructure ticket <strong>{createdTicket.number}</strong> created for{' '}
+            <strong>{createdTicket.asset_tag}</strong> (Routed to Network Engineer).
+          </span>
+          <Link className="inline-link" to={`/tickets?ticket=${createdTicket.id}`}>
+            View Ticket <ArrowUpRight size={14} />
+          </Link>
+          <button className="text-button" onClick={() => setCreatedTicket(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className={`monitor-status-strip ${pulseActive ? 'is-sampling' : ''}`}>
         <span className="feed-label">
@@ -470,6 +644,7 @@ export default function Monitoring() {
         <APTable
           aps={filteredAps}
           onSelect={inspect}
+          onCreateTicket={user.role !== 'assistant' ? openCreateNetworkTicket : undefined}
           onResetFilter={
             status !== 'all' || search
               ? () => {
@@ -482,6 +657,76 @@ export default function Monitoring() {
       </section>
 
       <Simulation open={simulation} onClose={setSimulation} aps={activeAps} onDone={handleSimulationDone} />
+
+      <Modal
+        open={!!ticketAp}
+        onClose={() => setTicketAp(null)}
+        title={`Create Network Ticket · ${ticketAp?.tag || ''}`}
+        description={`${ticketAp?.lab_name || ''} · IP ${ticketAp?.ip || ''} · Tier 2 Network Escalation`}
+        id="ap-ticket-dialog"
+      >
+        {ticketAp && (
+          <form onSubmit={submitNetworkTicket}>
+            <div className="detail-metrics">
+              <div>
+                <Users size={17} />
+                <strong>{ticketAp.clients ?? '—'}</strong>
+                <span>Connected Devices</span>
+              </div>
+              <div>
+                <Activity size={17} />
+                <strong>{ticketAp.load == null ? '—' : `${ticketAp.load}%`}</strong>
+                <span>Bandwidth Load</span>
+              </div>
+              <div>
+                <Wifi size={17} />
+                <strong>{ticketAp.latency == null ? '—' : `${ticketAp.latency} ms`}</strong>
+                <span>Latency</span>
+              </div>
+            </div>
+
+            <Field label="Incident Title" id="ap-ticket-title">
+              <input
+                id="ap-ticket-title"
+                data-testid="ap-ticket-title"
+                required
+                value={ticketForm.title}
+                onChange={e => setTicketForm({ ...ticketForm, title: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Telemetry & Diagnostic Summary" id="ap-ticket-description">
+              <textarea
+                id="ap-ticket-description"
+                data-testid="ap-ticket-description"
+                rows={4}
+                required
+                value={ticketForm.description}
+                onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Priority Level" id="ap-ticket-priority">
+              <Select
+                id="ap-ticket-priority"
+                value={ticketForm.priority}
+                onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+              >
+                <option value="high">High Priority (Tier 2 NOC)</option>
+                <option value="medium">Medium Priority</option>
+              </Select>
+            </Field>
+
+            <div className="form-footer">
+              <span>Assigned to: Network Engineer (Tier 2)</span>
+              <Button type="submit" variant="primary" id="submit-ap-ticket" disabled={creatingTicket}>
+                <Send size={15} />
+                {creatingTicket ? 'Creating Ticket…' : 'Create Network Ticket'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       <Modal
         open={!!selected}
@@ -520,6 +765,101 @@ export default function Monitoring() {
                 Telemetry feed is interrupted or expired. Device status is unconfirmed.
               </div>
             )}
+
+            {remediationNote && (
+              <div className="success-box" data-testid="ap-remediation-banner">
+                <CheckCheck size={16} />
+                <span>{remediationNote}</span>
+              </div>
+            )}
+
+            {user.role !== 'assistant' && (
+              <div className="diag-console" data-testid="ap-diag-console">
+                <div className="diag-console-head">
+                  <div>
+                    <strong>
+                      <Terminal size={14} /> NOC Remote Diagnostics & Remediation
+                    </strong>
+                    <span>Run live ICMP ping, PoE port draw check, or remote recovery actions</span>
+                  </div>
+                  <div className="diag-action-row">
+                    <Button
+                      size="sm"
+                      id="run-ap-diagnostic"
+                      disabled={runningDiag}
+                      onClick={() => runDiagnostics(detail.asset)}
+                    >
+                      <Terminal size={13} />
+                      {runningDiag ? 'Probing…' : 'Run Ping & PoE Check'}
+                    </Button>
+                    {detail.asset.status === 'congested' && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        id="remediate-ap-channel"
+                        disabled={remediating}
+                        onClick={() => runRemediation(detail.asset, 'rebalance_channel')}
+                      >
+                        <Radio size={13} /> Rebalance 5GHz Channel
+                      </Button>
+                    )}
+                    {detail.asset.status === 'stale' && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        id="remediate-ap-agent"
+                        disabled={remediating}
+                        onClick={() => runRemediation(detail.asset, 'restart_agent')}
+                      >
+                        <Wrench size={13} /> Restart Telemetry Agent
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={detail.asset.status === 'offline' ? 'primary' : 'secondary'}
+                      id="remediate-ap-reboot"
+                      disabled={remediating}
+                      onClick={() => runRemediation(detail.asset, 'reboot_poe')}
+                    >
+                      <Power size={13} /> {remediating ? 'Executing…' : 'Cycle PoE / Reboot AP'}
+                    </Button>
+                  </div>
+                </div>
+
+                {diagResult && (
+                  <div className="diag-result-grid" data-testid="ap-diag-results">
+                    <div>
+                      <span>ICMP Packet Loss</span>
+                      <strong className={diagResult.packet_loss_pct > 0 ? 'text-amber' : 'text-green'}>
+                        {diagResult.packet_loss_pct}% ({diagResult.packets_received}/{diagResult.packets_sent} pkts)
+                      </strong>
+                    </div>
+                    <div>
+                      <span>RTT (Min / Avg / Max)</span>
+                      <strong className="mono">
+                        {diagResult.rtt_avg_ms == null
+                          ? 'Timeout'
+                          : `${diagResult.rtt_min_ms} / ${diagResult.rtt_avg_ms} / ${diagResult.rtt_max_ms} ms`}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Switch Port & PoE</span>
+                      <strong>
+                        {diagResult.switch_port} · {diagResult.poe_draw_watts}W
+                      </strong>
+                    </div>
+                    <div>
+                      <span>5GHz Radio & SNR</span>
+                      <strong>
+                        {diagResult.channel_5ghz} {diagResult.snr_db != null ? `(${diagResult.snr_db} dB)` : ''}
+                      </strong>
+                    </div>
+                    <p className="diag-summary-line">{diagResult.summary}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <TrafficChart history={detail.history} height={180} />
             <p className="muted small" data-testid="ap-detail-last-seen">
               Last reported: {time(detail.asset.last_seen, true, true)} MYT

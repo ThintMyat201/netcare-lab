@@ -366,3 +366,88 @@ async def sample(user=Depends(current)):
 @router.get('/alerts',response_model=list[Document])
 async def alerts(user=Depends(current)):
     await authorize(user,'view');await sync_alerts();return await db.alerts.find({},{'_id':0}).sort('created_at',-1).to_list(500)
+
+class RemediateInput(BaseModel):
+    action:Literal['reboot','reset_radio','verify_feed','reboot_poe','rebalance_channel','restart_agent']='reboot'
+
+RemediateAction = RemediateInput
+
+@router.post('/monitoring/{id}/diagnose')
+async def diagnose_ap(id:str,user=Depends(current)):
+    await authorize(user,'view')
+    asset=await db.assets.find_one({'id':id},{'_id':0})
+    if not asset: raise HTTPException(404,'Device not found.')
+    m=metrics(asset) if asset.get('kind')=='AP' else {'status':'online','latency':9,'load':24,'clients':1}
+    status=m.get('status','online')
+    base_rtt=m.get('latency') or (142 if status=='congested' else 11)
+    loss=100 if status=='offline' else (25 if status=='stale' else (8 if status=='congested' else 0))
+    ap_num=_ap_num(asset)
+    channel=149 if status=='congested' else 36+((ap_num*4)%4)*4
+    poe_watts=0.0 if status=='offline' else round(14.2+(ap_num%5)*1.1+(3.4 if status=='congested' else 0),1)
+    snr=0 if status=='offline' else (21 if status=='congested' else 38-(ap_num%6))
+    ch_label=f'Ch {channel} (80 MHz · High DFS Contention)' if status=='congested' else f'Ch {channel} (80 MHz · Clean)'
+    sw_port=f'SW-{(asset.get("lab_id") or "LAB1").upper().replace("-","")}-Gi1/0/{ap_num}'
+    summary=(
+        '100% ICMP packet loss. Switch port reports PoE link down.'
+        if status=='offline'
+        else 'Elevated airtime utilization and packet retransmissions on 5GHz radio.'
+        if status=='congested'
+        else 'ICMP reachable with intermittent SNMP/telemetry agent timeout.'
+        if status=='stale'
+        else '0% packet loss, healthy PoE power draw, and optimal SNR.'
+    )
+    return {
+        'asset_id':asset['id'],
+        'asset_tag':asset['tag'],
+        'tag':asset['tag'],
+        'ip':asset.get('ip','10.20.1.11'),
+        'status':status,
+        'packets_sent':5,
+        'packets_received':0 if status=='offline' else (4 if status in ('stale','congested') else 5),
+        'packet_loss_pct':loss,
+        'rtt_min_ms':None if status=='offline' else max(2,base_rtt-3),
+        'rtt_avg_ms':None if status=='offline' else base_rtt,
+        'rtt_max_ms':None if status=='offline' else base_rtt+7,
+        'poe_draw_watts':poe_watts,
+        'poe_status':'No Power / Link Down' if status=='offline' else '802.3at PoE+ Nominal',
+        'radio_channel':ch_label,
+        'channel_5ghz':ch_label,
+        'snr_db':snr,
+        'switch_port':sw_port,
+        'gateway_hop':f'10.20.{max(1,min(3,(ap_num-1)//4+1))}.1',
+        'summary':summary,
+        'timestamp':stamp(),
+    }
+
+@router.post('/monitoring/{id}/remediate')
+async def remediate_ap(id:str,body:RemediateInput,user=Depends(current)):
+    await authorize(user,'simulate')
+    asset=await db.assets.find_one({'id':id},{'_id':0})
+    if not asset: raise HTTPException(404,'Device not found.')
+    ts_now=stamp()
+    await db.assets.update_one(
+        {'id':id},
+        {
+            '$set':{'scenario':'normal','scenario_at':ts_now,'last_seen':ts_now},
+            '$unset':{'degradation_progress':'','flap_state':'','synthetic_override':''},
+        },
+    )
+    await db.alerts.update_many(
+        {'asset_id':id,'active':True},
+        {'$set':{'active':False,'resolved_at':ts_now},'$unset':{'active_key':''}},
+    )
+    updated=await db.assets.find_one({'id':id},{'_id':0})
+    await _write_scenario_sequence([updated],'normal',now())
+    await generate_sample(overwrite=True)
+    await sync_alerts()
+    action_label={
+        'reboot':'PoE port cycled & AP rebooted — Device Restored to Online',
+        'reboot_poe':'PoE port cycled & AP rebooted — Device Restored to Online',
+        'reset_radio':'5GHz radio channels rebalanced — Device Restored to Online',
+        'rebalance_channel':'5GHz radio channels rebalanced — Device Restored to Online',
+        'verify_feed':'Telemetry heartbeat agent restarted — Device Restored to Online',
+        'restart_agent':'Telemetry heartbeat agent restarted — Device Restored to Online',
+    }.get(body.action,'Remediation completed — Device Restored to Online')
+    await audit(user,'Device remediated',f'{asset["tag"]} · {action_label}',id)
+    fresh={**updated,**metrics(updated)}
+    return {'ok':True,'status':'online','action_label':action_label,'message':f'{action_label} on {asset["tag"]}.','asset':fresh}
