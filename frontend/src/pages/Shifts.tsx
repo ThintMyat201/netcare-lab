@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   ArrowRight,
   FileCheck2,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
@@ -46,6 +47,7 @@ export default function Shifts() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [filter, setFilter] = useState('active');
+  const [scopeFilter, setScopeFilter] = useState<'my' | 'all'>(() => (user.role === 'assistant' ? 'my' : 'all'));
   const [version, setVersion] = useState(0);
 
   const [handoverShift, setHandoverShift] = useState<any>(null);
@@ -62,10 +64,19 @@ export default function Shifts() {
     [list.data, version] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const rows = useMemo(
-    () => normalizedShifts.filter((s: any) => filter === 'all' || !s.cancelled),
-    [normalizedShifts, filter]
-  );
+  const rows = useMemo(() => {
+    return normalizedShifts.filter((s: any) => {
+      if (filter !== 'all' && s.cancelled) return false;
+      if (scopeFilter === 'my') {
+        const isMy =
+          s.assistant_id === user.id ||
+          s.assistant_name === user.name ||
+          (user.role === 'assistant' && !s.assistant_id);
+        if (!isMy) return false;
+      }
+      return true;
+    });
+  }, [normalizedShifts, filter, scopeFilter, user]);
 
   const unacknowledgedCount = useMemo(
     () => normalizedShifts.filter((s: any) => !s.cancelled && !s.acknowledged_at && !s.completed_at).length,
@@ -180,9 +191,8 @@ export default function Shifts() {
   };
 
   const runLabInspection = (s: any, progress: any) => {
-    // If not yet acknowledged, automatically mark as acknowledged when starting inspection
     if (!s.acknowledged_at && user.role === 'assistant') {
-      saveShiftOverride(s.id, { acknowledged_at: new Date().toISOString() });
+      return; // Locked until acknowledged
     }
     const nextAssetParam = progress.nextUnchecked ? `&asset=${progress.nextUnchecked.id}` : '';
     navigate(`/checklists?lab=${s.lab_id}&new=1&shift=${s.id}${nextAssetParam}`);
@@ -203,7 +213,7 @@ export default function Shifts() {
 
       <ErrorBox error={list.error || (!open && error)} retry={list.load} />
 
-      <div className="simulation-strip">
+      <div className="simulation-strip shift-scope-bar">
         <div>
           <Bell size={16} />
           <strong>In-App Reminders</strong>
@@ -211,10 +221,32 @@ export default function Shifts() {
             {unacknowledgedCount} unacknowledged shift{unacknowledgedCount === 1 ? '' : 's'} · in-app notifications only
           </span>
         </div>
-        <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
-          <option value="active">Active Shifts</option>
-          <option value="all">All Shifts (Including Cancelled)</option>
-        </Select>
+        <div className="shift-filter-controls">
+          {user.role === 'assistant' && (
+            <div className="segmented shift-scope-segmented" role="tablist">
+              <button
+                type="button"
+                className={scopeFilter === 'my' ? 'selected' : ''}
+                onClick={() => setScopeFilter('my')}
+                data-testid="shift-scope-my"
+              >
+                My Shifts
+              </button>
+              <button
+                type="button"
+                className={scopeFilter === 'all' ? 'selected' : ''}
+                onClick={() => setScopeFilter('all')}
+                data-testid="shift-scope-all"
+              >
+                All Lab Shifts
+              </button>
+            </div>
+          )}
+          <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
+            <option value="active">Active Shifts</option>
+            <option value="all">All Shifts (Including Cancelled)</option>
+          </Select>
+        </div>
       </div>
 
       {notice && (
@@ -233,13 +265,24 @@ export default function Shifts() {
         <div className="shift-grid">
           {rows.map((s: any) => {
             const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
+            const isMyShift =
+              user.role === 'admin' ||
+              s.assistant_id === user.id ||
+              s.assistant_name === user.name ||
+              (user.role === 'assistant' && !s.assistant_id);
+            const isAcknowledged = Boolean(s.acknowledged_at);
+            const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
+            const displayChecked = isAcknowledged ? progress.checked : 0;
+            const displayPercent = isAcknowledged ? progress.percent : 0;
+            const isAllChecked = isAcknowledged && progress.checked >= progress.required;
+
             const statusKey =
-              s.lifecycle === 'completed'
-                ? 'completed'
-                : s.lifecycle === 'in_progress'
-                ? 'on_duty'
-                : s.lifecycle === 'cancelled'
+              s.lifecycle === 'cancelled'
                 ? 'cancelled'
+                : isCompleted
+                ? 'completed'
+                : isAcknowledged
+                ? 'on_duty'
                 : 'pending_ack';
 
             return (
@@ -258,7 +301,7 @@ export default function Shifts() {
                 </p>
 
                 <div className="shift-info">
-                  <span>
+                  <span className={!isMyShift ? 'text-amber' : ''}>
                     <UserRound size={15} />
                     {s.assistant_name}
                   </span>
@@ -275,18 +318,20 @@ export default function Shifts() {
                       Lab Inspection Progress
                     </span>
                     <strong>
-                      {progress.checked} / {progress.required} Workstations Checked
+                      {displayChecked} / {progress.required} Workstations Checked
                     </strong>
                   </div>
                   <div className="shift-progress-bar">
-                    <i style={{ width: `${progress.percent}%` }} />
+                    <i style={{ width: `${displayPercent}%` }} />
                   </div>
                   <small className="shift-progress-sub">
-                    {progress.checked >= progress.required
+                    {!isAcknowledged
+                      ? 'Shift pending acknowledgement — inspections unlock once On Duty.'
+                      : isAllChecked
                       ? 'All required shift workstation checks completed — ready for handover.'
                       : progress.nextUnchecked
                       ? `Next workstation due: ${progress.nextUnchecked.tag}`
-                      : `${progress.required - progress.checked} workstation(s) remaining this shift`}
+                      : `${progress.required - displayChecked} workstation(s) remaining this shift`}
                   </small>
                 </div>
 
@@ -299,53 +344,90 @@ export default function Shifts() {
                   </div>
                 )}
 
-                {!s.cancelled && user.role === 'assistant' && s.lifecycle !== 'completed' && (
+                {!s.cancelled && user.role === 'assistant' && !isCompleted && (
                   <div className="shift-workflow-actions">
-                    <Button
-                      id={`run-shift-inspection-${s.id}`}
-                      variant={s.acknowledged_at ? 'primary' : 'secondary'}
-                      onClick={() => runLabInspection(s, progress)}
-                    >
-                      <ClipboardCheck size={15} />
-                      Run Lab Inspection <ArrowRight size={14} />
-                    </Button>
+                    {!isMyShift ? (
+                      <Button
+                        disabled
+                        variant="secondary"
+                        className="shift-locked-btn"
+                        title={`This shift is assigned to ${s.assistant_name}`}
+                      >
+                        <Lock size={14} /> Assigned to {s.assistant_name}
+                      </Button>
+                    ) : (
+                      <Button
+                        id={`run-shift-inspection-${s.id}`}
+                        variant={isAcknowledged ? 'primary' : 'secondary'}
+                        disabled={!isAcknowledged}
+                        title={
+                          !isAcknowledged
+                            ? 'Acknowledge shift first to unlock lab inspection'
+                            : 'Run physical workstation inspections for this shift'
+                        }
+                        onClick={() => runLabInspection(s, progress)}
+                      >
+                        {!isAcknowledged ? <Lock size={14} /> : <ClipboardCheck size={15} />}
+                        Run Lab Inspection <ArrowRight size={14} />
+                      </Button>
+                    )}
                   </div>
                 )}
 
                 <div className="shift-card-foot">
-                  {s.lifecycle === 'completed' ? (
-                    <span className="ack-label">
+                  {isCompleted ? (
+                    <span className="ack-label completed">
                       <CheckCheck size={15} />
                       Shift Completed · {time(s.completed_at)} MYT
                     </span>
-                  ) : !s.acknowledged_at && !s.cancelled ? (
+                  ) : !isAcknowledged && !s.cancelled ? (
                     user.role === 'assistant' ? (
-                      <Button
-                        id={`ack-shift-${s.id}`}
-                        onClick={() => acknowledgeShift(s)}
-                        disabled={busy}
-                        variant="primary"
-                      >
-                        <Check size={15} />Acknowledge Shift
-                      </Button>
+                      isMyShift ? (
+                        <Button
+                          id={`ack-shift-${s.id}`}
+                          onClick={() => acknowledgeShift(s)}
+                          disabled={busy}
+                          variant="primary"
+                          className="ack-shift-btn"
+                        >
+                          <Check size={15} /> ✓ Acknowledge Shift
+                        </Button>
+                      ) : (
+                        <span className="muted small">Assigned to {s.assistant_name}</span>
+                      )
                     ) : (
                       <span className="muted small">Pending Assistant Acknowledgement</span>
                     )
-                  ) : s.acknowledged_at && !s.cancelled ? (
+                  ) : isAcknowledged && !s.cancelled ? (
                     <div className="shift-duty-foot">
-                      <span className="ack-label">
+                      <span className="ack-label on-duty">
                         <CheckCheck size={15} />
                         On Duty · Acknowledged {time(s.acknowledged_at)} MYT
                       </span>
-                      {user.role === 'assistant' && (
+                      {user.role === 'assistant' && isMyShift && isAllChecked && (
                         <Button
                           id={`complete-shift-${s.id}`}
-                          variant={progress.checked >= progress.required ? 'primary' : 'secondary'}
+                          variant="primary"
+                          className="handover-complete-btn"
                           onClick={() => openHandoverModal(s, progress)}
                           disabled={busy}
+                          title="All 4 workstations checked — complete shift handover"
                         >
-                          <FileCheck2 size={15} />
-                          Complete Shift & Submit Handover Note
+                          <CheckCheck size={15} />
+                          ✓ Complete Shift Handover
+                        </Button>
+                      )}
+                      {user.role === 'assistant' && isMyShift && !isAllChecked && (
+                        <Button
+                          id={`complete-shift-${s.id}`}
+                          variant="secondary"
+                          onClick={() => openHandoverModal(s, progress)}
+                          disabled={busy}
+                          className="compact faint-handover-btn"
+                          title="Submit early handover note"
+                        >
+                          <FileCheck2 size={14} />
+                          Handover Note
                         </Button>
                       )}
                     </div>

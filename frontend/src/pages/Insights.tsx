@@ -148,6 +148,7 @@ export function Reports() {
     const labDefaults = [
       { id: 'lab-1', name: 'Computing Lab A', baseAssets: 14, baseInspections: 6, basePassRate: 83, baseOpen: 1, baseInProg: 0 },
       { id: 'lab-2', name: 'Computing Lab B', baseAssets: 14, baseInspections: 5, basePassRate: 80, baseOpen: 1, baseInProg: 1 },
+      { id: 'lab-4', name: 'Computing Lab C', baseAssets: 14, baseInspections: 5, basePassRate: 85, baseOpen: 1, baseInProg: 0 },
       { id: 'lab-3', name: 'Innovation Lab', baseAssets: 14, baseInspections: 6, basePassRate: 67, baseOpen: 2, baseInProg: 1 },
     ];
 
@@ -415,7 +416,7 @@ export function Reports() {
                     <div className="tier-split-box">
                       <div className="tier-split-head">
                         <span>SHIFT INSPECTION COMPLIANCE</span>
-                        <span>3 Campus Labs</span>
+                        <span>4 Campus Labs</span>
                       </div>
                       <p className="muted small">
                         Physical workstation inspections are executed by Student IT Assistants during standard 4-hour

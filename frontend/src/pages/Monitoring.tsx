@@ -4,6 +4,8 @@ import {
   FlaskConical,
   RefreshCw,
   Search,
+  Play,
+  RotateCcw,
   Wifi,
   Activity,
   Users,
@@ -21,22 +23,18 @@ import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Moda
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
 import { useAuth } from '../context';
 import { api, time, errorText } from '../lib/api';
-import { saveLocalTicket, enrichTicket } from '../lib/workflow';
+import {
+  saveLocalTicket,
+  mergeTickets,
+  restoreDevice,
+  enrichTicket,
+  isMonitoringSimActive,
+  setMonitoringSimActive,
+  SIMULATION_FLEET_APS,
+  getSharedFleetAps,
+} from '../lib/workflow';
 
-const DEFAULT_CAMPUS_APS = [
-  { id: 'ap-01', tag: 'AP-CL-A-01', name: 'Computing Lab A · AP 01', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', ip: '10.20.1.11', model: 'Aruba AP-515', status: 'online', clients: 28, load: 34, latency: 9, throughput: 27.2 },
-  { id: 'ap-02', tag: 'AP-CL-A-02', name: 'Computing Lab A · AP 02', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', ip: '10.20.1.12', model: 'Aruba AP-515', status: 'online', clients: 32, load: 38, latency: 11, throughput: 30.4 },
-  { id: 'ap-03', tag: 'AP-CL-A-03', name: 'Computing Lab A · AP 03', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', ip: '10.20.1.13', model: 'Aruba AP-515', status: 'online', clients: 25, load: 29, latency: 8, throughput: 24.1 },
-  { id: 'ap-04', tag: 'AP-CL-A-04', name: 'Computing Lab A · AP 04', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', ip: '10.20.1.14', model: 'Aruba AP-515', status: 'online', clients: 30, load: 36, latency: 10, throughput: 28.8 },
-  { id: 'ap-05', tag: 'AP-CL-B-01', name: 'Computing Lab B · AP 01', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', ip: '10.20.2.11', model: 'Aruba AP-515', status: 'online', clients: 22, load: 27, latency: 12, throughput: 21.0 },
-  { id: 'ap-06', tag: 'AP-CL-B-02', name: 'Computing Lab B · AP 02', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', ip: '10.20.2.12', model: 'Aruba AP-515', status: 'online', clients: 24, load: 31, latency: 14, throughput: 23.5 },
-  { id: 'ap-07', tag: 'AP-CL-B-03', name: 'Computing Lab B · AP 03', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', ip: '10.20.2.13', model: 'Aruba AP-515', status: 'congested', clients: 78, load: 88, latency: 126, throughput: 74.2 },
-  { id: 'ap-08', tag: 'AP-CL-B-04', name: 'Computing Lab B · AP 04', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', ip: '10.20.2.14', model: 'Aruba AP-515', status: 'online', clients: 21, load: 26, latency: 10, throughput: 19.8 },
-  { id: 'ap-09', tag: 'AP-IL-01', name: 'Innovation Lab · AP 01', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', ip: '10.20.3.11', model: 'Aruba AP-515', status: 'online', clients: 46, load: 52, latency: 12, throughput: 54.3 },
-  { id: 'ap-10', tag: 'AP-IL-02', name: 'Innovation Lab · AP 02', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', ip: '10.20.3.12', model: 'Aruba AP-515', status: 'online', clients: 42, load: 48, latency: 13, throughput: 49.5 },
-  { id: 'ap-11', tag: 'AP-IL-03', name: 'Innovation Lab · AP 03', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', ip: '10.20.3.13', model: 'Aruba AP-515', status: 'online', clients: 39, load: 45, latency: 11, throughput: 46.2 },
-  { id: 'ap-12', tag: 'AP-IL-04', name: 'Innovation Lab · AP 04', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', ip: '10.20.3.14', model: 'Aruba AP-515', status: 'online', clients: 44, load: 50, latency: 14, throughput: 51.8 },
-];
+
 
 function apIndex(id: string): number {
   const digits = String(id || '1').replace(/\D/g, '');
@@ -46,17 +44,17 @@ function apIndex(id: string): number {
 function baselineApMetrics(ap: any, idx: number, tick = 0, sampleIso?: string) {
   const num = apIndex(ap.id) || idx + 1;
   const labId = ap.lab_id || 'lab-1';
-  const baseClients = labId === 'lab-3' ? 44 : labId === 'lab-1' ? 31 : 22;
-  const baseLoad = labId === 'lab-3' ? 49 : labId === 'lab-1' ? 36 : 28;
-  const tpFactor = labId === 'lab-3' ? 1.18 : labId === 'lab-1' ? 0.96 : 0.86;
+  const baseClients = labId === 'lab-3' ? 40 : labId === 'lab-1' ? 29 : labId === 'lab-4' ? 31 : 27;
+  const baseLoad = labId === 'lab-3' ? 48 : labId === 'lab-1' ? 38 : labId === 'lab-4' ? 41 : 36;
+  const tpFactor = labId === 'lab-3' ? 1.18 : labId === 'lab-1' ? 0.96 : 0.9;
 
-  const waveC = Math.round(Math.sin(tick * 1.15 + num * 1.4) * 4 + Math.cos(tick * 0.7) * 2.5);
-  const waveL = Math.round(Math.cos(tick * 1.05 + num * 1.2) * 5 + Math.sin(tick * 0.65) * 2.5);
+  const waveC = Math.round(Math.sin(tick * 1.15 + num * 1.4) * 3 + Math.cos(tick * 0.7) * 2);
+  const waveL = Math.round(Math.cos(tick * 1.05 + num * 1.2) * 4 + Math.sin(tick * 0.65) * 2);
 
-  const clients = Math.max(10, baseClients + ((num * 5) % 11) + waveC);
-  const load = Math.max(14, Math.min(76, baseLoad + ((num * 4) % 14) + waveL));
-  const latency = Math.max(6, 9 + ((num * 3 + tick * 2) % 11) + (labId === 'lab-3' ? 3 : 0));
-  const throughput = Math.round(clients * (tpFactor + Math.sin(tick * 0.8 + num) * 0.12) * 10) / 10;
+  const clients = Math.max(20, baseClients + ((num * 3) % 9) + waveC);
+  const load = Math.max(30, Math.min(60, baseLoad + ((num * 3) % 12) + waveL));
+  const latency = Math.max(8, 9 + ((num * 2 + tick * 2) % 6) + (labId === 'lab-3' ? 2 : 0));
+  const throughput = Math.round(clients * (tpFactor + Math.sin(tick * 0.8 + num) * 0.1) * 10) / 10;
 
   return {
     ...ap,
@@ -68,6 +66,21 @@ function baselineApMetrics(ap: any, idx: number, tick = 0, sampleIso?: string) {
     throughput,
     last_seen: sampleIso || ap.last_seen || new Date().toISOString(),
   };
+}
+
+function buildSimulationFleet(nowIso?: string) {
+  const ts = nowIso || new Date().toISOString();
+  return SIMULATION_FLEET_APS.map(ap => ({
+    ...ap,
+    last_seen: ts,
+  })).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
+}
+
+function buildHealthyFleet(nowIso?: string) {
+  const ts = nowIso || new Date().toISOString();
+  return SIMULATION_FLEET_APS.map((ap, idx) =>
+    baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, 0, ts)
+  ).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
 }
 
 function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: string) {
@@ -125,13 +138,13 @@ function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: string) {
 
   if (scenario === 'congestion' || scenario === 'degradation' || status === 'congested') {
     const baseC = typeof ap.clients === 'number' && ap.clients >= 60 ? ap.clients : ap.lab_id === 'lab-3' ? 84 : 74;
-    const baseL = typeof ap.load === 'number' && ap.load >= 82 ? ap.load : 90;
-    const deltaC = Math.round(Math.sin(tick * 1.3 + num * 1.7) * 4 + Math.cos(tick * 0.8) * 2);
-    const deltaL = Math.round(Math.cos(tick * 1.1 + num * 1.3) * 3 + Math.sin(tick * 0.6) * 1.5);
-    const clients = Math.max(62, Math.min(98, baseC + deltaC));
-    const load = Math.max(85, Math.min(98, baseL + deltaL));
-    const latency = 118 + ((num * 7 + tick * 5) % 34);
-    const throughput = Math.round(clients * (0.9 + Math.sin(tick * 0.9 + num) * 0.14) * 10) / 10;
+    const baseL = typeof ap.load === 'number' && ap.load >= 85 ? ap.load : 90;
+    const deltaC = Math.round(Math.sin(tick * 1.3 + num * 1.7) * 3 + Math.cos(tick * 0.8) * 1.5);
+    const deltaL = Math.round(Math.cos(tick * 1.1 + num * 1.3) * 2 + Math.sin(tick * 0.6) * 1);
+    const clients = Math.max(66, Math.min(96, baseC + deltaC));
+    const load = Math.max(85, Math.min(95, baseL + deltaL));
+    const latency = 115 + ((num * 7 + tick * 5) % 38);
+    const throughput = Math.round(clients * (0.9 + Math.sin(tick * 0.9 + num) * 0.12) * 10) / 10;
     return {
       ...ap,
       status: 'congested',
@@ -171,13 +184,15 @@ export default function Monitoring() {
   const [pulseActive, setPulseActive] = useState(false);
   const [sampleInterval, setSampleInterval] = useState<number>(0);
 
-  const [liveAps, setLiveAps] = useState<any[] | null>(null);
-  const [liveSamples, setLiveSamples] = useState<any[]>([]);
-  const [lastSampleAt, setLastSampleAt] = useState<string>('');
-
-  const [simulationActive, setSimulationActive] = useState(false);
+  const initialSimActive = isMonitoringSimActive();
+  const [simulationActive, setSimulationActive] = useState<boolean>(initialSimActive);
   const [busySimulation, setBusySimulation] = useState(false);
-  const [simulationBanner, setSimulationBanner] = useState<{ active: boolean; message: string; details: string } | null>(null);
+
+  const [liveAps, setLiveAps] = useState<any[] | null>(() =>
+    initialSimActive ? buildSimulationFleet() : buildHealthyFleet()
+  );
+  const [liveSamples, setLiveSamples] = useState<any[]>([]);
+  const [lastSampleAt, setLastSampleAt] = useState<string>(() => new Date().toISOString());
 
   const [ticketAp, setTicketAp] = useState<any>(null);
   const [ticketForm, setTicketForm] = useState({ title: '', description: '', priority: 'high' });
@@ -189,65 +204,51 @@ export default function Monitoring() {
   const [remediationNote, setRemediationNote] = useState('');
 
   const sampleTickRef = useRef(0);
-  const userSimulatedRef = useRef(false);
-  const repairedDbRef = useRef(false);
+  const userSimulatedRef = useRef<boolean>(initialSimActive);
   const pulseTimeoutRef = useRef<number | null>(null);
 
   const { data, error, busy, load } = useData(`/monitoring${lab ? '?lab_id=' + lab : ''}`);
   const ticketsData = useData('/tickets');
 
+  const [workflowVersion, setWorkflowVersion] = useState(0);
+
   const activeTicketsByAsset = useMemo(() => {
     const map: Record<string, any> = {};
-    const tList = Array.isArray(ticketsData.data) ? ticketsData.data : [];
-    for (const t of tList) {
-      if (t.asset_id && t.status !== 'resolved' && !map[t.asset_id]) {
+    const merged = mergeTickets(ticketsData.data);
+    for (const t of merged) {
+      if (t.asset_id && t.status !== 'resolved') {
         map[t.asset_id] = t;
       }
+      if (t.asset_tag && t.status !== 'resolved') {
+        map[t.asset_tag] = t;
+      }
     }
-    if (createdTicket?.asset_id) {
+    if (createdTicket?.asset_id && createdTicket.status !== 'resolved') {
       map[createdTicket.asset_id] = createdTicket;
     }
     return map;
-  }, [ticketsData.data, createdTicket]);
+  }, [ticketsData.data, createdTicket, workflowVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Normalize AP telemetry and ensure all campus labs (Computing Lab A, B, and Innovation Lab) are represented
   useEffect(() => {
-    if (!data?.aps && !DEFAULT_CAMPUS_APS) return;
-    const incomingAps = Array.isArray(data?.aps) ? [...data.aps] : [];
-    const missingSeedAps = DEFAULT_CAMPUS_APS.filter(
-      seedAp => (!lab || seedAp.lab_id === lab) && !incomingAps.some((a: any) => a.id === seedAp.id || a.tag === seedAp.tag)
-    );
-    let nextAps = [...incomingAps, ...missingSeedAps];
-    nextAps.sort((a: any, b: any) => (a.tag || '').localeCompare(b.tag || ''));
+    const onWorkflow = () => {
+      setLiveAps(getSharedFleetAps());
+      setWorkflowVersion(v => v + 1);
+    };
+    window.addEventListener('atlas-workflow-updated', onWorkflow);
+    window.addEventListener('atlas-sim-state', onWorkflow);
+    return () => {
+      window.removeEventListener('atlas-workflow-updated', onWorkflow);
+      window.removeEventListener('atlas-sim-state', onWorkflow);
+    };
+  }, []);
 
-    const allCongested = nextAps.length >= 4 && nextAps.every((a: any) => a.status === 'congested');
-
-    if (allCongested && !userSimulatedRef.current) {
-      const congestedIdx = nextAps.findIndex((a: any) => a.id === 'ap-07' || a.tag === 'AP-CL-B-03');
-      const keepCongested = congestedIdx >= 0 ? congestedIdx : Math.max(0, nextAps.length - 2);
-      const nowIso = new Date().toISOString();
-
-      nextAps = nextAps.map((ap: any, idx: number) =>
-        idx === keepCongested
-          ? stepApMetrics({ ...ap, scenario: 'congestion', status: 'congested' }, idx, sampleTickRef.current, nowIso)
-          : baselineApMetrics(ap, idx, sampleTickRef.current, nowIso)
-      );
-
-      if (!repairedDbRef.current && user.role !== 'assistant') {
-        repairedDbRef.current = true;
-        const targetId = nextAps[keepCongested]?.id || 'ap-07';
-        api
-          .post('/simulation', { asset_id: 'all', scenario: 'normal' })
-          .then(() => api.post('/simulation', { asset_id: targetId, scenario: 'congestion' }))
-          .catch(() => {});
-      }
-    }
-
-    setLiveAps(nextAps);
+  // Keep 21-AP fleet synchronized with active simulation or healthy baseline state
+  useEffect(() => {
+    setLiveAps(getSharedFleetAps());
     if (!lastSampleAt && (data?.last_updated || data?.server_time)) {
       setLastSampleAt(data.last_updated || data.server_time);
     }
-  }, [data, lab, user.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, simulationActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inspect = async (a: any, keepDetail = false) => {
     setSelected(a);
@@ -261,8 +262,24 @@ export default function Monitoring() {
         ...res.data,
         asset: { ...res.data.asset, ...a },
       });
-    } catch (e) {
-      setLocalError(errorText(e));
+    } catch {
+      const nowMs = Date.now();
+      const syntheticHistory = Array.from({ length: 12 }, (_, idx) => {
+        const ptIso = new Date(nowMs - (11 - idx) * 5 * 60 * 1000).toISOString();
+        const stepped = stepApMetrics(a, idx, idx + 1, ptIso);
+        return {
+          timestamp: ptIso,
+          clients: stepped.clients ?? 0,
+          throughput: stepped.throughput ?? 0,
+          load: stepped.load,
+          latency: stepped.latency,
+          status: stepped.status,
+        };
+      });
+      setDetail({
+        asset: a,
+        history: syntheticHistory,
+      });
     }
   };
 
@@ -327,9 +344,14 @@ export default function Monitoring() {
       };
       setRemediationNote(labels[action] || 'Remediation action completed.');
     } finally {
+      const linkedTicket = activeTicketsByAsset[ap.id] || activeTicketsByAsset[ap.tag];
+      if (linkedTicket) {
+        saveLocalTicket({ ...linkedTicket, status: 'resolved', updated_at: nowIso });
+      }
+      restoreDevice(ap.id);
       const idx = Math.max(0, (liveAps || data?.aps || []).findIndex((x: any) => x.id === ap.id));
       const healthyAp = baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, sampleTickRef.current + 1, nowIso);
-      setLiveAps(prev => (prev || data?.aps || []).map((item: any) => (item.id === ap.id ? healthyAp : item)));
+      setLiveAps(getSharedFleetAps());
       setSelected(healthyAp);
       setDetail((prev: any) =>
         prev
@@ -513,8 +535,33 @@ export default function Monitoring() {
       saveLocalTicket(enriched);
       setCreatedTicket(enriched);
       setTicketAp(null);
-    } catch (e) {
-      setLocalError(errorText(e));
+    } catch {
+      const fallbackNum = `INC-${1045 + Math.floor(Math.random() * 50)}`;
+      const nowIso = new Date().toISOString();
+      const enriched = enrichTicket({
+        id: `local-${ticketAp.id}-${Date.now()}`,
+        number: fallbackNum,
+        asset_id: ticketAp.id,
+        asset_tag: ticketAp.tag,
+        asset_name: ticketAp.name,
+        asset_kind: 'AP',
+        lab_id: ticketAp.lab_id,
+        lab_name: ticketAp.lab_name,
+        category: 'network',
+        priority: ticketForm.priority,
+        status: 'open',
+        title: ticketForm.title,
+        description: ticketForm.description,
+        created_at: nowIso,
+        updated_at: nowIso,
+        tier: 'Tier 2 · Network / Connectivity',
+        tier_code: 'tier2',
+        assigned_role: 'engineer',
+        assigned_name: 'Daniel Reyes (Network Engineer)',
+      });
+      saveLocalTicket(enriched);
+      setCreatedTicket(enriched);
+      setTicketAp(null);
     } finally {
       setCreatingTicket(false);
     }
@@ -536,58 +583,14 @@ export default function Monitoring() {
     triggerPulse();
     userSimulatedRef.current = true;
     sampleTickRef.current += 1;
-    const tick = sampleTickRef.current;
     const nowIso = new Date().toISOString();
 
-    const baseList = liveAps || data?.aps || DEFAULT_CAMPUS_APS;
-    const updatedAps = baseList.map((ap: any, idx: number) => {
-      if (ap.id === 'ap-07' || ap.tag === 'AP-CL-B-03') {
-        return {
-          ...ap,
-          status: 'congested',
-          scenario: 'congestion',
-          load: 92,
-          clients: 84,
-          latency: 145,
-          throughput: 79.4,
-          last_seen: nowIso,
-        };
-      }
-      if (ap.id === 'ap-10' || ap.tag === 'AP-IL-02') {
-        return {
-          ...ap,
-          status: 'congested',
-          scenario: 'congestion',
-          load: 86,
-          clients: 68,
-          latency: 118,
-          throughput: 64.2,
-          last_seen: nowIso,
-        };
-      }
-      if (ap.id === 'ap-04' || ap.tag === 'AP-CL-A-04') {
-        return {
-          ...ap,
-          status: 'offline',
-          scenario: 'outage',
-          load: 0,
-          clients: 0,
-          latency: null,
-          throughput: 0,
-          last_seen: nowIso,
-        };
-      }
-      return stepApMetrics(ap, idx, tick, nowIso);
-    });
+    const updatedAps = buildSimulationFleet(nowIso);
 
     setLiveAps(updatedAps);
     setLastSampleAt(nowIso);
     setSimulationActive(true);
-    setSimulationBanner({
-      active: true,
-      message: 'Active Operational Simulation: Fleet Anomalies Injected',
-      details: 'High load congestion injected on AP-CL-B-03 (92%) and AP-IL-02 (86%), hardware link outage injected on AP-CL-A-04. Observe NOC alarms, escalate via "+ Create Tier-2 Ticket", or click "Reset to Healthy" to restore baseline.',
-    });
+    setMonitoringSimActive(true);
 
     const reporting = updatedAps.filter((a: any) => typeof a.clients === 'number');
     const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
@@ -612,7 +615,10 @@ export default function Monitoring() {
       await Promise.allSettled([
         api.post('/simulation', { asset_id: 'ap-07', scenario: 'congestion' }),
         api.post('/simulation', { asset_id: 'ap-10', scenario: 'congestion' }),
+        api.post('/simulation', { asset_id: 'ap-03', scenario: 'congestion' }),
+        api.post('/simulation', { asset_id: 'ap-12', scenario: 'congestion' }),
         api.post('/simulation', { asset_id: 'ap-04', scenario: 'outage' }),
+        api.post('/simulation', { asset_id: 'ap-08', scenario: 'outage' }),
       ]);
     } catch {
       // Best-effort backend notification
@@ -630,15 +636,12 @@ export default function Monitoring() {
     sampleTickRef.current += 1;
     const nowIso = new Date().toISOString();
 
-    const baseList = liveAps || data?.aps || DEFAULT_CAMPUS_APS;
-    const restoredAps = baseList.map((ap: any, idx: number) =>
-      baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, 0, nowIso)
-    );
+    const restoredAps = buildHealthyFleet(nowIso);
 
     setLiveAps(restoredAps);
     setLastSampleAt(nowIso);
     setSimulationActive(false);
-    setSimulationBanner(null);
+    setMonitoringSimActive(false);
 
     const reporting = restoredAps.filter((a: any) => typeof a.clients === 'number');
     const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
@@ -669,15 +672,25 @@ export default function Monitoring() {
   };
 
   const handleSimulationDone = async (scenario?: string) => {
-    userSimulatedRef.current = scenario !== 'normal';
+    const isAnomaly = scenario !== 'normal';
+    userSimulatedRef.current = isAnomaly;
+    setSimulationActive(isAnomaly);
+    setMonitoringSimActive(isAnomaly);
+    setLiveAps(isAnomaly ? buildSimulationFleet() : buildHealthyFleet());
     setLiveSamples([]);
     setStatus('all');
-    await load();
     setLastSampleAt(new Date().toISOString());
   };
 
-  const activeAps = useMemo(() => liveAps || data?.aps || [], [liveAps, data?.aps]);
-  const stats = useMemo(() => computeStats(activeAps), [activeAps]);
+  const activeAps = useMemo(
+    () => (liveAps && liveAps.length > 0 ? liveAps : simulationActive ? buildSimulationFleet() : buildHealthyFleet()),
+    [liveAps, simulationActive]
+  );
+  const labScopedAps = useMemo(
+    () => (lab ? activeAps.filter((a: any) => a.lab_id === lab) : activeAps),
+    [activeAps, lab]
+  );
+  const stats = useMemo(() => computeStats(labScopedAps), [labScopedAps]);
 
   const chartHistory = useMemo(() => {
     const baseHistory = Array.isArray(data?.history) ? data.history : [];
@@ -694,7 +707,7 @@ export default function Monitoring() {
     return [...normalizedBase, ...liveSamples];
   }, [data?.history, data?.aps, liveSamples, stats.clients]);
 
-  if (!data) {
+  if (!data && !liveAps) {
     return (
       <>
         <PageTitle title="Device Monitoring" />
@@ -704,14 +717,13 @@ export default function Monitoring() {
     );
   }
 
-  const filteredAps = activeAps.filter(
+  const filteredAps = labScopedAps.filter(
     (a: any) =>
       (status === 'all' || a.status === status) &&
-      (!lab || a.lab_id === lab) &&
       (a.tag + ' ' + (a.lab_name || '')).toLowerCase().includes(search.toLowerCase())
   );
 
-  const displayedLastUpdated = lastSampleAt || data.last_updated || data.server_time;
+  const displayedLastUpdated = lastSampleAt || data?.last_updated || data?.server_time || new Date().toISOString();
   const isFeedActive = sampling || pulseActive || sampleInterval > 0;
 
   return (
@@ -739,49 +751,16 @@ export default function Monitoring() {
         </div>
       )}
 
-      {simulationBanner && (
-        <div className="simulation-active-banner" data-testid="active-simulation-banner">
-          <div className="sim-banner-content">
-            <span className="sim-badge">
-              <FlaskConical size={14} /> ACTIVE SIMULATION
-            </span>
-            <div className="sim-banner-text">
-              <strong>{simulationBanner.message}</strong>
-              <p>{simulationBanner.details}</p>
-            </div>
-          </div>
-          <div className="sim-banner-actions">
-            <Button
-              size="sm"
-              variant="secondary"
-              className="sim-banner-reset-btn"
-              onClick={handleResetSimulation}
-              disabled={busySimulation}
-            >
-              <CheckCircle2 size={13} /> Reset to Healthy
-            </Button>
-            <button
-              type="button"
-              className="text-button sim-banner-dismiss"
-              onClick={() => setSimulationBanner(null)}
-              title="Dismiss banner"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className={`monitor-status-strip monitor-unified-bar ${pulseActive ? 'is-sampling' : ''}`}>
         <div className="telemetry-bar-info">
-          <span className="feed-label">
+          <span className="feed-label" data-testid="telemetry-feed-badge">
             <RadioIcon pulsing={sampling || pulseActive} active={isFeedActive} />
             LIVE TELEMETRY FEED
           </span>
           <span data-testid="monitor-last-updated" className={`sample-timestamp ${pulseActive ? 'sample-timestamp-flash' : ''}`}>
             Last sample: {time(displayedLastUpdated, true, true)} MYT
           </span>
-          <span className="sample-retention-info">7-day retention · 20,000 sample capacity</span>
+          <span className="sample-retention-info">21 Campus APs · 4 Labs · 7-day retention</span>
         </div>
 
         {user.role !== 'assistant' && (
@@ -819,31 +798,36 @@ export default function Monitoring() {
               {sampling ? 'Polling…' : 'Poll Live Metrics'}
             </Button>
 
-            {simulationActive ? (
-              <Button
-                variant="danger"
-                id="monitoring-simulate-reset"
-                className="sim-toggle-btn"
-                disabled={busySimulation}
-                onClick={handleResetSimulation}
-                title="Reset all access points to baseline healthy status"
-              >
-                <CheckCircle2 size={14} />
-                {busySimulation ? 'Restoring…' : 'Reset to Healthy'}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                id="monitoring-simulate"
-                className="sim-toggle-btn"
-                disabled={busySimulation}
-                onClick={handleTriggerSimulation}
-                title="Inject high load congestion and offline link failure simulation"
-              >
-                <FlaskConical size={14} />
-                {busySimulation ? 'Injecting…' : 'Run Simulation'}
-              </Button>
-            )}
+            <Button
+              id="monitoring-simulate"
+              data-testid="monitoring-simulate"
+              variant={simulationActive ? 'danger' : 'primary'}
+              className={`sim-toggle-btn ${simulationActive ? 'sim-btn-active' : 'sim-btn-idle'}`}
+              disabled={busySimulation}
+              onClick={simulationActive ? handleResetSimulation : handleTriggerSimulation}
+              title={
+                simulationActive
+                  ? 'Reset all 21 access points to baseline healthy status'
+                  : 'Inject 21-AP demonstration dataset (9 Online, 5 Congested, 4 Offline, 3 Feed Interrupted)'
+              }
+            >
+              {busySimulation ? (
+                <>
+                  <RefreshCw size={14} className="spin" />
+                  <span>{simulationActive ? 'Restoring…' : 'Injecting…'}</span>
+                </>
+              ) : simulationActive ? (
+                <>
+                  <RotateCcw size={14} className="sim-reset-icon" />
+                  <span>Reset to Healthy</span>
+                </>
+              ) : (
+                <>
+                  <Play size={13} fill="currentColor" />
+                  <span>Run Simulation</span>
+                </>
+              )}
+            </Button>
           </div>
         )}
       </div>
@@ -889,13 +873,13 @@ export default function Monitoring() {
               value={lab}
               onChange={(e: any) => {
                 setLab(e.target.value);
-                setLiveAps(null);
               }}
             >
-              <option value="">All Labs</option>
-              <option value="lab-1">Computing Lab A</option>
-              <option value="lab-2">Computing Lab B</option>
-              <option value="lab-3">Innovation Lab</option>
+              <option value="">All Labs (21 APs)</option>
+              <option value="lab-1">Computing Lab A (6 APs)</option>
+              <option value="lab-2">Computing Lab B (5 APs)</option>
+              <option value="lab-4">Computing Lab C (5 APs)</option>
+              <option value="lab-3">Innovation Lab (5 APs)</option>
             </Select>
           </div>
         </SectionHead>
@@ -1133,5 +1117,8 @@ export default function Monitoring() {
 }
 
 const RadioIcon = ({ pulsing, active }: { pulsing?: boolean; active?: boolean }) => (
-  <span className={`tiny-dot green ${pulsing ? 'feed-pulse' : active ? 'feed-live' : ''}`} />
+  <span
+    data-testid="telemetry-heartbeat-dot"
+    className={`tiny-dot green ${pulsing ? 'feed-pulse' : active ? 'feed-live' : ''}`}
+  />
 );

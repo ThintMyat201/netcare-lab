@@ -232,6 +232,7 @@ export function Assets() {
             <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => setForm({ ...form, lab_id: e.target.value })}>
               <option value="lab-1">Computing Lab A</option>
               <option value="lab-2">Computing Lab B</option>
+              <option value="lab-4">Computing Lab C</option>
               <option value="lab-3">Innovation Lab</option>
             </Select>
           </Field>
@@ -277,6 +278,7 @@ const USER_SCOPES = [
   'Core & AP Telemetry',
   'Computing Lab A',
   'Computing Lab B',
+  'Computing Lab C',
   'Innovation Lab',
 ];
 const ROLE_DEFAULT_SCOPE: Record<string, string> = {

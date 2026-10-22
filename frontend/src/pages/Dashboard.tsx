@@ -18,6 +18,7 @@ import {
   Users,
   Monitor,
   CalendarDays,
+  AlertTriangle,
 } from 'lucide-react';
 import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, useData } from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
@@ -28,6 +29,7 @@ import {
   mergeTickets,
   mergeChecklists,
   getLabInspectionProgress,
+  getSharedFleetAps,
 } from '../lib/workflow';
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
@@ -42,11 +44,11 @@ function RoleMetricsGrid({ cards }: { cards: any[] }) {
           <div className="metric-value">
             {m.value}
             {m.suffix && <span>{m.suffix}</span>}
-            <div className={`spark-bars spark-${i}`}>
-              {[18, 26, 22, 34, 25, 39, 32, 43, 37, 48, 44, 52].map((h, j) => (
-                <i key={j} style={{ height: Math.max(8, h - (i * 7 + (j % 3) * 4)) }} />
-              ))}
-            </div>
+          </div>
+          <div className={`spark-bars spark-${i}`} aria-hidden="true">
+            {[18, 26, 22, 34, 25, 39, 32, 43, 37, 48, 44, 52].map((h, j) => (
+              <i key={j} style={{ height: Math.max(8, h - (i * 7 + (j % 3) * 4)) }} />
+            ))}
           </div>
           <p>
             <span className="tiny-dot" />
@@ -75,7 +77,11 @@ export default function Dashboard() {
   useEffect(() => {
     const onUpdate = () => setVersion(v => v + 1);
     window.addEventListener('atlas-workflow-updated', onUpdate);
-    return () => window.removeEventListener('atlas-workflow-updated', onUpdate);
+    window.addEventListener('atlas-sim-state', onUpdate);
+    return () => {
+      window.removeEventListener('atlas-workflow-updated', onUpdate);
+      window.removeEventListener('atlas-sim-state', onUpdate);
+    };
   }, []);
 
   const refresh = () => {
@@ -89,25 +95,10 @@ export default function Dashboard() {
   const m = monitor.data;
   const o = overview.data;
 
-  // Normalize AP distribution if all APs arrived stuck in congested
+  // Dynamically synchronized 21-AP campus fleet state
   const normalizedAps = useMemo(() => {
-    if (!m?.aps) return [];
-    const allCongested = m.aps.length >= 4 && m.aps.every((a: any) => a.status === 'congested');
-    if (!allCongested) return m.aps;
-    const keepIdx = Math.max(0, m.aps.findIndex((a: any) => a.id === 'ap-07' || a.tag === 'AP-CL-B-03'));
-    return m.aps.map((ap: any, idx: number) =>
-      idx === keepIdx
-        ? ap
-        : {
-            ...ap,
-            status: 'online',
-            scenario: 'normal',
-            clients: 26 + ((idx * 7) % 18),
-            load: 32 + ((idx * 9) % 28),
-            latency: 11 + (idx % 6),
-          }
-    );
-  }, [m?.aps]);
+    return getSharedFleetAps();
+  }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apStats = useMemo(() => {
     const total = normalizedAps.length;
@@ -135,6 +126,20 @@ export default function Dashboard() {
     () => mergeChecklists(checklistsData.data),
     [checklistsData.data, version] // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  // Workstation checklist faults strictly isolated from AP telemetry incidents
+  const workstationChecklistFaults = useMemo(() => {
+    return allTickets.filter((t: any) => {
+      if (t.status === 'resolved') return false;
+      const tag = String(t.asset_tag || '').toUpperCase();
+      const assetId = String(t.asset_id || '').toLowerCase();
+      // Strictly exclude Access Point (AP-*) incidents
+      if (tag.startsWith('AP-') || tag.startsWith('AP ') || assetId.startsWith('ap-') || assetId.startsWith('ap_')) {
+        return false;
+      }
+      return true;
+    });
+  }, [allTickets]);
 
   if (!m || !o) {
     return (
@@ -176,37 +181,39 @@ export default function Dashboard() {
     user.role === 'assistant'
       ? [
           {
-            title: 'My Current Shift',
+            title: 'My Shift Schedule',
             value: currentShift?.lab_name?.replace('Computing ', '') || 'Lab A',
-            suffix: '',
+            suffix: currentShift?.shift_window ? ` · ${currentShift.shift_window.split(':')[0]}` : '',
             icon: CalendarDays,
             foot: `${currentShift?.shift_window || 'Morning Shift: 08:00 – 12:00 MYT'} · ${
-              currentShift?.acknowledged_at ? 'On Duty' : 'Pending Ack'
+              currentShift?.acknowledged_at ? 'On Duty (Active)' : 'Pending Acknowledgement'
             }`,
             tone: 'green',
           },
           {
-            title: 'Workstations Remaining to Inspect Today',
-            value: Math.max(0, currentShiftProgress.required - currentShiftProgress.checked),
-            suffix: `/ ${currentShiftProgress.required} in shift`,
-            icon: Monitor,
-            foot: `${totalRemainingWorkstations} total remaining across all 3 campus labs`,
+            title: 'Workstation Checklists Completed Today',
+            value: allChecklists.length,
+            suffix: ' verified',
+            icon: ClipboardCheck,
+            foot: `${currentShiftProgress.checked}/${currentShiftProgress.required} in shift · Synced with compliance`,
             tone: 'blue',
           },
           {
-            title: 'Open Lab Tickets',
-            value: openTickets.length,
-            suffix: '',
-            icon: Ticket,
-            foot: `${openTickets.length - networkIncidents.length} Tier 1 Hardware · ${networkIncidents.length} Tier 2 Network`,
+            title: 'Escalated Faults Status',
+            value: workstationChecklistFaults.length,
+            suffix: ' escalated',
+            icon: AlertTriangle,
+            foot: `${
+              workstationChecklistFaults.filter((t: any) => t.category === 'network' || t.tier_code === 'tier2').length
+            } Tier 2 Network escalated to NOC · Workstation faults`,
             tone: 'amber',
           },
           {
-            title: 'Completed Inspections',
-            value: allChecklists.length,
-            suffix: '',
-            icon: ClipboardCheck,
-            foot: 'Synced with shift inspection progress',
+            title: 'Workstations Remaining in Shift',
+            value: Math.max(0, currentShiftProgress.required - currentShiftProgress.checked),
+            suffix: `/ ${currentShiftProgress.required} target`,
+            icon: Monitor,
+            foot: `${totalRemainingWorkstations} remaining across all campus labs`,
             tone: 'violet',
           },
         ]
@@ -303,6 +310,17 @@ export default function Dashboard() {
           <RefreshCw size={14} className={monitor.busy ? 'spin' : ''} />
           Refresh
         </Button>
+        {user.role === 'assistant' && currentShift && !currentShift.acknowledged_at && (
+          <Button
+            id="dashboard-ack-shift-btn"
+            variant="secondary"
+            onClick={() => navigate('/shifts')}
+            title="Acknowledge your scheduled shift"
+          >
+            <CheckCheck size={14} />
+            Acknowledge Shift
+          </Button>
+        )}
         <Button
           id="dashboard-primary-action"
           variant="primary"
@@ -316,27 +334,21 @@ export default function Dashboard() {
             )
           }
         >
-          <Plus size={16} />
-          {user.role === 'engineer'
-            ? 'Device Monitoring'
-            : user.role === 'assistant'
-            ? 'Run Lab Inspection'
-            : 'Manage Shifts'}
+          {user.role === 'engineer' ? (
+            <>
+              <Radio size={15} /> Open Device Monitor <ArrowRight size={14} />
+            </>
+          ) : user.role === 'assistant' ? (
+            <>
+              <Plus size={16} /> Run Lab Inspection
+            </>
+          ) : (
+            <>
+              <Plus size={16} /> Manage Shifts
+            </>
+          )}
         </Button>
       </PageTitle>
-
-      {user.role !== 'assistant' && (
-        <div className="simulation-strip">
-          <div>
-            <FlaskConical size={16} />
-            <strong>Simulation Environment</strong>
-            <span>Live simulated network metrics and operational alerts.</span>
-          </div>
-          <button data-testid="open-simulation" onClick={() => setSimulation(true)}>
-            Simulation Controls <ArrowUpRight size={14} />
-          </button>
-        </div>
-      )}
 
       <ErrorBox error={monitor.error || overview.error} retry={refresh} />
 
@@ -350,59 +362,77 @@ export default function Dashboard() {
                 Open Shift Schedule <ArrowRight size={13} />
               </Link>
             </SectionHead>
-            <div className="table-wrap">
-              <table className="data-table">
+            <div className="table-wrap dashboard-shifts-wrap">
+              <table className="data-table dashboard-shifts-table">
                 <thead>
                   <tr>
-                    <th>LAB & SHIFT WINDOW</th>
-                    <th>STATUS</th>
-                    <th>INSPECTION PROGRESS</th>
-                    <th>ACTION</th>
+                    <th className="col-shift-name">LAB &amp; SHIFT WINDOW</th>
+                    <th className="col-shift-status">STATUS</th>
+                    <th className="col-shift-progress">INSPECTION PROGRESS</th>
+                    <th className="col-shift-action">ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allShifts.slice(0, 3).map((s: any) => {
                     const prog = getLabInspectionProgress(s.lab_id, s.lab_name, allChecklists, assetsData.data);
+                    const isAcknowledged = Boolean(s.acknowledged_at);
+                    const displayChecked = isAcknowledged ? prog.checked : 0;
+                    const displayPercent = isAcknowledged ? prog.percent : 0;
                     const statusKey =
                       s.lifecycle === 'completed'
                         ? 'completed'
-                        : s.lifecycle === 'in_progress'
+                        : isAcknowledged
                         ? 'on_duty'
                         : 'pending_ack';
                     return (
                       <tr key={s.id} data-testid={`dashboard-shift-${s.id}`}>
-                        <td>
+                        <td className="col-shift-name">
                           <strong>{s.lab_name}</strong>
                           <small className="cell-sub">{s.shift_window}</small>
                         </td>
-                        <td>
+                        <td className="col-shift-status">
                           <Status value={statusKey} id={`dashboard-shift-status-${s.id}`} />
                         </td>
-                        <td>
+                        <td className="col-shift-progress">
                           <div className="utilization">
                             <span className="utilization-bar online">
-                              <i style={{ width: `${prog.percent}%` }} />
+                              <i style={{ width: `${displayPercent}%` }} />
                             </span>
                             <span className="mono">
-                              {prog.checked}/{prog.required} Checked
+                              {displayChecked}/{prog.required} Checked
                             </span>
                           </div>
                         </td>
-                        <td>
-                          <Button
-                            id={`dashboard-run-inspection-${s.id}`}
-                            className="compact"
-                            variant="primary"
-                            onClick={() =>
-                              navigate(
-                                `/checklists?lab=${s.lab_id}&new=1${
-                                  prog.nextUnchecked ? `&asset=${prog.nextUnchecked.id}` : ''
-                                }`
-                              )
-                            }
-                          >
-                            Run Lab Inspection <ArrowRight size={13} />
-                          </Button>
+                        <td className="col-shift-action">
+                          <div className="dashboard-shift-actions">
+                            {!isAcknowledged && s.assistant_id === user.id ? (
+                              <Button
+                                id={`dashboard-shift-ack-${s.id}`}
+                                className="compact"
+                                variant="primary"
+                                onClick={() => navigate('/shifts')}
+                                title="Acknowledge shift to unlock lab inspection"
+                              >
+                                <CheckCheck size={12} /> Acknowledge Shift
+                              </Button>
+                            ) : (
+                              <Button
+                                id={`dashboard-run-inspection-${s.id}`}
+                                className="compact"
+                                variant="primary"
+                                disabled={!isAcknowledged && user.role === 'assistant'}
+                                onClick={() =>
+                                  navigate(
+                                    `/checklists?lab=${s.lab_id}&new=1${
+                                      prog.nextUnchecked ? `&asset=${prog.nextUnchecked.id}` : ''
+                                    }`
+                                  )
+                                }
+                              >
+                                Run Lab Inspection <ArrowRight size={13} />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -413,29 +443,47 @@ export default function Dashboard() {
           </section>
 
           <section className="activity-section">
-            <SectionHead title="Open Lab Tickets">
-              <Link to="/tickets" data-testid="activity-see-all" className="icon-button" title="View tickets">
-                <ArrowUpRight size={17} />
+            <SectionHead title="Escalated Faults Status">
+              <Link
+                to="/checklists"
+                data-testid="activity-see-all"
+                className="icon-button"
+                title="View Equipment Checklists"
+              >
+                <ClipboardCheck size={17} />
               </Link>
             </SectionHead>
             <div className="activity-list">
-              {openTickets.slice(0, 4).map((t: any) => (
-                <Link to={`/tickets?ticket=${t.id}`} className="activity-item" key={t.id}>
-                  <span className="activity-icon">
-                    <Ticket size={14} />
-                  </span>
-                  <div>
-                    <strong>
-                      {t.number} · {t.asset_tag}
-                    </strong>
-                    <p>{t.title}</p>
-                    <small>{t.tier}</small>
+              {workstationChecklistFaults.length ? (
+                workstationChecklistFaults.slice(0, 4).map((t: any) => (
+                  <div className="activity-item non-interactive" key={t.id}>
+                    <span className="activity-icon fault-escalated">
+                      <AlertTriangle size={14} />
+                    </span>
+                    <div>
+                      <div className="fault-item-header">
+                        <strong>
+                          {t.number} · {t.asset_tag}
+                        </strong>
+                        <span className={`fault-routed-pill ${t.category === 'network' ? 'tier2' : 'tier1'}`}>
+                          {t.category === 'network' ? 'Tier 2 NOC' : 'Tier 1'}
+                        </span>
+                      </div>
+                      <p>{t.title}</p>
+                      <small>
+                        Auto-routed to {t.category === 'network' ? 'Network Engineer' : 'Lab Support'} · Read-only tracking
+                      </small>
+                    </div>
                   </div>
-                </Link>
-              ))}
+                ))
+              ) : (
+                <div className="empty-subtle">
+                  <span>Zero open workstation faults. All campus equipment inspected and nominal.</span>
+                </div>
+              )}
             </div>
             <div className="activity-footer">
-              <span className="tiny-dot" /> Tier 2 network faults route to Network Engineering
+              <span className="tiny-dot" /> Incident resolution is managed by Tier-2 Network Engineers &amp; Admins
             </div>
           </section>
         </div>
@@ -473,13 +521,18 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="lab-list">
-                {['Computing Lab A', 'Computing Lab B', 'Innovation Lab'].map((name, i) => {
-                  const rows = normalizedAps.filter((a: any) => a.lab_name === name);
+                {[
+                  { id: 'lab-1', name: 'Computing Lab A' },
+                  { id: 'lab-2', name: 'Computing Lab B' },
+                  { id: 'lab-4', name: 'Computing Lab C' },
+                  { id: 'lab-3', name: 'Innovation Lab' },
+                ].map((l, i) => {
+                  const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
                   const issues = rows.filter((a: any) => a.status !== 'online').length;
                   return (
                     <Link
-                      key={name}
-                      to={`/monitoring?lab=lab-${i + 1}`}
+                      key={l.id}
+                      to={`/monitoring?lab=${l.id}`}
                       className="lab-row"
                       data-testid={`lab-health-${i}`}
                     >
@@ -487,7 +540,7 @@ export default function Dashboard() {
                         <Building2 size={16} />
                       </span>
                       <span>
-                        <strong>{name}</strong>
+                        <strong>{l.name}</strong>
                         <small>{rows.length} access points</small>
                       </span>
                       <span className={`lab-state ${issues ? 'warn' : ''}`}>
@@ -513,10 +566,11 @@ export default function Dashboard() {
                     value={lab}
                     onChange={(e: any) => setLab(e.target.value)}
                   >
-                    <option value="all">All Labs</option>
-                    <option value="lab-1">Computing Lab A</option>
-                    <option value="lab-2">Computing Lab B</option>
-                    <option value="lab-3">Innovation Lab</option>
+                    <option value="all">All Labs ({normalizedAps.length} APs)</option>
+                    <option value="lab-1">Computing Lab A (6 APs)</option>
+                    <option value="lab-2">Computing Lab B (5 APs)</option>
+                    <option value="lab-4">Computing Lab C (5 APs)</option>
+                    <option value="lab-3">Innovation Lab (5 APs)</option>
                   </Select>
                   <Link to="/monitoring" data-testid="view-all-aps">
                     View all access points <ArrowRight size={13} />

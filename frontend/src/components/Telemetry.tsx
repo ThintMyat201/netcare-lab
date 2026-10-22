@@ -1,6 +1,6 @@
 import React,{useState} from 'react';
 import {AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer} from 'recharts';
-import {ArrowUpRight,Radio,Wifi,ArrowRight,ArrowDownToLine,Activity,Users,Ellipsis,FlaskConical,RefreshCw,Check} from 'lucide-react';
+import {ArrowUpRight,Radio,Wifi,ArrowRight,ArrowDownToLine,Activity,Users,Ellipsis,FlaskConical,RefreshCw,Check,Plus,ChevronRight} from 'lucide-react';
 import {Link} from 'react-router-dom';
 import {Button,Status,Modal,Field,Select,ErrorBox,SectionHead} from './shared';
 import {api,errorText,time} from '../lib/api';
@@ -89,56 +89,61 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                       linkedTicket ? (
                         <Link
                           to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
-                          className="ap-ticket-link-btn"
+                          className="ap-ticket-pill-badge"
+                          id={`view-ticket-${a.id}`}
                           data-testid={`view-ticket-${a.id}`}
                           onClick={(e: any) => e.stopPropagation()}
                           title={`View linked ticket ${linkedTicket.number || ''}`}
                         >
-                          <ArrowUpRight size={13} />
-                          <span>View {linkedTicket.number || 'Ticket'}</span>
+                          <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
+                          <ArrowUpRight size={12} className="ap-pill-arrow" />
                         </Link>
                       ) : onCreateTicket ? (
-                        <Button
+                        <button
+                          type="button"
                           id={`create-ap-ticket-${a.id}`}
                           data-testid={`create-ap-ticket-${a.id}`}
-                          variant="primary"
-                          className="compact ap-ticket-btn"
+                          className="ap-add-ticket-btn"
                           onClick={(e: any) => {
                             e.stopPropagation();
                             onCreateTicket(a);
                           }}
+                          title={`Create incident ticket for ${a.tag} (${a.status})`}
                         >
-                          + Create Tier-2 Ticket
-                        </Button>
-                      ) : null
+                          <Plus size={12} />
+                          <span>Ticket</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ap-subtle-inspect-btn"
+                          data-testid={`inspect-${a.id}`}
+                          onClick={(e: any) => {
+                            e.stopPropagation();
+                            onSelect?.(a);
+                          }}
+                          title={`View telemetry details for ${a.tag}`}
+                        >
+                          <ChevronRight size={14} />
+                        </button>
+                      )
                     ) : (
-                      <Button
+                      <button
+                        type="button"
                         id={`ping-ap-${a.id}`}
                         data-testid={`ping-ap-${a.id}`}
-                        variant="secondary"
-                        className="compact ap-ping-btn"
+                        className="ap-healthy-indicator"
                         onClick={(e: any) => {
                           e.stopPropagation();
                           onSelect?.(a);
                         }}
-                        title={`Instant diagnostic: ${typeof a.latency === 'number' ? `${a.latency}ms nominal latency` : 'Healthy'}`}
+                        title={`Nominal ping latency: ${typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'} · View details`}
                       >
-                        <Activity size={13} />
-                        <span>{typeof a.latency === 'number' ? `${a.latency}ms · Ping / Details` : 'Ping / Details'}</span>
-                      </Button>
-                    )}
-                    {onSelect && (
-                      <button
-                        aria-label={`View details for ${a.tag}`}
-                        title="View details"
-                        className="icon-button"
-                        data-testid={`inspect-${a.id}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          onSelect(a);
-                        }}
-                      >
-                        <ArrowUpRight size={15} />
+                        <span className="ap-ping-dot" />
+                        <span className="mono ap-latency-text">
+                          {typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'}
+                        </span>
+                        <ChevronRight size={12} className="ap-indicator-chevron" />
                       </button>
                     )}
                   </div>

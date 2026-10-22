@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, ArrowUpRight, ArrowRight, CheckCircle2, Send, LayoutGrid, List, Clock, MessageSquarePlus } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ArrowUpRight,
+  ArrowRight,
+  CheckCircle2,
+  CheckCheck,
+  Play,
+  Send,
+  LayoutGrid,
+  List,
+  Clock,
+  MessageSquarePlus,
+} from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
-import { mergeTickets, saveLocalTicket, enrichTicket } from '../lib/workflow';
+import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 'slate' } {
@@ -87,40 +100,60 @@ export default function Tickets() {
     }
   };
 
-  const progress = async (status: string) => {
+  const handleStatusChange = async (ticket: any, newStatus: string, customNotes?: string) => {
+    if (!ticket) return;
     setBusy(true);
     setError('');
+    const nowIso = new Date().toISOString();
+    const defaultNote =
+      newStatus === 'resolved'
+        ? `Resolved and verified operational by ${user.name || 'Network Engineer'}.`
+        : `Investigation started by ${user.name || 'Network Engineer'}.`;
+    const note = customNotes && customNotes.trim() ? customNotes.trim() : defaultNote;
+
     try {
-      const r = await api.patch(`/tickets/${selected.id}`, { status, resolution_notes: notes });
+      const r = await api.patch(`/tickets/${ticket.id}`, { status: newStatus, resolution_notes: note });
       const enriched = enrichTicket(r.data);
       saveLocalTicket(enriched);
-      setSelected(enriched);
-      setNotes('');
-      list.load();
-    } catch (e) {
-      // Fallback for locally created tickets
-      const nowIso = new Date().toISOString();
+      if (selected?.id === ticket.id) setSelected(enriched);
+    } catch {
+      // Fallback for locally created / synthetic tickets
       const updated = enrichTicket({
-        ...selected,
-        status,
+        ...ticket,
+        status: newStatus,
         updated_at: nowIso,
-        resolved_at: status === 'resolved' ? nowIso : selected.resolved_at,
-        resolution_notes: status === 'resolved' ? notes : selected.resolution_notes,
+        resolved_at: newStatus === 'resolved' ? nowIso : ticket.resolved_at,
+        resolution_notes: newStatus === 'resolved' ? note : ticket.resolution_notes,
         events: [
-          ...(selected.events || []),
+          ...(ticket.events || []),
           {
             actor: user.name,
-            action: status === 'resolved' ? 'Resolved' : 'Investigation started',
-            notes,
+            action: newStatus === 'resolved' ? 'Resolved' : 'Investigation started',
+            notes: note,
             timestamp: nowIso,
           },
         ],
       });
       saveLocalTicket(updated);
-      setSelected(updated);
-      setNotes('');
-    } finally {
-      setBusy(false);
+      if (selected?.id === ticket.id) setSelected(updated);
+    }
+
+    if (newStatus === 'resolved') {
+      restoreDevice(ticket.asset_id || ticket.asset_tag);
+      setCreated(`Ticket ${ticket.number} marked as Resolved. ${ticket.asset_tag} restored to operational status.`);
+    } else if (newStatus === 'in_progress') {
+      setCreated(`Ticket ${ticket.number} moved to In Progress (assigned to ${user.name}).`);
+    }
+
+    setNotes('');
+    setVersion(v => v + 1);
+    setBusy(false);
+    list.load();
+  };
+
+  const progress = async (status: string) => {
+    if (selected) {
+      await handleStatusChange(selected, status, notes);
     }
   };
 
@@ -297,6 +330,28 @@ export default function Tickets() {
                               <Clock size={11} /> {sla.label}
                             </span>
                           </div>
+                          {user.role !== 'assistant' && t.status !== 'resolved' && (
+                            <div className="kanban-card-actions" onClick={e => e.stopPropagation()}>
+                              {t.status === 'open' && (
+                                <button
+                                  type="button"
+                                  className="kanban-action-btn start-work"
+                                  onClick={() => handleStatusChange(t, 'in_progress')}
+                                  title="Move to In Progress"
+                                >
+                                  <Play size={11} /> Start
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="kanban-action-btn resolve"
+                                onClick={() => handleStatusChange(t, 'resolved')}
+                                title="Resolve ticket &amp; restore device"
+                              >
+                                <CheckCircle2 size={11} /> Resolve
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -309,17 +364,17 @@ export default function Tickets() {
           })}
         </div>
       ) : rows?.length ? (
-        <div className="table-wrap">
+        <div className="table-wrap tickets-table-wrap">
           <table className="data-table tickets-table">
             <thead>
               <tr>
-                <th>TICKET</th>
-                <th>EQUIPMENT</th>
-                <th>TIER & ROUTING</th>
-                <th>PRIORITY & SLA</th>
-                <th>STATUS</th>
-                <th>REPORTED (MYT)</th>
-                <th />
+                <th className="col-ticket-title">TICKET</th>
+                <th className="col-ticket-equipment">EQUIPMENT</th>
+                <th className="col-ticket-tier">TIER &amp; ROUTING</th>
+                <th className="col-ticket-priority">PRIORITY &amp; SLA</th>
+                <th className="col-ticket-status">STATUS</th>
+                <th className="col-ticket-reported">REPORTED (MYT)</th>
+                <th className="col-ticket-action">ACTION</th>
               </tr>
             </thead>
             <tbody>
@@ -327,7 +382,7 @@ export default function Tickets() {
                 const sla = getSlaBadge(t);
                 return (
                   <tr key={t.id} data-testid={`ticket-row-${t.id}`}>
-                    <td>
+                    <td className="col-ticket-title">
                       <button
                         className="ticket-title"
                         data-testid={`open-ticket-${t.id}`}
@@ -341,38 +396,83 @@ export default function Tickets() {
                         <strong>{t.title}</strong>
                       </button>
                     </td>
-                    <td>
+                    <td className="col-ticket-equipment">
                       <strong className="mono small">{t.asset_tag}</strong>
                       <small className="cell-sub">{t.lab_name}</small>
                     </td>
-                    <td>
+                    <td className="col-ticket-tier">
                       <span className={`tier-pill ${t.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
                         {t.tier}
                       </span>
                       <small className="cell-sub">{t.assigned_name}</small>
                     </td>
-                    <td>
+                    <td className="col-ticket-priority">
                       <Status value={t.priority} id={`priority-${t.id}`} />
                       <small className={`cell-sub sla-text-${sla.tone}`}>{sla.label}</small>
                     </td>
-                    <td>
+                    <td className="col-ticket-status">
                       <Status value={t.status} id={`ticket-status-${t.id}`} />
                     </td>
-                    <td className="mono small">{time(t.created_at, true)} MYT</td>
-                    <td>
-                      <button
-                        className="icon-button"
-                        title="View ticket details"
-                        aria-label="View ticket details"
-                        data-testid={`ticket-detail-${t.id}`}
-                        onClick={() => {
-                          setSelected(t);
-                          setError('');
-                          setNotes('');
-                        }}
-                      >
-                        <ArrowUpRight size={16} />
-                      </button>
+                    <td className="col-ticket-reported mono small">
+                      {time(t.created_at, true)} MYT
+                    </td>
+                    <td className="col-ticket-action">
+                      <div className="ticket-actions-group">
+                        {user.role !== 'assistant' && (
+                          <>
+                            {t.status === 'open' && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="btn-ticket-action btn-start-work"
+                                data-testid={`start-work-${t.id}`}
+                                title="Move ticket to In Progress"
+                                disabled={busy}
+                                onClick={(e: any) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(t, 'in_progress');
+                                }}
+                              >
+                                <Play size={12} /> Start Work
+                              </Button>
+                            )}
+                            {t.status !== 'resolved' && (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                className="btn-ticket-action btn-resolve-ticket"
+                                data-testid={`resolve-ticket-${t.id}`}
+                                title="Mark ticket as resolved and restore device"
+                                disabled={busy}
+                                onClick={(e: any) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(t, 'resolved');
+                                }}
+                              >
+                                <CheckCircle2 size={12} /> Resolve
+                              </Button>
+                            )}
+                            {t.status === 'resolved' && (
+                              <span className="ticket-resolved-chip">
+                                <CheckCheck size={12} /> Resolved
+                              </span>
+                            )}
+                          </>
+                        )}
+                        <button
+                          className="icon-button"
+                          title="View ticket details"
+                          aria-label="View ticket details"
+                          data-testid={`ticket-detail-${t.id}`}
+                          onClick={() => {
+                            setSelected(t);
+                            setError('');
+                            setNotes('');
+                          }}
+                        >
+                          <ArrowUpRight size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -575,22 +675,26 @@ export default function Tickets() {
                     </Field>
                   )}
                   <ErrorBox error={error} />
-                  <Button
-                    variant="primary"
-                    id={selected.status === 'open' ? 'start-investigation' : 'resolve-ticket'}
-                    disabled={busy || (selected.status === 'in_progress' && notes.trim().length < 10)}
-                    onClick={() => progress(selected.status === 'open' ? 'in_progress' : 'resolved')}
-                  >
-                    {selected.status === 'open' ? (
-                      <>
+                  <div className="ticket-modal-actions">
+                    {selected.status === 'open' && (
+                      <Button
+                        variant="primary"
+                        id="start-investigation"
+                        disabled={busy}
+                        onClick={() => progress('in_progress')}
+                      >
                         <ArrowRight size={16} />Begin Investigation
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={16} />Mark as Resolved
-                      </>
+                      </Button>
                     )}
-                  </Button>
+                    <Button
+                      variant={selected.status === 'in_progress' ? 'primary' : 'secondary'}
+                      id="resolve-ticket"
+                      disabled={busy}
+                      onClick={() => progress('resolved')}
+                    >
+                      <CheckCircle2 size={16} />Mark as Resolved
+                    </Button>
+                  </div>
                 </>
               )
             )}

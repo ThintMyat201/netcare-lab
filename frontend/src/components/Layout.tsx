@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -22,17 +22,29 @@ import {
   ShieldCheck,
   X,
   Search,
+  Activity,
+  Power,
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { Logo, Button, Modal, ErrorBox } from './shared';
 import { useAuth } from '../context';
 import { roleLabel, errorText } from '../lib/api';
+import {
+  isMonitoringSimActive,
+  setMonitoringSimActive,
+  getAssistantUnacknowledgedShifts,
+  getSharedFleetAps,
+  mergeTickets,
+} from '../lib/workflow';
 
 const QUICK_JUMP_ITEMS = [
   { label: 'AP-CL-B-03 · Computing Lab B (10.20.2.13)', type: 'Access Point', to: '/monitoring?ap=ap-07', roles: ['admin', 'engineer'] },
   { label: 'AP-CL-A-01 · Computing Lab A (10.20.1.11)', type: 'Access Point', to: '/monitoring?ap=ap-01', roles: ['admin', 'engineer'] },
   { label: 'AP-IL-C-01 · Innovation Lab (10.20.3.11)', type: 'Access Point', to: '/monitoring?ap=ap-09', roles: ['admin', 'engineer'] },
-  { label: 'Computing Lab A · 2D Workstation Map', type: 'Lab Floor Map', to: '/checklists', roles: ['admin', 'engineer', 'assistant'] },
-  { label: 'Incident Tickets · Kanban Triage Board', type: 'Operations', to: '/tickets', roles: ['admin', 'engineer', 'assistant'] },
+  { label: 'Computing Lab A · 2D Workstation Map', type: 'Lab Floor Map', to: '/checklists', roles: ['admin', 'assistant'] },
+  { label: 'Incident Tickets · Kanban Triage Board', type: 'Operations', to: '/tickets', roles: ['admin', 'engineer'] },
   { label: 'Shift Handover & Compliance', type: 'Operations', to: '/shifts', roles: ['admin', 'assistant'] },
   { label: 'Operational SLA Reports & CSV Export', type: 'Administration', to: '/reports', roles: ['admin'] },
 ];
@@ -46,7 +58,6 @@ const getNavigation = (role: string) => {
           ['/', 'Dashboard', LayoutDashboard],
           ['/shifts', 'Shift Schedule', CalendarDays],
           ['/checklists', 'Equipment Checklists', ClipboardCheck],
-          ['/tickets', 'Incident Tickets', Tickets],
         ],
       },
     ];
@@ -59,7 +70,6 @@ const getNavigation = (role: string) => {
           ['/', 'Dashboard', LayoutDashboard],
           ['/monitoring', 'Device Monitoring', Radio],
           ['/tickets', 'Incident Tickets', Tickets],
-          ['/checklists', 'Equipment Checklists', ClipboardCheck],
         ],
       },
     ];
@@ -97,6 +107,67 @@ export const Layout = ({ children }: any) => {
   const [cmdQuery, setCmdQuery] = useState('');
   const [error, setError] = useState('');
   const [light, setLight] = useState(false);
+  const [simAnomalyActive, setSimAnomalyActive] = useState(() => isMonitoringSimActive());
+  const [bellOpen, setBellOpen] = useState(false);
+  const [version, setVersion] = useState(0);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onWorkflowUpdate = () => setVersion(v => v + 1);
+    window.addEventListener('atlas-workflow-updated', onWorkflowUpdate);
+    return () => window.removeEventListener('atlas-workflow-updated', onWorkflowUpdate);
+  }, []);
+
+  const isAssistant = user?.role === 'assistant';
+  const assistantUnackShifts = useMemo(() => {
+    if (!isAssistant) return [];
+    return getAssistantUnacknowledgedShifts(user);
+  }, [isAssistant, user, version]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const liveFleetAps = useMemo(() => {
+    return getSharedFleetAps();
+  }, [version, simAnomalyActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeApAnomalies = useMemo(() => {
+    return liveFleetAps.filter((a: any) => a.status !== 'online');
+  }, [liveFleetAps]);
+
+  const activeTickets = useMemo(() => {
+    return mergeTickets([]).filter((t: any) => t.status !== 'resolved');
+  }, [version, simAnomalyActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasAlertActive = isAssistant ? assistantUnackShifts.length > 0 : activeApAnomalies.length > 0;
+  const shouldShake = !isAssistant && activeApAnomalies.length > 0;
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setBellOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setBellOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [bellOpen]);
+
+  useEffect(() => {
+    const onSimState = (e: any) => {
+      if (typeof e?.detail?.active === 'boolean') {
+        setSimAnomalyActive(e.detail.active);
+      } else {
+        setSimAnomalyActive(isMonitoringSimActive());
+      }
+    };
+    window.addEventListener('atlas-sim-state', onSimState as EventListener);
+    return () => window.removeEventListener('atlas-sim-state', onSimState as EventListener);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -165,7 +236,7 @@ export const Layout = ({ children }: any) => {
                     >
                       <Icon size={18} />
                       <span>{label}</span>
-                      {path === '/monitoring' && <span className="nav-live" />}
+                      {path === '/monitoring' && <span className="nav-live" data-testid="nav-monitoring-live-dot" />}
                     </NavLink>
                   ))}
                 </div>
@@ -173,13 +244,13 @@ export const Layout = ({ children }: any) => {
           )}
         </nav>
         <div className="sidebar-bottom">
-          <div className="environment">
+          <div className="environment" data-testid="sidebar-heartbeat-badge">
             <FlaskConical size={18} />
             <div>
               <strong>Live Heartbeat Active</strong>
               <span>Auto-Telemetry & SLA Loop</span>
             </div>
-            <span className="environment-dot" />
+            <span className="environment-dot" data-testid="sidebar-heartbeat-dot" />
           </div>
           <button className="user-profile" data-testid="open-account" onClick={() => setAccount(true)}>
             <span className="avatar">
@@ -234,16 +305,236 @@ export const Layout = ({ children }: any) => {
             >
               {light ? <Moon size={17} /> : <Sun size={17} />}
             </button>
-            <Link
-              to="/alerts"
-              title="System Alerts"
-              aria-label="System Alerts"
-              className="icon-button notification-button"
-              data-testid="notification-bell"
-            >
-              <Bell size={18} />
-              <i />
-            </Link>
+
+            {/* Notification Bell with Role-Isolated Alerts */}
+            <div className="notification-bell-wrap" ref={bellRef}>
+              <button
+                type="button"
+                className={`icon-button notification-button ${hasAlertActive ? 'bell-alert-active' : ''}`}
+                data-testid="notification-bell"
+                title={
+                  isAssistant
+                    ? assistantUnackShifts.length
+                      ? `${assistantUnackShifts.length} Shift Reminder${assistantUnackShifts.length > 1 ? 's' : ''} (Click to view)`
+                      : 'Shift Reminders'
+                    : activeApAnomalies.length > 0
+                    ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected (Click to view)`
+                    : 'System Alerts'
+                }
+                aria-label={
+                  isAssistant
+                    ? `${assistantUnackShifts.length} Shift Reminders`
+                    : activeApAnomalies.length > 0
+                    ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected`
+                    : 'System Alerts'
+                }
+                aria-expanded={bellOpen}
+                onClick={() => setBellOpen(v => !v)}
+              >
+                <Bell size={18} className={shouldShake ? 'bell-icon-shake' : ''} />
+                {hasAlertActive ? (
+                  <span
+                    className={`bell-badge-pill ${shouldShake ? 'animate-pulse' : 'assistant-shift-badge'}`}
+                    data-testid="notification-badge-count"
+                  >
+                    <span className="bell-badge-dot" />
+                    <span className="bell-badge-text">
+                      {isAssistant
+                        ? `${assistantUnackShifts.length} SHIFT${assistantUnackShifts.length > 1 ? 'S' : ''} DUE`
+                        : `${activeApAnomalies.length} FAULTS`}
+                    </span>
+                  </span>
+                ) : (
+                  <i className="normal-bell-dot" />
+                )}
+              </button>
+
+              {/* Notification Dropdown Panel */}
+              {bellOpen && (
+                <div
+                  className="notification-dropdown"
+                  data-testid="notification-dropdown"
+                  role="region"
+                  aria-label={isAssistant ? 'Shift Schedule Reminders' : 'Active Fleet Alerts & Anomalies'}
+                >
+                  {isAssistant ? (
+                    <>
+                      <div className="notification-header">
+                        <div className="notification-header-title">
+                          <Bell size={15} />
+                          <strong>Shift Schedule Reminders</strong>
+                        </div>
+                        <span className={`notification-status-badge ${assistantUnackShifts.length ? 'alert' : 'nominal'}`}>
+                          {assistantUnackShifts.length
+                            ? `${assistantUnackShifts.length} Shift${assistantUnackShifts.length > 1 ? 's' : ''} Pending Ack`
+                            : 'All Shifts Acknowledged'}
+                        </span>
+                      </div>
+
+                      {assistantUnackShifts.length ? (
+                        <>
+                          <div className="notification-summary-chips">
+                            <span className="chip congested">
+                              <CalendarDays size={12} /> {assistantUnackShifts.length} Pending Acknowledgement
+                            </span>
+                          </div>
+
+                          <div className="notification-items-list">
+                            {assistantUnackShifts.map((s: any) => (
+                              <div className="notification-item congested" key={s.id}>
+                                <div className="notif-item-head">
+                                  <span className="notif-tag">{s.lab_name}</span>
+                                  <span className="notif-badge congested">Pending Ack</span>
+                                </div>
+                                <div className="notif-item-body">
+                                  <span>{s.shift_window}</span>
+                                  <Link
+                                    to="/shifts"
+                                    onClick={() => setBellOpen(false)}
+                                    className="notif-link"
+                                  >
+                                    Acknowledge Shift <ArrowUpRight size={12} />
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="notification-footer">
+                            <Link
+                              to="/shifts"
+                              className="notif-footer-link"
+                              onClick={() => setBellOpen(false)}
+                            >
+                              Open Shift Schedule <ArrowUpRight size={13} />
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="notification-empty">
+                          <CheckCircle2 size={26} className="text-green" />
+                          <strong>All Shifts Acknowledged</strong>
+                          <p>You have acknowledged your active shift. Ready for equipment inspections.</p>
+                          <Link
+                            to="/checklists"
+                            className="notif-link-center"
+                            onClick={() => setBellOpen(false)}
+                          >
+                            Go to Equipment Checklists <ArrowUpRight size={13} />
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="notification-header">
+                        <div className="notification-header-title">
+                          <Bell size={15} />
+                          <strong>Fleet Alerts &amp; Telemetry</strong>
+                        </div>
+                        {activeApAnomalies.length > 0 ? (
+                          <span className="notification-status-badge alert">{activeApAnomalies.length} Anomalies Active</span>
+                        ) : (
+                          <span className="notification-status-badge nominal">All Systems Nominal</span>
+                        )}
+                      </div>
+
+                      {activeApAnomalies.length > 0 ? (
+                        <>
+                          <div className="notification-summary-chips">
+                            <span className="chip congested">
+                              <Activity size={12} /> {liveFleetAps.filter((a: any) => a.status === 'congested').length} Congested
+                            </span>
+                            <span className="chip offline">
+                              <Power size={12} /> {liveFleetAps.filter((a: any) => a.status === 'offline').length} Offline
+                            </span>
+                            <span className="chip stale">
+                              <Radio size={12} /> {liveFleetAps.filter((a: any) => a.status === 'stale').length} Interrupted
+                            </span>
+                          </div>
+
+                          <div className="notification-items-list">
+                            {activeApAnomalies.map((ap: any) => {
+                              const isCongested = ap.status === 'congested';
+                              const isOffline = ap.status === 'offline';
+                              const badgeClass = isCongested ? 'congested' : isOffline ? 'offline' : 'stale';
+                              const badgeText = isCongested ? `${ap.load}% Load` : isOffline ? 'Offline' : 'Feed Interrupted';
+                              const simTicket = activeTickets.find(
+                                (t: any) => t.asset_id === ap.id || t.asset_tag === ap.tag
+                              );
+
+                              return (
+                                <div key={ap.id} className={`notification-item ${badgeClass}`}>
+                                  <div className="notif-item-head">
+                                    <span className="notif-tag">{ap.tag}</span>
+                                    <span className="notif-lab">{ap.lab_name}</span>
+                                    <span className={`notif-badge ${badgeClass}`}>{badgeText}</span>
+                                  </div>
+                                  <div className="notif-item-body">
+                                    <span>
+                                      {isCongested
+                                        ? `Airtime load (${ap.load}%) · ${ap.clients} clients`
+                                        : isOffline
+                                        ? 'Hardware / PoE link outage detected'
+                                        : 'Telemetry daemon timeout / interrupted'}
+                                      {simTicket ? (
+                                        <> · Linked to <strong>{simTicket.number}</strong></>
+                                      ) : null}
+                                    </span>
+                                    <Link
+                                      to={simTicket ? `/tickets?ticket=${simTicket.id}` : `/monitoring?ap=${ap.id}`}
+                                      onClick={() => setBellOpen(false)}
+                                      className="notif-link"
+                                    >
+                                      {simTicket ? 'View Ticket' : 'Investigate'} <ArrowUpRight size={12} />
+                                    </Link>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="notification-footer">
+                            <button
+                              type="button"
+                              className="notif-reset-btn"
+                              onClick={() => {
+                                setMonitoringSimActive(false);
+                                setSimAnomalyActive(false);
+                                setVersion(v => v + 1);
+                                setBellOpen(false);
+                              }}
+                            >
+                              <RotateCcw size={13} /> Reset Fleet to Healthy
+                            </button>
+                            <Link
+                              to="/monitoring"
+                              className="notif-footer-link"
+                              onClick={() => setBellOpen(false)}
+                            >
+                              Device Monitoring <ArrowUpRight size={13} />
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="notification-empty">
+                          <CheckCircle2 size={26} className="text-green" />
+                          <strong>All Systems Nominal</strong>
+                          <p>All 21 campus Access Points reporting healthy telemetry. Zero active fleet anomalies.</p>
+                          <Link
+                            to="/monitoring"
+                            className="notif-link-center"
+                            onClick={() => setBellOpen(false)}
+                          >
+                            Open Device Monitoring <ArrowUpRight size={13} />
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <main className="main-content" key={location.pathname}>

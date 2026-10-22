@@ -72,6 +72,7 @@ export default function Checklists() {
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState<any>(null);
   const [selected, setSelected] = useState<any>(null);
+  const [viewTicket, setViewTicket] = useState<any>(null);
 
   useEffect(() => {
     const onUpdate = () => setVersion(v => v + 1);
@@ -154,14 +155,28 @@ export default function Checklists() {
         ? 'Daniel Reyes (Network Engineer)'
         : 'Jamie Santos (Lab Support · Tier 1)';
 
-      const enrichedTickets = (saved.tickets || []).map((t: any) => {
+      const rawTickets = Array.isArray(saved.tickets) && saved.tickets.length > 0
+        ? saved.tickets
+        : hasFailedCheck
+        ? [
+            {
+              id: `inc-${Date.now()}`,
+              number: `INC-${1000 + Math.floor(Math.random() * 900)}`,
+              category: isNetworkFault ? 'network' : 'hardware',
+            },
+          ]
+        : [];
+
+      const enrichedTickets = rawTickets.map((t: any) => {
         const isNetTicket = t.category === 'network' || isNetworkFault;
+        const tag = saved.asset_tag || pcAsset?.tag || 'PC-CL-A-01';
+        const lab = saved.lab_name || pcAsset?.lab_name || 'Computing Lab A';
         const ticketRecord = {
           id: t.id,
           number: t.number,
           asset_id: draft.asset_id,
-          asset_tag: saved.asset_tag || pcAsset?.tag || 'PC-CL-A-01',
-          lab_name: saved.lab_name || pcAsset?.lab_name || 'Computing Lab A',
+          asset_tag: tag,
+          lab_name: lab,
           category: isNetTicket ? 'network' : t.category,
           tier: isNetTicket ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral',
           tier_code: isNetTicket ? 'tier2' : 'tier1',
@@ -170,10 +185,8 @@ export default function Checklists() {
             ? 'Daniel Reyes (Network Engineer)'
             : 'Jamie Santos (Lab Support · Tier 1)',
           title: isNetTicket
-            ? `Network / Connectivity fault on ${saved.asset_tag || pcAsset?.tag}`
-            : `${String(t.category).charAt(0).toUpperCase() + String(t.category).slice(1)} check failed on ${
-                saved.asset_tag || pcAsset?.tag
-              }`,
+            ? `Network / NIC Connectivity fault on ${tag}`
+            : `${String(t.category).charAt(0).toUpperCase() + String(t.category).slice(1)} check failed on ${tag}`,
           description:
             draft.notes ||
             (isNetTicket
@@ -195,7 +208,7 @@ export default function Checklists() {
               ? [
                   {
                     actor: 'Atlas Routing Engine',
-                    action: 'Routed to Network Engineer (Daniel Reyes)',
+                    action: 'Auto-routed to Network Engineer (Daniel Reyes)',
                     timestamp: saved.created_at || new Date().toISOString(),
                   },
                 ]
@@ -205,6 +218,7 @@ export default function Checklists() {
         saveLocalTicket(ticketRecord);
         return {
           ...t,
+          number: ticketRecord.number,
           tier: ticketRecord.tier,
           assigned_role: ticketRecord.assigned_role,
           assigned_name: ticketRecord.assigned_name,
@@ -226,6 +240,77 @@ export default function Checklists() {
       setLocked(false);
       load();
     } catch (e: any) {
+      const isNetworkError = !e.response || e.response.status >= 500;
+      if (isNetworkError) {
+        const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
+        const tag = pcAsset?.tag || 'PC-CL-A-01';
+        const lab = pcAsset?.lab_name || 'Computing Lab A';
+        const isNetworkFault = draft.checks?.network === 'fail' || (hasFailedCheck && faultTier === 'tier2');
+        const num = `INC-${1000 + Math.floor(Math.random() * 900)}`;
+        const localTicket = hasFailedCheck ? {
+          id: `inc-local-${Date.now()}`,
+          number: num,
+          asset_id: draft.asset_id,
+          asset_tag: tag,
+          lab_name: lab,
+          category: isNetworkFault ? 'network' : 'hardware',
+          tier: isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral',
+          tier_code: isNetworkFault ? 'tier2' : 'tier1',
+          assigned_role: isNetworkFault ? 'engineer' : 'assistant',
+          assigned_name: isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)',
+          title: isNetworkFault ? `Network / NIC Connectivity fault on ${tag}` : `Hardware check failed on ${tag}`,
+          description: draft.notes || 'Reported during physical shift inspection.',
+          status: 'open',
+          priority: isNetworkFault ? 'high' : 'medium',
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          resolution_notes: '',
+          events: [
+            {
+              actor: user.name,
+              action: `Ticket opened via Shift Checklist (${isNetworkFault ? 'Tier 2 · Network' : 'Tier 1 · Hardware'})`,
+              timestamp: new Date().toISOString(),
+            },
+            ...(isNetworkFault ? [{
+              actor: 'Atlas Routing Engine',
+              action: 'Auto-routed to Network Engineer (Daniel Reyes)',
+              timestamp: new Date().toISOString(),
+            }] : []),
+          ],
+        } : null;
+
+        if (localTicket) {
+          saveLocalTicket(localTicket);
+        }
+
+        const localChecklist = {
+          id: `chk-local-${Date.now()}`,
+          request_id: draft.request_id,
+          asset_id: draft.asset_id,
+          asset_tag: tag,
+          lab_id: pcAsset?.lab_id || (params.get('lab') || 'lab-1'),
+          lab_name: lab,
+          checks: draft.checks,
+          notes: draft.notes,
+          result: hasFailedCheck ? 'failed' : 'passed',
+          fault_tier: hasFailedCheck ? (isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral') : 'All Checks Passed',
+          assigned_role: hasFailedCheck ? (isNetworkFault ? 'engineer' : 'assistant') : null,
+          assigned_name: hasFailedCheck ? (isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)') : null,
+          created_by: user.id,
+          created_by_name: user.name,
+          created_at: new Date().toISOString(),
+          tickets: localTicket ? [localTicket] : [],
+        };
+
+        saveLocalChecklist(localChecklist);
+        setSuccess(localChecklist);
+        setDraft({ asset_id: '', checks: {}, notes: '', request_id: crypto.randomUUID() });
+        setLocked(false);
+        load();
+        return;
+      }
+
       setFormError(errorText(e));
       if (e.response) setLocked(false);
     } finally {
@@ -464,13 +549,32 @@ export default function Checklists() {
               <small className="mono">{pc.ip}</small>
               <div className="seat-tile-foot">
                 {pc.activeTicket ? (
-                  <Link
-                    to={`/tickets?ticket=${pc.activeTicket.id}`}
-                    className="seat-ticket-badge"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <AlertTriangle size={11} /> {pc.activeTicket.number}
-                  </Link>
+                  isAssistant ? (
+                    <span
+                      className="seat-ticket-badge non-nav"
+                      title={`Incident ${pc.activeTicket.number} · Escalated to Network Engineering (Click to view)`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setViewTicket({
+                          ...pc.activeTicket,
+                          routingLabel: 'Escalated to Network Eng',
+                          statusLabel: pc.activeTicket.status === 'resolved' ? 'Resolved' : 'Open',
+                          assetTag: pc.tag,
+                          labName: mapLab,
+                        });
+                      }}
+                    >
+                      <AlertTriangle size={11} /> {pc.activeTicket.number}
+                    </span>
+                  ) : (
+                    <Link
+                      to={`/tickets?ticket=${pc.activeTicket.id}`}
+                      className="seat-ticket-badge"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <AlertTriangle size={11} /> {pc.activeTicket.number}
+                    </Link>
+                  )
                 ) : pc.deskState === 'verified' ? (
                   <span className="seat-state-label verified">
                     <Check size={11} /> Verified
@@ -568,17 +672,55 @@ export default function Checklists() {
                     <td>
                       {c.tickets?.length ? (
                         <div className="checklist-ticket-cell">
-                          <div>
-                            {c.tickets.map((t: any) => (
-                              <Link
-                                className="inline-link"
-                                data-testid={`checklist-ticket-${c.id}-${t.id}`}
-                                key={t.id}
-                                to={`/tickets?ticket=${t.id}`}
-                              >
-                                {t.number}{' '}
-                              </Link>
-                            ))}
+                          <div className="checklist-ticket-chips">
+                            {c.tickets.map((t: any) => {
+                              const isNetworkFault = t.category === 'network' || hasNetTicket;
+                              const routingLabel = isNetworkFault
+                                ? 'Escalated to Network Eng'
+                                : 'Tier 1 Hardware Fault';
+                              const statusLabel =
+                                t.status === 'resolved'
+                                  ? 'Resolved'
+                                  : t.status === 'in_progress'
+                                  ? 'In Progress'
+                                  : 'Open';
+
+                              if (isAssistant) {
+                                return (
+                                  <button
+                                    type="button"
+                                    key={t.id}
+                                    className="checklist-ticket-badge non-nav"
+                                    data-testid={`checklist-ticket-${c.id}-${t.id}`}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setViewTicket({
+                                        ...t,
+                                        routingLabel,
+                                        statusLabel,
+                                        assetTag: c.asset_tag,
+                                        labName: c.lab_name,
+                                      });
+                                    }}
+                                    title={`Click to view ticket status: ${t.number || 'Incident'} (${statusLabel})`}
+                                  >
+                                    <span className="mono ticket-badge-num">{t.number}</span>
+                                    <span className="ticket-badge-pill">{routingLabel}</span>
+                                  </button>
+                                );
+                              }
+
+                              return (
+                                <Link
+                                  className="inline-link"
+                                  data-testid={`checklist-ticket-${c.id}-${t.id}`}
+                                  key={t.id}
+                                  to={`/tickets?ticket=${t.id}`}
+                                >
+                                  {t.number}{' '}
+                                </Link>
+                              );
+                            })}
                           </div>
                           <small className="cell-sub">
                             {hasNetTicket
@@ -636,20 +778,38 @@ export default function Checklists() {
                   <p>
                     {success.tickets.length} incident ticket(s) automatically created ({success.fault_tier}):
                   </p>
-                  {success.tickets.map((t: any) => (
-                    <Link
-                      className="linked-ticket"
-                      data-testid={`success-ticket-${t.id}`}
-                      key={t.id}
-                      to={`/tickets?ticket=${t.id}`}
-                    >
-                      <span>
-                        {t.number} · {t.category}
-                        {t.category === 'network' ? ' (Routed to Network Engineer)' : ' (Tier 1 Hardware)'}
-                      </span>
-                      <ArrowUpRight size={15} />
-                    </Link>
-                  ))}
+                  {success.tickets.map((t: any) =>
+                    isAssistant ? (
+                      <div
+                        className="linked-ticket-readonly"
+                        data-testid={`success-ticket-${t.id}`}
+                        key={t.id}
+                      >
+                        <div>
+                          <strong>{t.number}</strong> · {t.category === 'network' ? 'Network Connectivity' : 'Tier 1 Hardware'}
+                          <small className="block-muted">
+                            {t.category === 'network'
+                              ? 'Auto-routed to Tier 2 Network Engineer'
+                              : 'Logged in Lab Support Queue'}
+                          </small>
+                        </div>
+                        <span className="ticket-readonly-pill">Auto-Routed</span>
+                      </div>
+                    ) : (
+                      <Link
+                        className="linked-ticket"
+                        data-testid={`success-ticket-${t.id}`}
+                        key={t.id}
+                        to={`/tickets?ticket=${t.id}`}
+                      >
+                        <span>
+                          {t.number} · {t.category}
+                          {t.category === 'network' ? ' (Routed to Network Engineer)' : ' (Tier 1 Hardware)'}
+                        </span>
+                        <ArrowUpRight size={15} />
+                      </Link>
+                    )
+                  )}
                 </>
               ) : (
                 <p>All five verification checks passed.</p>
@@ -800,6 +960,49 @@ export default function Checklists() {
               {selected.notes || 'No additional notes provided.'}
             </p>
           </>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!viewTicket}
+        onClose={() => setViewTicket(null)}
+        title={`Incident ${viewTicket?.number || 'Ticket'} (Read-Only)`}
+        description={`${viewTicket?.assetTag || ''} · ${viewTicket?.labName || ''} · Physical Lab Inspection Fault`}
+        id="read-only-ticket-dialog"
+      >
+        {viewTicket && (
+          <div className="read-only-ticket-view">
+            <div className="ticket-meta-row">
+              <span className={`status ${viewTicket.status === 'resolved' ? 'online' : 'congested'}`}>
+                <i />
+                {viewTicket.statusLabel || (viewTicket.status === 'resolved' ? 'Resolved' : 'Open')}
+              </span>
+              <span className="tier-pill tier2">{viewTicket.routingLabel || 'Escalated to Network Eng'}</span>
+            </div>
+
+            <div className="detail-metrics read-only-metrics">
+              <div>
+                <span>Incident Reference</span>
+                <strong className="mono">{viewTicket.number || 'INC'}</strong>
+              </div>
+              <div>
+                <span>Ticket Status</span>
+                <strong>{viewTicket.statusLabel || (viewTicket.status === 'resolved' ? 'Resolved' : 'Open / In Progress')}</strong>
+              </div>
+              <div>
+                <span>Assigned Routing</span>
+                <strong>
+                  {viewTicket.category === 'network'
+                    ? 'Network Engineer (Tier 2 NOC)'
+                    : 'Tier 1 Lab Support'}
+                </strong>
+              </div>
+            </div>
+
+            <div className="notice" data-testid="assistant-ticket-notice">
+              This incident ticket was automatically logged from your physical lab inspection. Incident investigation and ticket resolution are managed exclusively by Tier-2 Network Engineers and Administrators.
+            </div>
+          </div>
         )}
       </Modal>
     </>
