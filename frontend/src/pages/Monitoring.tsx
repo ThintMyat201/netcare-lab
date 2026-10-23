@@ -18,6 +18,7 @@ import {
   Radio,
   Wrench,
   SlidersHorizontal,
+  MapPin,
 } from 'lucide-react';
 import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Modal, Field, useData } from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
@@ -32,6 +33,13 @@ import {
   setMonitoringSimActive,
   SIMULATION_FLEET_APS,
   getSharedFleetAps,
+  ZONE_FILTERS,
+  ZONE_GROUP_LABELS,
+  matchesZone,
+  zoneGroupOf,
+  CAMPUS_LOCATIONS,
+  AP_LOCATION_GROUPS,
+  formatLocationWithCode,
 } from '../lib/workflow';
 
 
@@ -176,6 +184,7 @@ export default function Monitoring() {
   const [lab, setLab] = useState(params.get('lab') || '');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [zone, setZone] = useState('all');
   const [simulation, setSimulation] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [detail, setDetail] = useState<any>(null);
@@ -717,11 +726,26 @@ export default function Monitoring() {
     );
   }
 
-  const filteredAps = labScopedAps.filter(
-    (a: any) =>
-      (status === 'all' || a.status === status) &&
-      (a.tag + ' ' + (a.lab_name || '')).toLowerCase().includes(search.toLowerCase())
-  );
+  const query = search.trim().toLowerCase();
+  const filteredAps = labScopedAps.filter((a: any) => {
+    if (status !== 'all' && a.status !== status) return false;
+    if (zone !== 'all' && !matchesZone(a, zone)) return false;
+    if (!query) return true;
+    const haystack = [
+      a.tag,
+      a.name,
+      a.lab_name,
+      a.placement,
+      a.ip,
+      a.model,
+      a.mac,
+      ZONE_GROUP_LABELS[zoneGroupOf(a)],
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return query.split(/\s+/).every(term => haystack.includes(term));
+  });
 
   const displayedLastUpdated = lastSampleAt || data?.last_updated || data?.server_time || new Date().toISOString();
   const isFeedActive = sampling || pulseActive || sampleInterval > 0;
@@ -863,7 +887,7 @@ export default function Monitoring() {
               <Search size={15} />
               <input
                 data-testid="search-access-points"
-                placeholder="Search access points by tag or lab…"
+                placeholder="Search by tag, location, landmark (e.g. bus stop, canteen)…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -875,24 +899,51 @@ export default function Monitoring() {
                 setLab(e.target.value);
               }}
             >
-              <option value="">All Labs (21 APs)</option>
-              <option value="lab-1">Computing Lab A (6 APs)</option>
-              <option value="lab-2">Computing Lab B (5 APs)</option>
-              <option value="lab-4">Computing Lab C (5 APs)</option>
-              <option value="lab-3">Innovation Lab (5 APs)</option>
+              <option value="">All Campus Locations ({activeAps.length} APs)</option>
+              {AP_LOCATION_GROUPS.map(group => (
+                <optgroup key={group.label} label={group.label}>
+                  {CAMPUS_LOCATIONS
+                    .filter(l => group.zones.includes(l.zone_group))
+                    .map(l => (
+                      <option key={l.id} value={l.id}>
+                        [{l.code}] {l.name} ({activeAps.filter((a: any) => a.lab_id === l.id).length} APs)
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
             </Select>
           </div>
         </SectionHead>
+
+        <div className="zone-pills monitor-zone-pills" role="group" aria-label="Filter access points by campus zone" data-testid="monitor-zone-filters">
+          <MapPin size={14} className="zone-pills-icon" />
+          {ZONE_FILTERS.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              data-testid={`monitor-zone-${key}`}
+              aria-pressed={zone === key}
+              className={`zone-pill ${zone === key ? 'active' : ''}`}
+              onClick={() => setZone(key)}
+            >
+              {label}
+              <span>{activeAps.filter((a: any) => (lab ? a.lab_id === lab : true) && matchesZone(a, key)).length}</span>
+            </button>
+          ))}
+        </div>
+
         <APTable
           aps={filteredAps}
           onSelect={inspect}
           onCreateTicket={user.role !== 'assistant' ? openCreateNetworkTicket : undefined}
           ticketsByAsset={activeTicketsByAsset}
           onResetFilter={
-            status !== 'all' || search
+            status !== 'all' || search || zone !== 'all' || lab
               ? () => {
                   setStatus('all');
                   setSearch('');
+                  setZone('all');
+                  setLab('');
                 }
               : undefined
           }
@@ -905,7 +956,7 @@ export default function Monitoring() {
         open={!!ticketAp}
         onClose={() => setTicketAp(null)}
         title={`Create Network Ticket · ${ticketAp?.tag || ''}`}
-        description={`${ticketAp?.lab_name || ''} · IP ${ticketAp?.ip || ''} · Tier 2 Network Escalation`}
+        description={`${formatLocationWithCode(ticketAp?.lab_name || ticketAp?.lab_id)} · IP ${ticketAp?.ip || ''} · Tier 2 Network Escalation`}
         id="ap-ticket-dialog"
       >
         {ticketAp && (
@@ -975,7 +1026,7 @@ export default function Monitoring() {
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.tag || 'Access Point Details'}
-        description={`${selected?.lab_name || ''} · Real-time device telemetry`}
+        description={`${formatLocationWithCode(selected?.lab_name || selected?.lab_id)} · Real-time device telemetry`}
         id="ap-detail-dialog"
       >
         <ErrorBox error={localError} />

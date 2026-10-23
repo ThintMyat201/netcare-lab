@@ -23,6 +23,13 @@ LAB_PROFILES={
     'lab-1':{'base_clients':30,'client_span':11,'base_load':34,'load_span':16,'tp_factor':0.95},
     'lab-2':{'base_clients':21,'client_span':9,'base_load':26,'load_span':15,'tp_factor':0.85},
     'lab-3':{'base_clients':46,'client_span':14,'base_load':48,'load_span':18,'tp_factor':1.22},
+    'lab-4':{'base_clients':27,'client_span':10,'base_load':32,'load_span':15,'tp_factor':0.92},
+    'zone-classroom-b':{'base_clients':34,'client_span':12,'base_load':36,'load_span':16,'tp_factor':0.8},
+    'zone-lt1':{'base_clients':52,'client_span':16,'base_load':46,'load_span':18,'tp_factor':0.7},
+    'zone-library':{'base_clients':38,'client_span':12,'base_load':34,'load_span':14,'tp_factor':0.9},
+    'zone-canteen':{'base_clients':48,'client_span':18,'base_load':44,'load_span':20,'tp_factor':0.6},
+    'zone-lounge':{'base_clients':29,'client_span':11,'base_load':30,'load_span':14,'tp_factor':0.75},
+    'zone-busstop':{'base_clients':14,'client_span':9,'base_load':20,'load_span':12,'tp_factor':0.55},
 }
 
 _SAMPLE_SEQ=0
@@ -365,7 +372,7 @@ async def simulation(body:Scenario,user=Depends(current)):
     query:dict={'kind':'AP','archived':False}
     target_id=body.lab_id or body.asset_id
     if target_id!='all':
-        if target_id in ('lab-1','lab-2','lab-3','Computing Lab A','Computing Lab B','Innovation Lab'):
+        if target_id.startswith(('lab-','zone-')) or target_id in ('Computing Lab A','Computing Lab B','Computing Lab C','Innovation Lab'):
             query['$or']=[{'lab_id':target_id},{'lab_name':target_id}]
         else:
             query['$or']=[{'id':target_id},{'tag':target_id}]
@@ -385,7 +392,7 @@ async def simulation(body:Scenario,user=Depends(current)):
     await generate_sample(at_now,overwrite=True)
     await sync_alerts()
     await sync_simulation_tickets(assets,body.scenario,user)
-    target_label='All Access Points' if target_id=='all' else (assets[0]['lab_name'] if target_id.startswith('lab-') else (assets[0]['tag'] if len(assets)==1 else target_id))
+    target_label='All Access Points' if target_id=='all' else (assets[0]['lab_name'] if target_id.startswith(('lab-','zone-')) else (assets[0]['tag'] if len(assets)==1 else target_id))
     await audit(user,'Scenario simulated',f'{target_label} · {body.scenario}')
     return {'message':f'Simulation ({SCENARIO_LABELS.get(body.scenario,body.scenario)}) applied to {len(assets)} access point(s).','scenario':body.scenario,'affected':len(assets)}
 

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
-import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice } from '../lib/workflow';
+import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice, formatLocationWithCode } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 'slate' } {
@@ -320,7 +320,7 @@ export default function Tickets() {
                           <div className="kanban-card-meta">
                             <span className="mono">{t.asset_tag}</span>
                             <span>·</span>
-                            <span>{t.lab_name}</span>
+                            <span>{formatLocationWithCode(t.lab_name || t.lab_id)}</span>
                           </div>
                           <div className="kanban-card-foot">
                             <span className={`tier-pill ${t.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
@@ -398,7 +398,7 @@ export default function Tickets() {
                     </td>
                     <td className="col-ticket-equipment">
                       <strong className="mono small">{t.asset_tag}</strong>
-                      <small className="cell-sub">{t.lab_name}</small>
+                      <small className="cell-sub">{formatLocationWithCode(t.lab_name || t.lab_id)}</small>
                     </td>
                     <td className="col-ticket-tier">
                       <span className={`tier-pill ${t.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
@@ -579,7 +579,7 @@ export default function Tickets() {
         open={!!selected && !open}
         onClose={() => setSelected(null)}
         title={selected?.number || 'Ticket Details'}
-        description={`${selected?.asset_tag || ''} · ${selected?.lab_name || ''}`}
+        description={`${selected?.asset_tag || ''} · ${formatLocationWithCode(selected?.lab_name || selected?.lab_id)}`}
         id="ticket-detail-dialog"
       >
         {selected && (

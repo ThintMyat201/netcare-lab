@@ -21,6 +21,7 @@ import {
   saveLocalChecklist,
   saveLocalTicket,
   getLabInspectionProgress,
+  formatLocationWithCode,
 } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, SectionHead, useData } from '../components/shared';
 
@@ -35,6 +36,7 @@ const categories: [string, string, string, string][] = [
 const LAB_NAMES: Record<string, string> = {
   'lab-1': 'Computing Lab A',
   'lab-2': 'Computing Lab B',
+  'lab-4': 'Computing Lab C',
   'lab-3': 'Innovation Lab',
 };
 
@@ -487,15 +489,16 @@ export default function Checklists() {
           <div>
             <span className="eyebrow">INTERACTIVE 2D ROOM LAYOUT</span>
             <h3>
-              <LayoutGrid size={17} /> {LAB_NAMES[mapLab] || 'Computing Lab A'} — Workstation Seat Map
+              <LayoutGrid size={17} /> {formatLocationWithCode(LAB_NAMES[mapLab] || 'Computing Lab A')} — Workstation Seat Map
             </h3>
           </div>
           <div className="lab-floor-controls">
             <div className="segmented">
               {[
-                ['lab-1', 'Computing Lab A'],
-                ['lab-2', 'Computing Lab B'],
-                ['lab-3', 'Innovation Lab'],
+                ['lab-1', 'Lab A (B-04-03)'],
+                ['lab-2', 'Lab B (B-04-04)'],
+                ['lab-4', 'Lab C (B-04-05)'],
+                ['lab-3', 'Innovation (Tech Lab 5-02)'],
               ].map(([id, label]) => (
                 <button
                   key={id}
@@ -620,9 +623,10 @@ export default function Checklists() {
           }}
         >
           <option value="all">All Labs</option>
-          <option value="lab-1">Computing Lab A</option>
-          <option value="lab-2">Computing Lab B</option>
-          <option value="lab-3">Innovation Lab</option>
+          <option value="lab-1">[B-04-03] Computing Lab A</option>
+          <option value="lab-2">[B-04-04] Computing Lab B</option>
+          <option value="lab-4">[B-04-05] Computing Lab C</option>
+          <option value="lab-3">[Tech Lab 5-02] Innovation Lab</option>
         </Select>
       </div>
 
@@ -655,7 +659,7 @@ export default function Checklists() {
                         </span>
                         <div>
                           <strong>{c.asset_tag}</strong>
-                          <small>{c.lab_name}</small>
+                          <small>{formatLocationWithCode(c.lab_name || c.lab_id)}</small>
                         </div>
                       </div>
                     </td>
@@ -831,7 +835,7 @@ export default function Checklists() {
                   <option value="">Select a workstation…</option>
                   {selectableWorkstations.map((a: any) => (
                     <option value={a.id} key={a.id}>
-                      {a.tag} · {a.lab_name}
+                      {a.tag} · {formatLocationWithCode(a.lab_name || a.lab_id)}
                     </option>
                   ))}
                 </Select>

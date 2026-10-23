@@ -35,11 +35,15 @@ async def _normalize_demo_timestamps():
                 await col.update_one({'id': doc['id']}, {'$set': updates})
 
 async def seed():
+    from campus import ensure_campus_inventory
     await indexes()
-    if not DEMO: return
+    if not DEMO:
+        await ensure_campus_inventory()
+        return
     if await db.meta.find_one({'key':'seeded'}):
         from monitoring import ensure_telemetry_history, sync_alerts
         await _normalize_demo_timestamps()
+        await ensure_campus_inventory()
         await ensure_telemetry_history()
         await sync_alerts()
         return
@@ -55,7 +59,7 @@ async def seed():
         await db.assets.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
     for i in range(30):
         lab=labs[i//10]
-        row={'id':f'pc-{i+1:02}','tag':f'PC-{lab["code"]}-{i%10+1:02}','name':f'Workstation {i%10+1:02}','kind':'PC','lab_id':lab['id'],'lab_name':lab['name'],'ip':f'10.30.{i//10+1}.{i%10+10}','model':'Dell OptiPlex 7010','archived':False,'created_at':stamp()}
+        row={'id':f'pc-{i+1:02}','tag':f'PC-{lab["code"]}-{i%10+1:02}','name':f'Workstation {i%10+1:02}','kind':'PC','lab_id':lab['id'],'lab_name':lab['name'],'ip':f'10.10.{i//10+1}.{i%10+11}','model':'Dell OptiPlex 7010','archived':False,'created_at':stamp()}
         await db.assets.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
     for i,(asset,cat,title) in enumerate([('pc-03','network','Intermittent network connection'),('pc-14','display','Display flickers during use'),('pc-22','peripherals','Keyboard not responding')]):
         a=await db.assets.find_one({'id':asset},{'_id':0})
@@ -70,6 +74,7 @@ async def seed():
     base=now().replace(minute=(now().minute//15)*15,second=0,microsecond=0)
     for step in range(96,-1,-1): await generate_sample(base-timedelta(minutes=15*step), seed_history=True)
     await sync_alerts()
-    for i,(action,detail,actor) in enumerate([('Campus initialized','3 labs · 12 access points · 30 workstations','Atlas Demo'),('Shift assigned','Jamie Santos → Computing Lab A','Alex Morgan'),('Ticket opened','PC-CL-A-03 · Network connection','Jamie Santos'),('Scenario simulated','AP-CL-B-03 · congestion','Alex Morgan'),('Investigation started','INC-1001 assigned to engineering','Daniel Reyes')]):
+    await ensure_campus_inventory()
+    for i,(action,detail,actor) in enumerate([('Campus initialized','4 labs · 6 campus zones · 28 access points · 30 workstations','Atlas Demo'),('Shift assigned','Jamie Santos → Computing Lab A','Alex Morgan'),('Ticket opened','PC-CL-A-03 · Network connection','Jamie Santos'),('Scenario simulated','AP-CL-B-03 · congestion','Alex Morgan'),('Investigation started','INC-1001 assigned to engineering','Daniel Reyes')]):
         await db.audit.insert_one({'id':uid(),'actor_id':'admin','actor':actor,'action':action,'detail':detail,'timestamp':(now()-timedelta(minutes=30-i*6)).isoformat()})
     await db.meta.update_one({'key':'seeded'},{'$set':{'value':True,'created_at':stamp()}},upsert=True)

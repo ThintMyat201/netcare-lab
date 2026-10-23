@@ -12,6 +12,7 @@ import Checklists from './pages/Checklists';
 import Tickets from './pages/Tickets';
 import Shifts from './pages/Shifts';
 import {Assets,Team} from './pages/Management';
+import Locations from './pages/Locations';
 import {Reports,Audit,Alerts} from './pages/Insights';
 import './App.css';
 const Protected=()=>{
@@ -34,6 +35,8 @@ const Protected=()=>{
       <Route path="/monitoring" element={<Navigate to="/" replace/>}/>
       <Route path="/alerts" element={<Navigate to="/" replace/>}/>
       <Route path="/assets" element={<Navigate to="/" replace/>}/>
+      <Route path="/inventory" element={<Navigate to="/" replace/>}/>
+      <Route path="/locations" element={<Navigate to="/" replace/>}/>
       <Route path="/users" element={<Navigate to="/" replace/>}/>
       <Route path="/reports" element={<Navigate to="/" replace/>}/>
       <Route path="/audit" element={<Navigate to="/" replace/>}/>
@@ -47,6 +50,8 @@ const Protected=()=>{
       <Route path="/checklists" element={<Navigate to="/tickets" replace/>}/>
       <Route path="/shifts" element={<Navigate to="/tickets" replace/>}/>
       <Route path="/assets" element={<Navigate to="/tickets" replace/>}/>
+      <Route path="/inventory" element={<Navigate to="/tickets" replace/>}/>
+      <Route path="/locations" element={<Navigate to="/tickets" replace/>}/>
       <Route path="/users" element={<Navigate to="/tickets" replace/>}/>
       <Route path="/reports" element={<Navigate to="/tickets" replace/>}/>
       <Route path="/audit" element={<Navigate to="/tickets" replace/>}/>
@@ -61,6 +66,8 @@ const Protected=()=>{
       {user.role==='admin'&&(
        <>
         <Route path="/assets" element={<Assets/>}/>
+        <Route path="/inventory" element={<Navigate to="/assets" replace/>}/>
+        <Route path="/locations" element={<Locations/>}/>
         <Route path="/users" element={<Team/>}/>
         <Route path="/reports" element={<Reports/>}/>
         <Route path="/audit" element={<Audit/>}/>

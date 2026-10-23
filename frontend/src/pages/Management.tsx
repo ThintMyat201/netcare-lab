@@ -15,32 +15,205 @@ import {
   ShieldCheck,
   CheckCheck,
   X,
+  MapPin,
+  Network,
+  Cpu,
+  GraduationCap,
+  UtensilsCrossed,
+  Bus,
+  SlidersHorizontal,
+  ChevronRight,
+  Sparkles,
+  Eye,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useAuth } from '../context';
 import { api, errorText, roleLabel } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import {
+  CAMPUS_LOCATIONS,
+  AP_LOCATION_GROUPS,
+  ZONE_FILTERS,
+  ZONE_GROUP_LABELS,
+  findLocation,
+  zoneGroupOf,
+  matchesZone,
+  vlanFor,
+  dhcpScopePreview,
+  networkLabel,
+  computeNextDevice,
+} from '../lib/workflow';
+
+const ZONE_ICONS: Record<string, any> = {
+  labs: Cpu,
+  academic: GraduationCap,
+  common: UtensilsCrossed,
+  outdoor: Bus,
+};
+
+const MAC_PATTERN = /^[0-9A-Fa-f]{2}([:-]?)[0-9A-Fa-f]{2}(\1[0-9A-Fa-f]{2}){4}$/;
+const SERIAL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9\-_/]{3,39}$/;
+
+export const ZoneBadge = ({ asset, testId }: { asset: any; testId?: string }) => {
+  const zone = zoneGroupOf(asset);
+  const Icon = ZONE_ICONS[zone] || MapPin;
+  return (
+    <span className={`zone-badge zone-${zone}`} data-testid={testId} title={ZONE_GROUP_LABELS[zone]}>
+      <Icon size={12} />
+      {asset.lab_name || findLocation(asset.lab_id)?.name || 'Unassigned'}
+    </span>
+  );
+};
 
 export function Assets() {
   const list = useData('/assets');
   const [open, setOpen] = useState(false);
+  const [detailsAsset, setDetailsAsset] = useState<any | null>(null);
+  const [isDrawerEditing, setIsDrawerEditing] = useState(false);
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState('all');
+  const [locFilter, setLocFilter] = useState('all');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const initial = { tag: '', name: '', kind: 'PC', lab_id: 'lab-1', model: '', ip: '' };
+  const initial = { tag: '', name: '', kind: 'PC', lab_id: 'lab-1', model: '', mac: '', placement: '' };
   const [form, setForm] = useState(initial);
+
+  const [editForm, setEditForm] = useState({
+    tag: '',
+    name: '',
+    kind: 'PC',
+    model: '',
+    lab_id: 'lab-1',
+    placement: '',
+    mac: '',
+  });
+
+  const selectedLocation = findLocation(form.lab_id);
+  const locationChoices = useMemo(
+    () => CAMPUS_LOCATIONS.filter(l => form.kind === 'AP' || l.zone_group === 'labs'),
+    [form.kind]
+  );
+
+  const editLocationChoices = useMemo(
+    () => CAMPUS_LOCATIONS.filter(l => editForm.kind === 'AP' || l.zone_group === 'labs'),
+    [editForm.kind]
+  );
+
+  const openAddModal = (targetLabId?: string) => {
+    const labId = targetLabId || form.lab_id || 'lab-1';
+    const next = computeNextDevice(form.kind, labId, list.data || []);
+    setForm({
+      tag: next.tag,
+      name: next.name,
+      kind: form.kind,
+      lab_id: labId,
+      model: next.model,
+      mac: '',
+      placement: next.placement,
+    });
+    setError('');
+    setOpen(true);
+  };
+
+  const changeKind = (nextKind: string) => {
+    const keepLocation = nextKind === 'AP' || findLocation(form.lab_id)?.zone_group === 'labs';
+    const targetLab = keepLocation ? form.lab_id : 'lab-1';
+    const next = computeNextDevice(nextKind, targetLab, list.data || []);
+    setForm({
+      ...form,
+      kind: nextKind,
+      lab_id: targetLab,
+      tag: next.tag,
+      name: next.name,
+      model: next.model,
+      placement: next.placement,
+    });
+  };
+
+  const changeLocation = (nextLabId: string) => {
+    const next = computeNextDevice(form.kind, nextLabId, list.data || []);
+    setForm({
+      ...form,
+      lab_id: nextLabId,
+      tag: next.tag,
+      name: next.name,
+      model: next.model,
+      placement: next.placement,
+    });
+  };
+
+  const changeEditKind = (nextKind: string) => {
+    const keepLocation = nextKind === 'AP' || findLocation(editForm.lab_id)?.zone_group === 'labs';
+    setEditForm({ ...editForm, kind: nextKind, lab_id: keepLocation ? editForm.lab_id : 'lab-1' });
+  };
 
   const submit = async (e: any) => {
     e.preventDefault();
+    const hwId = form.mac.trim();
+    if (hwId && !MAC_PATTERN.test(hwId) && !SERIAL_PATTERN.test(hwId)) {
+      setError('Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /), or leave blank to auto-generate.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      await api.post('/assets', form);
+      const res = await api.post('/assets', { ...form, mac: hwId, placement: form.placement.trim() });
+      const created = res.data || {};
       setOpen(false);
       setForm(initial);
-      setNotice('Equipment registered into inventory.');
+      setNotice(
+        `${created.tag || form.tag.toUpperCase()} registered in ${created.lab_name || selectedLocation?.name} · DHCP leased VLAN ${
+          created.vlan || vlanFor(form.kind)
+        } · ${created.ip || 'pending'} · Hardware ID ${created.mac || 'auto-generated'}.`
+      );
+      list.load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenDetails = (a: any, editMode: boolean = false) => {
+    setDetailsAsset(a);
+    setIsDrawerEditing(editMode);
+    setEditForm({
+      tag: a.tag || '',
+      name: a.name || '',
+      kind: a.kind || 'PC',
+      model: a.model || '',
+      lab_id: a.lab_id || 'lab-1',
+      placement: a.placement || '',
+      mac: a.mac || '',
+    });
+    setError('');
+  };
+
+  const submitEdit = async (e: any) => {
+    e.preventDefault();
+    if (!detailsAsset) return;
+    const hwId = editForm.mac.trim();
+    if (hwId && !MAC_PATTERN.test(hwId) && !SERIAL_PATTERN.test(hwId)) {
+      setError('Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /).');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.patch(`/assets/${detailsAsset.id}`, {
+        tag: editForm.tag.trim().toUpperCase(),
+        name: editForm.name.trim(),
+        kind: editForm.kind,
+        model: editForm.model.trim(),
+        lab_id: editForm.lab_id,
+        placement: editForm.placement.trim(),
+        mac: hwId,
+      });
+      const updated = res.data || {};
+      setDetailsAsset(updated);
+      setIsDrawerEditing(false);
+      setNotice(`Equipment ${updated.tag || editForm.tag} updated successfully.`);
       list.load();
     } catch (e) {
       setError(errorText(e));
@@ -55,7 +228,8 @@ export function Assets() {
     setError('');
     try {
       await api.patch(`/assets/${a.id}/archive`);
-      setNotice(`${a.tag} archived successfully. Operational logs retained.`);
+      if (detailsAsset?.id === a.id) setDetailsAsset(null);
+      setNotice(`${a.tag} archived successfully. Operational logs retained and DHCP lease released.`);
       list.load();
     } catch (e) {
       setError(errorText(e));
@@ -64,41 +238,110 @@ export function Assets() {
     }
   };
 
-  const rows = list.data?.filter((a: any) =>
-    (kind === 'all' || kind === 'archived'
-      ? kind === 'archived'
-        ? a.archived
-        : !a.archived
-      : !a.archived && a.kind === kind) &&
-    (a.tag + ' ' + a.name + ' ' + a.lab_name).toLowerCase().includes(search.toLowerCase())
-  );
+  const restoreAsset = async (a: any) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/assets/${a.id}`, { archived: false });
+      if (detailsAsset?.id === a.id) {
+        setDetailsAsset({ ...detailsAsset, archived: false });
+      }
+      setNotice(`${a.tag} restored to active inventory.`);
+      list.load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async (a: any) => {
+    if (!window.confirm(`Permanently delete equipment ${a.tag}? This cannot be undone.`)) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.delete(`/assets/${a.id}`);
+      if (detailsAsset?.id === a.id) setDetailsAsset(null);
+      setNotice(`${a.tag} deleted from system inventory.`);
+      list.load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const matchesKind = (a: any, key: string) =>
+    key === 'archived' ? a.archived : !a.archived && (key === 'all' || a.kind === key);
+
+  const matchesLocation = (a: any) => {
+    if (locFilter === 'all') return true;
+    const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
+    return a.lab_id === locFilter || a.lab_name === locFilter || loc?.id === locFilter;
+  };
+
+  const query = search.trim().toLowerCase();
+  const matchesSearch = (a: any) => {
+    if (!query) return true;
+    const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
+    const haystack = [
+      a.tag,
+      a.name,
+      a.lab_name,
+      loc?.name,
+      loc?.code,
+      loc?.block,
+      loc?.level,
+      a.placement,
+      a.mac,
+      a.ip,
+      a.model,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return query.split(/\s+/).every(term => haystack.includes(term));
+  };
+
+  const all = Array.isArray(list.data) ? list.data : [];
+  const rows = all.filter((a: any) => matchesKind(a, kind) && matchesLocation(a) && matchesSearch(a));
 
   return (
     <>
       <PageTitle
         title="Hardware Inventory"
-        subtitle="Monitored access points, workstations, and equipment operational records."
+        subtitle="Campus-wide access points and lab workstations — physical location, placement landmark, hardware ID, and DHCP-assigned network lease."
       >
-        <Button id="add-asset" variant="primary" onClick={() => { setOpen(true); setError(''); }}>
-          <Plus size={16} />Add Equipment
+        <Button
+          id="add-asset"
+          variant="primary"
+          onClick={() => openAddModal()}
+        >
+          <Plus size={16} />
+          Add Equipment
         </Button>
       </PageTitle>
 
-      <ErrorBox error={list.error || (!open && error)} retry={list.load} />
+      <ErrorBox error={list.error || (!open && !detailsAsset && error)} retry={list.load} />
 
       {notice && (
         <div className="success-box" data-testid="asset-confirmation">
-          {notice}
+          <CheckCheck size={17} />
+          <span>{notice}</span>
+          <button className="text-button" onClick={() => setNotice('')}>
+            Dismiss
+          </button>
         </div>
       )}
 
+      {/* Primary Tabs + Compact Location Dropdown & Search Bar */}
       <div className="listing-toolbar">
         <div className="filter-tabs">
           {[
             ['all', 'All Hardware'],
             ['AP', 'Access Points'],
             ['PC', 'Workstations'],
-            ['archived', 'Archived']
+            ['archived', 'Archived'],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -107,90 +350,161 @@ export function Assets() {
               onClick={() => setKind(key)}
             >
               {label}
-              <span>
-                {list.data?.filter((a: any) =>
-                  key === 'archived' ? a.archived : !a.archived && (key === 'all' || a.kind === key)
-                ).length || 0}
-              </span>
+              <span>{all.filter((a: any) => matchesKind(a, key) && matchesLocation(a)).length}</span>
             </button>
           ))}
         </div>
 
-        <div className="search-field">
-          <Search size={15} />
-          <input
-            data-testid="asset-search"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search equipment by tag, name, or lab…"
-          />
+        <div className="toolbar-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div className="location-filter-wrap">
+            <select
+              aria-label="Filter by Campus Location"
+              data-testid="asset-location-select"
+              className="compact-select"
+              value={locFilter}
+              onChange={e => setLocFilter(e.target.value)}
+            >
+              <option value="all">All Campus Locations</option>
+              {CAMPUS_LOCATIONS.map(loc => (
+                <option key={loc.id} value={loc.id}>
+                  [{loc.code}] {loc.name} ({loc.block})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="search-field inventory-search">
+            <Search size={15} />
+            <input
+              data-testid="asset-search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search equipment by tag, room code, location, MAC…"
+              aria-label="Search equipment by tag, location, placement landmark, or MAC"
+            />
+            {search && (
+              <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setSearch('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {list.busy && !list.data ? (
         <Loading />
-      ) : rows?.length ? (
-        <div className="table-wrap">
-          <table className="data-table">
+      ) : rows.length ? (
+        <div className="inventory-card-wrapper">
+          <table className="clean-inventory-table">
             <thead>
               <tr>
-                <th>EQUIPMENT</th>
-                <th>LAB LOCATION</th>
-                <th>TYPE / MODEL</th>
-                <th>IP ADDRESS</th>
-                <th>STATUS</th>
-                <th />
+                <th style={{ width: '30%' }}>DEVICE</th>
+                <th style={{ width: '25%' }}>TYPE &amp; MODEL</th>
+                <th style={{ width: '27%' }}>LOCATION</th>
+                <th style={{ width: '18%', textAlign: 'right' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((a: any) => (
-                <tr key={a.id} data-testid={`asset-row-${a.id}`}>
-                  <td>
-                    <div className="asset-name">
-                      <span className="asset-icon">{a.kind === 'PC' ? <Monitor size={16} /> : <Wifi size={16} />}</span>
-                      <div>
-                        <strong>{a.tag}</strong>
-                        <small>{a.name}</small>
+              {rows.map((a: any) => {
+                const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
+                const locCode = loc?.code || 'CAMPUS';
+                const isPC = a.kind === 'PC';
+                return (
+                  <tr
+                    key={a.id}
+                    data-testid={`asset-row-${a.id}`}
+                    onClick={() => handleOpenDetails(a, false)}
+                  >
+                    {/* 1. DEVICE: Icon + Tag + Inline Name */}
+                    <td>
+                      <div className="device-cell">
+                        <div className={`device-icon-wrap ${isPC ? 'pc-icon' : 'ap-icon'}`}>
+                          {isPC ? <Monitor size={15} /> : <Wifi size={15} />}
+                        </div>
+                        <span className="device-tag">{a.tag}</span>
+                        <span className="device-subname">· {a.name}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td>{a.lab_name}</td>
-                  <td>
-                    {a.model || a.kind}
-                    <small className="cell-sub">{a.kind === 'PC' ? 'Workstation' : 'Access Point'}</small>
-                  </td>
-                  <td className="mono small">{a.ip || '—'}</td>
-                  <td>
-                    <Status value={a.archived ? 'archived' : 'active'} id={`asset-state-${a.id}`} />
-                  </td>
-                  <td>
-                    {!a.archived && (
-                      <button
-                        className="icon-button"
-                        title="Archive equipment"
-                        aria-label={`Archive ${a.tag}`}
-                        data-testid={`archive-asset-${a.id}`}
-                        disabled={busy}
-                        onClick={() => archive(a)}
-                      >
-                        <Archive size={15} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    {/* 2. TYPE & MODEL: Pill badge + Model */}
+                    <td>
+                      <div className="type-model-cell">
+                        <span className={`kind-pill ${isPC ? 'kind-workstation' : 'kind-ap'}`}>
+                          {isPC ? 'Workstation' : 'Access Point'}
+                        </span>
+                        <span className="model-name">
+                          {a.model || (isPC ? 'Dell OptiPlex 7010' : 'Aruba AP-515')}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* 3. LOCATION: Room Code badge + Name (Strict 1 line) */}
+                    <td>
+                      <div className="location-compact-cell">
+                        <span className="room-code-badge" data-testid={`asset-room-code-${a.id}`}>
+                          [{locCode}]
+                        </span>
+                        <span className="location-compact-name">
+                          {a.lab_name || loc?.name || 'Unassigned'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* 4. ACTIONS: Inspect/Edit + Archive/Delete */}
+                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          className="btn-inspect"
+                          data-testid={`details-asset-${a.id}`}
+                          onClick={() => handleOpenDetails(a, false)}
+                        >
+                          <Pencil size={12} />
+                          Inspect / Edit
+                        </button>
+                        {!a.archived ? (
+                          <button
+                            type="button"
+                            className="icon-btn-subtle"
+                            title="Archive equipment"
+                            aria-label={`Archive ${a.tag}`}
+                            data-testid={`archive-asset-${a.id}`}
+                            disabled={busy}
+                            onClick={() => archive(a)}
+                          >
+                            <Archive size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="icon-btn-subtle danger"
+                            title="Delete equipment"
+                            aria-label={`Delete ${a.tag}`}
+                            data-testid={`delete-asset-${a.id}`}
+                            disabled={busy}
+                            onClick={() => handleDelete(a)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
-        <Empty text="No equipment found matching your criteria." />
+        <Empty text="No equipment found in this location or matching your search." />
       )}
 
+      {/* 2-CLICK SMART AUTO-FILLING REGISTER MODAL */}
       <Modal
         open={open}
         onClose={setOpen}
         title="Register Equipment"
-        description="Campus network inventory · unique equipment tag required"
+        description="Campus IT asset registration · network address is leased automatically by DHCP"
         id="asset-dialog"
       >
         <form onSubmit={submit}>
@@ -204,11 +518,11 @@ export function Assets() {
                 data-testid="asset-tag"
                 value={form.tag}
                 onChange={e => setForm({ ...form, tag: e.target.value })}
-                placeholder="e.g. PC-CL-A-11 or AP-CL-A-01"
+                placeholder={form.kind === 'AP' ? 'e.g. AP-CANTEEN-03' : 'e.g. PC-CL-A-11'}
               />
             </Field>
             <Field label="Equipment Type" id="asset-kind">
-              <Select id="asset-kind" value={form.kind} onChange={(e: any) => setForm({ ...form, kind: e.target.value })}>
+              <Select id="asset-kind" value={form.kind} onChange={(e: any) => changeKind(e.target.value)}>
                 <option value="PC">Workstation</option>
                 <option value="AP">Access Point</option>
               </Select>
@@ -224,17 +538,48 @@ export function Assets() {
               data-testid="asset-name"
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Student Workstation 11"
+              placeholder={form.kind === 'AP' ? 'e.g. Campus Canteen · AP 03' : 'e.g. Student Workstation 11'}
             />
           </Field>
 
-          <Field label="Assigned Lab" id="asset-lab">
-            <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => setForm({ ...form, lab_id: e.target.value })}>
-              <option value="lab-1">Computing Lab A</option>
-              <option value="lab-2">Computing Lab B</option>
-              <option value="lab-4">Computing Lab C</option>
-              <option value="lab-3">Innovation Lab</option>
+          <Field label="Assigned Location / Zone" id="asset-lab">
+            <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => changeLocation(e.target.value)}>
+              {form.kind === 'AP'
+                ? AP_LOCATION_GROUPS.map(group => (
+                    <optgroup key={group.label} label={group.label}>
+                      {locationChoices
+                        .filter(l => group.zones.includes(l.zone_group))
+                        .map(l => (
+                          <option key={l.id} value={l.id}>
+                            [{l.code}] {l.name} ({l.block}, {l.level})
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))
+                : locationChoices.map(l => (
+                    <option key={l.id} value={l.id}>
+                      [{l.code}] {l.name} ({l.block}, {l.level})
+                    </option>
+                  ))}
             </Select>
+          </Field>
+          <p className="field-hint" data-testid="asset-location-hint">
+            {form.kind === 'AP'
+              ? 'Access points can be deployed anywhere on campus — labs, classrooms, library, canteen, lounge, or outdoor bus stop.'
+              : 'Lab workstations are registered to a campus computing lab.'}
+          </p>
+
+          <Field label="Physical Placement / Landmark" id="asset-placement">
+            <input
+              required
+              minLength={3}
+              maxLength={120}
+              id="asset-placement"
+              data-testid="asset-placement"
+              value={form.placement}
+              onChange={e => setForm({ ...form, placement: e.target.value })}
+              placeholder={selectedLocation?.placeholder || 'e.g. Row 1, Desk 1'}
+            />
           </Field>
 
           <div className="form-grid">
@@ -245,29 +590,389 @@ export function Assets() {
                 id="asset-model"
                 value={form.model}
                 onChange={e => setForm({ ...form, model: e.target.value })}
-                placeholder="e.g. Dell OptiPlex 7090"
+                placeholder={form.kind === 'AP' ? 'e.g. Aruba AP-535' : 'e.g. Dell OptiPlex 7090'}
               />
             </Field>
-            <Field label="IP Address (Optional)" id="asset-ip">
+            <Field label="MAC Address / Serial Tag" id="asset-mac">
               <input
-                maxLength={45}
-                data-testid="asset-ip"
-                id="asset-ip"
-                value={form.ip}
-                onChange={e => setForm({ ...form, ip: e.target.value })}
-                placeholder="e.g. 10.10.1.45"
+                maxLength={40}
+                data-testid="asset-mac"
+                id="asset-mac"
+                value={form.mac}
+                onChange={e => setForm({ ...form, mac: e.target.value })}
+                placeholder="AA:BB:CC:11:22:33 (blank = auto)"
+                spellCheck={false}
+                autoCapitalize="characters"
               />
             </Field>
           </div>
 
+          {/* Clean Single-line DHCP Provisioning Notice */}
+          <div
+            className="field-hint"
+            data-testid="asset-dhcp-preview"
+            style={{
+              marginTop: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--muted)',
+            }}
+          >
+            <Network size={14} style={{ flexShrink: 0, color: '#60a5fa' }} />
+            <span>Network IP &amp; MAC are provisioned automatically upon registration ({dhcpScopePreview(form.kind, form.lab_id)}).</span>
+          </div>
+
           <ErrorBox error={error} />
 
-          <Button id="save-asset" variant="primary" type="submit" disabled={busy}>
+          <Button id="save-asset" variant="primary" type="submit" disabled={busy} style={{ marginTop: '16px' }}>
             <Save size={15} />
-            {busy ? 'Saving…' : 'Register Equipment'}
+            {busy ? 'Registering…' : 'Register Equipment'}
           </Button>
         </form>
       </Modal>
+
+      {/* SLIDE-OVER EQUIPMENT INSPECTOR DRAWER */}
+      {detailsAsset && (
+        <>
+          <div
+            className="slide-over-scrim"
+            onClick={() => {
+              setDetailsAsset(null);
+              setIsDrawerEditing(false);
+            }}
+          />
+          <aside
+            className="slide-over-drawer"
+            aria-label="Equipment Inspector"
+            data-testid="asset-inspector-drawer"
+          >
+            <div className="drawer-header">
+              <div className="drawer-header-info">
+                <div className={`device-icon-wrap ${detailsAsset.kind === 'PC' ? 'pc-icon' : 'ap-icon'}`}>
+                  {detailsAsset.kind === 'PC' ? <Monitor size={16} /> : <Wifi size={16} />}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="drawer-title-tag">{detailsAsset.tag}</span>
+                    <span className={`drawer-status-pill ${detailsAsset.archived ? 'archived' : 'active'}`}>
+                      {detailsAsset.archived ? 'Archived' : 'Active'}
+                    </span>
+                  </div>
+                  <small style={{ color: 'var(--muted)', fontSize: '12px' }}>{detailsAsset.name}</small>
+                </div>
+              </div>
+              <button
+                className="icon-btn-subtle"
+                onClick={() => {
+                  setDetailsAsset(null);
+                  setIsDrawerEditing(false);
+                }}
+                aria-label="Close inspector"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="drawer-body">
+              {/* Mode Toggle Button */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {isDrawerEditing ? 'Editing Equipment Record' : 'Asset Specifications'}
+                </span>
+                <button
+                  type="button"
+                  className="btn-inspect"
+                  onClick={() => setIsDrawerEditing(!isDrawerEditing)}
+                >
+                  {isDrawerEditing ? <Eye size={13} /> : <Pencil size={13} />}
+                  {isDrawerEditing ? 'View Mode' : 'Edit Details'}
+                </button>
+              </div>
+
+              {isDrawerEditing ? (
+                <form id="drawer-edit-form" onSubmit={submitEdit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <Field label="Equipment Tag" id="edit-asset-tag">
+                    <input
+                      required
+                      minLength={3}
+                      maxLength={40}
+                      id="edit-asset-tag"
+                      data-testid="edit-asset-tag"
+                      value={editForm.tag}
+                      onChange={e => setEditForm({ ...editForm, tag: e.target.value })}
+                    />
+                  </Field>
+
+                  <div className="form-grid">
+                    <Field label="Equipment Type" id="edit-asset-kind">
+                      <Select id="edit-asset-kind" value={editForm.kind} onChange={(e: any) => changeEditKind(e.target.value)}>
+                        <option value="PC">Workstation</option>
+                        <option value="AP">Access Point</option>
+                      </Select>
+                    </Field>
+                    <Field label="Hardware Model" id="edit-asset-model">
+                      <input
+                        maxLength={80}
+                        id="edit-asset-model"
+                        data-testid="edit-asset-model"
+                        value={editForm.model}
+                        onChange={e => setEditForm({ ...editForm, model: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field label="Device Name" id="edit-asset-name">
+                    <input
+                      required
+                      minLength={2}
+                      maxLength={80}
+                      id="edit-asset-name"
+                      data-testid="edit-asset-name"
+                      value={editForm.name}
+                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    />
+                  </Field>
+
+                  <Field label="Assigned Campus Location" id="edit-asset-lab">
+                    <Select
+                      id="edit-asset-lab"
+                      value={editForm.lab_id}
+                      onChange={(e: any) => setEditForm({ ...editForm, lab_id: e.target.value })}
+                    >
+                      {editForm.kind === 'AP'
+                        ? AP_LOCATION_GROUPS.map(group => (
+                            <optgroup key={group.label} label={group.label}>
+                              {editLocationChoices
+                                .filter(l => group.zones.includes(l.zone_group))
+                                .map(l => (
+                                  <option key={l.id} value={l.id}>
+                                    [{l.code}] {l.name} ({l.block}, {l.level})
+                                  </option>
+                                ))}
+                            </optgroup>
+                          ))
+                        : editLocationChoices.map(l => (
+                            <option key={l.id} value={l.id}>
+                              [{l.code}] {l.name} ({l.block}, {l.level})
+                            </option>
+                          ))}
+                    </Select>
+                  </Field>
+
+                  <Field label="Physical Placement / Desk Note" id="edit-asset-placement">
+                    <input
+                      required
+                      minLength={3}
+                      maxLength={120}
+                      id="edit-asset-placement"
+                      data-testid="edit-asset-placement"
+                      value={editForm.placement}
+                      onChange={e => setEditForm({ ...editForm, placement: e.target.value })}
+                      placeholder="e.g. Lab A · Row 1, Desk 3"
+                    />
+                  </Field>
+
+                  <Field label="MAC Address / Serial Tag" id="edit-asset-mac">
+                    <input
+                      maxLength={40}
+                      id="edit-asset-mac"
+                      data-testid="edit-asset-mac"
+                      value={editForm.mac}
+                      onChange={e => setEditForm({ ...editForm, mac: e.target.value })}
+                      placeholder="AA:BB:CC:11:22:33"
+                      spellCheck={false}
+                      autoCapitalize="characters"
+                    />
+                  </Field>
+
+                  <ErrorBox error={error} />
+                </form>
+              ) : (
+                <>
+                  {/* Card 1: Exact Location Card */}
+                  {(() => {
+                    const loc = findLocation(detailsAsset.lab_id) || findLocation(detailsAsset.lab_name);
+                    const locCode = loc?.code || 'CAMPUS';
+                    return (
+                      <div className="drawer-card">
+                        <div className="drawer-card-header">
+                          <MapPin size={13} />
+                          <span>Exact Campus Location</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="room-code-badge" data-testid={`asset-room-code-${detailsAsset.id}`}>[{locCode}]</span>
+                          <strong style={{ fontSize: '14px', color: 'var(--text)' }}>
+                            {detailsAsset.lab_name || loc?.name || 'Unassigned'}
+                          </strong>
+                        </div>
+                        <div className="spec-grid" style={{ marginTop: '4px' }}>
+                          <div className="spec-item">
+                            <span className="spec-label">Building &amp; Floor</span>
+                            <span className="spec-value">
+                              {loc ? `${loc.block} · ${loc.level}` : 'Main Campus'}
+                            </span>
+                          </div>
+                          <div className="spec-item">
+                            <span className="spec-label">Room / Zone</span>
+                            <span className="spec-value">{loc?.room || 'General Area'}</span>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: '8px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <span className="spec-label" style={{ display: 'block', marginBottom: '2px' }}>Placement Landmark</span>
+                          <span className="spec-value" data-testid={`asset-placement-${detailsAsset.id}`} style={{ fontSize: '12.5px', color: '#93c5fa' }}>
+                            {detailsAsset.placement || 'Placement landmark not recorded'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Card 2: Technical Specifications */}
+                  <div className="drawer-card">
+                    <div className="drawer-card-header">
+                      <Cpu size={13} />
+                      <span>Technical Specifications</span>
+                    </div>
+                    <div className="spec-grid">
+                      <div className="spec-item">
+                        <span className="spec-label">Equipment Type</span>
+                        <span className="spec-value">
+                          {detailsAsset.kind === 'PC' ? 'Desktop Workstation' : 'Wireless Access Point'}
+                        </span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">Hardware Model</span>
+                        <span className="spec-value">
+                          {detailsAsset.model || (detailsAsset.kind === 'PC' ? 'Dell OptiPlex 7010' : 'Aruba AP-515')}
+                        </span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">MAC / Serial Tag</span>
+                        <span className="spec-value" style={{ fontFamily: 'monospace' }}>
+                          {detailsAsset.mac || 'Provisioned by DHCP'}
+                        </span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">Registration Date</span>
+                        <span className="spec-value">
+                          {detailsAsset.created_at ? new Date(detailsAsset.created_at).toLocaleDateString() : 'Baseline Fleet'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Network & DHCP Lease */}
+                  <div className="drawer-card">
+                    <div className="drawer-card-header">
+                      <Network size={13} />
+                      <span>Network &amp; DHCP Lease</span>
+                    </div>
+                    <div className="spec-grid">
+                      <div className="spec-item">
+                        <span className="spec-label">IP Address</span>
+                        <span className="spec-value" style={{ fontFamily: 'monospace', color: '#60a5fa' }}>
+                          {detailsAsset.ip || 'DHCP Pending'}
+                        </span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">VLAN Assignment</span>
+                        <span className="spec-value">
+                          VLAN {detailsAsset.vlan || vlanFor(detailsAsset.kind)} ({detailsAsset.kind === 'PC' ? 'Workstation VLAN' : 'AP VLAN'})
+                        </span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">Addressing Protocol</span>
+                        <span className="spec-value">Dynamic Host Configuration (DHCP)</span>
+                      </div>
+                      <div className="spec-item">
+                        <span className="spec-label">Operational State</span>
+                        <span className="spec-value" style={{ color: detailsAsset.archived ? '#f87171' : '#34d399' }}>
+                          {detailsAsset.archived ? 'Archived / Decommissioned' : 'Active & Leased'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="drawer-footer">
+              <div>
+                {!detailsAsset.archived ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy}
+                    data-testid={`archive-asset-${detailsAsset.id}`}
+                    onClick={() => archive(detailsAsset)}
+                  >
+                    <Archive size={14} />
+                    Archive
+                  </Button>
+                ) : (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => restoreAsset(detailsAsset)}
+                    >
+                      <CheckCheck size={14} />
+                      Restore
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      disabled={busy}
+                      data-testid={`delete-asset-${detailsAsset.id}`}
+                      onClick={() => handleDelete(detailsAsset)}
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {isDrawerEditing ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDrawerEditing(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      id="save-edit-asset"
+                      variant="primary"
+                      form="drawer-edit-form"
+                      type="submit"
+                      disabled={busy}
+                    >
+                      <Save size={14} />
+                      {busy ? 'Saving…' : 'Save Changes'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setDetailsAsset(null);
+                      setIsDrawerEditing(false);
+                    }}
+                  >
+                    Close
+                  </Button>
+                )}
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
     </>
   );
 }

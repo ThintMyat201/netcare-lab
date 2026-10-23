@@ -128,6 +128,12 @@ class FakeCollection:
             return dict(new_doc)
         return None
 
+    async def delete_one(self, query):
+        for i, d in enumerate(self.docs):
+            if _match(d, query):
+                self.docs.pop(i)
+                return
+
     async def delete_many(self, query):
         self.docs = [d for d in self.docs if not _match(d, query)]
 
@@ -441,5 +447,201 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
         assert removed["ok"] is True
         assert await fake_db.users.find_one({"id": created["id"]}) is None
         assert fake_db.audit.docs[-1]["action"] == "Team member removed"
+
+    asyncio.run(_run())
+
+
+
+def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
+    import core
+    import operations
+    import campus
+    from fastapi import HTTPException
+    from pydantic import ValidationError
+
+    fake_db = FakeDB()
+    fake_db.labs = FakeCollection()
+    monkeypatch.setattr(core, "db", fake_db)
+    monkeypatch.setattr(operations, "db", fake_db)
+    monkeypatch.setattr(campus, "db", fake_db)
+
+    async def expect_status(coro, code):
+        try:
+            await coro
+            assert False, f"expected HTTP {code}"
+        except HTTPException as exc:
+            assert exc.status_code == code
+
+    async def _run():
+        # Manual IP entry is no longer part of the registration contract.
+        try:
+            operations.AssetInput(tag="AP-X-01", name="Test AP", kind="AP", lab_id="lab-1", ip="10.10.1.45")
+            assert False, "ip should be rejected"
+        except ValidationError:
+            pass
+
+        # Canteen AP: VLAN 20 lease in the canteen subnet, auto-generated Aruba MAC, landmark kept.
+        ap = await operations.add_asset(
+            operations.AssetInput(tag="ap-canteen-09", name="Canteen AP 09", kind="AP", lab_id="zone-canteen",
+                                  placement="Main Canteen · Ceiling Pillar C3 near Cashier"),
+            user=ADMIN_USER,
+        )
+        assert ap["tag"] == "AP-CANTEEN-09"
+        assert ap["vlan"] == 20 and ap["ip"] == "10.20.21.11" and ap["ip_assignment"] == "dhcp"
+        assert ap["mac"].startswith("20:4C:03:") and ap["zone_group"] == "common"
+        assert ap["lab_name"] in ["Main Campus Canteen / Atrium", "Campus Canteen / Cafeteria"]
+        assert ap["placement"] == "Main Canteen · Ceiling Pillar C3 near Cashier"
+
+        # Next AP in the same zone leases the next free host address.
+        ap2 = await operations.add_asset(
+            operations.AssetInput(tag="AP-CANTEEN-10", name="Canteen AP 10", kind="AP", lab_id="zone-canteen", mac="aa-bb-cc-11-22-33"),
+            user=ADMIN_USER,
+        )
+        assert ap2["ip"] == "10.20.21.12" and ap2["mac"] == "AA:BB:CC:11:22:33"
+
+        # Workstation in Computing Lab C: VLAN 10 lease and a default desk placement.
+        pc = await operations.add_asset(
+            operations.AssetInput(tag="PC-CL-C-01", name="Workstation 01", kind="PC", lab_id="lab-4", mac="SN-DELL-7090-001"),
+            user=ADMIN_USER,
+        )
+        assert pc["vlan"] == 10 and pc["ip"] == "10.10.4.11" and pc["mac"] == "SN-DELL-7090-001"
+        assert pc["placement"] == "Lab C · Row 1, Desk 1"
+
+        # Workstations are restricted to computing labs; identifiers must be valid and unique.
+        await expect_status(operations.add_asset(operations.AssetInput(tag="PC-BUS-01", name="Kiosk", kind="PC", lab_id="zone-busstop"), user=ADMIN_USER), 422)
+        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-LIB-09", name="Library AP", kind="AP", lab_id="zone-library", mac="not a mac!"), user=ADMIN_USER), 422)
+        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-LIB-10", name="Library AP", kind="AP", lab_id="zone-library", mac="AA:BB:CC:11:22:33"), user=ADMIN_USER), 409)
+        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-CANTEEN-09", name="Dup AP", kind="AP", lab_id="zone-canteen"), user=ADMIN_USER), 409)
+        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-NOWHERE-1", name="Nowhere AP", kind="AP", lab_id="zone-mars"), user=ADMIN_USER), 404)
+
+    asyncio.run(_run())
+
+
+def test_campus_inventory_seed_and_legacy_backfill(monkeypatch):
+    import campus
+
+    fake_db = FakeDB()
+    fake_db.labs = FakeCollection([{"id": "lab-1", "name": "Computing Lab A", "code": "CL-A"}])
+    fake_db.assets.docs.append(
+        {"id": "pc-01", "tag": "PC-CL-A-01", "name": "Workstation 01", "kind": "PC", "lab_id": "lab-1",
+         "lab_name": "Computing Lab A", "ip": "10.30.1.10", "archived": False}
+    )
+    monkeypatch.setattr(campus, "db", fake_db)
+    monkeypatch.setattr(monitoring, "db", fake_db)
+    monkeypatch.setattr(campus, "DEMO", True)
+
+    async def _run():
+        await campus.ensure_campus_inventory()
+        await campus.ensure_campus_inventory()  # idempotent
+
+        labs = {l["id"]: l for l in fake_db.labs.docs}
+        assert labs["lab-1"]["zone_group"] == "labs" and labs["lab-4"]["name"] == "Computing Lab C"
+        assert labs["zone-busstop"]["zone_group"] == "outdoor" and labs["zone-canteen"]["vlan_octet"] == 21
+
+        by_tag = {a["tag"]: a for a in fake_db.assets.docs}
+        aps = [a for a in fake_db.assets.docs if a["kind"] == "AP"]
+        assert len(aps) == 28 and len(by_tag) == len(fake_db.assets.docs)
+        assert by_tag["AP-BUS-01"]["lab_name"] in ["Campus Transit & Bus Stop", "School Bus Stop (Gate 1)"]
+        assert by_tag["AP-BUS-01"]["placement"].startswith("Bus Stop · Covered Waiting Bay North")
+        assert by_tag["AP-CANTEEN-01"]["zone_group"] == "common"
+        assert by_tag["AP-CLASS-B2"]["ip"] == "10.20.11.11"
+        assert len([t for t in fake_db.telemetry.docs if t["asset_id"] == "ap-28"]) == 97
+
+        # Legacy workstation migrated to VLAN 10 with stable MAC and desk landmark.
+        pc = by_tag["PC-CL-A-01"]
+        assert pc["ip"] == "10.10.1.10" and pc["vlan"] == 10 and pc["ip_assignment"] == "dhcp"
+        assert pc["mac"].startswith("B0:7B:25:") and pc["placement"] == "Lab A · Row 1, Desk 1"
+        assert all(a.get("vlan") == 20 and a.get("mac") for a in aps)
+
+    asyncio.run(_run())
+
+
+def test_locations_crud_and_asset_patch_delete(monkeypatch):
+    import core
+    import operations
+    import campus
+    from fastapi import HTTPException
+
+    fake_db = FakeDB()
+    fake_db.labs = FakeCollection()
+    fake_db.assets = FakeCollection()
+    fake_db.shifts = FakeCollection()
+    fake_db.alerts = FakeCollection()
+    monkeypatch.setattr(core, "db", fake_db)
+    monkeypatch.setattr(operations, "db", fake_db)
+    monkeypatch.setattr(campus, "db", fake_db)
+
+    async def expect_status(coro, code):
+        try:
+            await coro
+            assert False, f"expected HTTP {code}"
+        except HTTPException as exc:
+            assert exc.status_code == code
+
+    async def _run():
+        await campus.ensure_locations()
+
+        # Add an asset to lab-1
+        fake_db.assets.docs.append({
+            "id": "pc-test-1", "tag": "PC-TEST-01", "name": "Test PC", "kind": "PC",
+            "lab_id": "lab-1", "lab_name": "Computing Lab A", "ip": "10.10.1.11",
+            "vlan": 10, "archived": False
+        })
+
+        # 1. GET /locations returns enriched counts
+        locs = await operations.get_locations(user=ADMIN_USER)
+        lab1 = next(l for l in locs if l["id"] == "lab-1")
+        assert lab1["code"] == "B-04-03"
+        assert lab1["workstation_count"] == 1 and lab1["equipment_count"] == 1
+
+        # 2. POST /locations creates a new campus room
+        created = await operations.create_location(
+            operations.LocationInput(
+                code="A-06-03", name="Design Studio A", block="Block A", level="Level 6", room="03", category="Specialty Lab"
+            ),
+            user=ADMIN_USER
+        )
+        assert created["code"] == "A-06-03"
+        assert created["zone_group"] == "labs"
+
+        # Duplicate code is rejected
+        await expect_status(
+            operations.create_location(
+                operations.LocationInput(
+                    code="A-06-03", name="Another Studio", block="Block A", level="Level 6", room="03", category="Specialty Lab"
+                ),
+                user=ADMIN_USER
+            ),
+            409
+        )
+
+        # 3. PATCH /locations updates details
+        updated = await operations.update_location(
+            created["id"],
+            operations.LocationPatch(name="Advanced Design Studio A"),
+            user=ADMIN_USER
+        )
+        assert updated["name"] == "Advanced Design Studio A"
+
+        # 4. DELETE /locations with equipment assigned is rejected with 409
+        await expect_status(operations.remove_location("lab-1", user=ADMIN_USER), 409)
+
+        # Deleting empty location succeeds
+        del_res = await operations.remove_location(created["id"], user=ADMIN_USER)
+        assert del_res["ok"] is True
+
+        # 5. PATCH /assets/{id} updates metadata
+        asset_updated = await operations.update_asset(
+            "pc-test-1",
+            operations.AssetPatch(name="Updated Test PC", placement="Lab A · Row 3, Desk 2"),
+            user=ADMIN_USER
+        )
+        assert asset_updated["name"] == "Updated Test PC"
+        assert asset_updated["placement"] == "Lab A · Row 3, Desk 2"
+
+        # 6. DELETE /assets/{id} deletes the asset
+        asset_deleted = await operations.delete_asset("pc-test-1", user=ADMIN_USER)
+        assert asset_deleted["ok"] is True
+        assert await fake_db.assets.find_one({"id": "pc-test-1"}) is None
 
     asyncio.run(_run())

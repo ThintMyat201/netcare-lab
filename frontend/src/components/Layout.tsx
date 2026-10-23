@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
+  MapPin,
 } from 'lucide-react';
 import { Logo, Button, Modal, ErrorBox } from './shared';
 import { useAuth } from '../context';
@@ -45,6 +46,7 @@ const QUICK_JUMP_ITEMS = [
   { label: 'AP-IL-C-01 · Innovation Lab (10.20.3.11)', type: 'Access Point', to: '/monitoring?ap=ap-09', roles: ['admin', 'engineer'] },
   { label: 'Computing Lab A · 2D Workstation Map', type: 'Lab Floor Map', to: '/checklists', roles: ['admin', 'assistant'] },
   { label: 'Incident Tickets · Kanban Triage Board', type: 'Operations', to: '/tickets', roles: ['admin', 'engineer'] },
+  { label: 'Campus Locations & Room Codes', type: 'Administration', to: '/locations', roles: ['admin'] },
   { label: 'Shift Handover & Compliance', type: 'Operations', to: '/shifts', roles: ['admin', 'assistant'] },
   { label: 'Operational SLA Reports & CSV Export', type: 'Administration', to: '/reports', roles: ['admin'] },
 ];
@@ -89,6 +91,7 @@ const getNavigation = (role: string) => {
       label: 'ADMINISTRATION',
       items: [
         ['/assets', 'Hardware Inventory', Server],
+        ['/locations', 'Campus Locations', MapPin],
         ['/users', 'Team & Access', Users],
         ['/reports', 'Operational Reports', ChartNoAxesCombined],
         ['/audit', 'Activity Log', ScrollText],
@@ -183,7 +186,7 @@ export const Layout = ({ children }: any) => {
   const links = getNavigation(user.role);
   const activeGroup = links.find(g => g.items.some(x => x[0] === location.pathname));
   const sectionLabel =
-    activeGroup?.label === 'ADMINISTRATION' || ['/assets', '/users', '/reports', '/audit'].includes(location.pathname)
+    activeGroup?.label === 'ADMINISTRATION' || ['/assets', '/inventory', '/locations', '/users', '/reports', '/audit'].includes(location.pathname)
       ? 'Administration'
       : 'Operations';
   const current = String(
