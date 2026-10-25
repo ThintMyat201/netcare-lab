@@ -7121,7 +7121,11 @@ input[aria-invalid="true"] {
    ========================================================================== */
 
 /* Dark Theme Default Contrast */
-.clean-tickets-table,
+.clean-tickets-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
 .clean-checklists-table,
 .clean-shifts-table {
   width: 100%;
@@ -7174,7 +7178,8 @@ input[aria-invalid="true"] {
 
 /* Light Theme Typography High Contrast */
 .light-theme .clean-tickets-table strong,
-.light-theme .clean-tickets-table span.text-slate-100 {
+.light-theme .clean-tickets-table span.text-slate-100,
+.light-theme .clean-tickets-table span.text-slate-200 {
   color: #0f172a !important;
 }
 

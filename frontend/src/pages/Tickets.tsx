@@ -258,15 +258,15 @@ export default function Tickets() {
       ) : rows?.length ? (
         <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse clean-tickets-table" style={{ minWidth: '780px' }}>
+            <table className="w-full table-fixed text-left text-sm border-collapse clean-tickets-table">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="px-5 py-3.5" style={{ width: '32%' }}>TICKET</th>
-                  <th className="px-5 py-3.5" style={{ width: '14%' }}>DEVICE</th>
-                  <th className="px-5 py-3.5" style={{ width: '16%' }}>ASSIGNEE</th>
-                  <th className="px-5 py-3.5" style={{ width: '13%' }}>PRIORITY</th>
-                  <th className="px-5 py-3.5" style={{ width: '11%' }}>STATUS</th>
-                  <th className="px-5 py-3.5 text-right" style={{ width: '14%' }}>ACTION</th>
+                  <th className="px-4 py-3 w-72 max-w-xs" style={{ width: '28%' }}>TICKET</th>
+                  <th className="px-4 py-3" style={{ width: '14%' }}>DEVICE</th>
+                  <th className="px-4 py-3" style={{ width: '16%' }}>ASSIGNEE</th>
+                  <th className="px-4 py-3" style={{ width: '13%' }}>PRIORITY</th>
+                  <th className="px-4 py-3" style={{ width: '13%' }}>STATUS</th>
+                  <th className="px-4 py-3 text-right" style={{ width: '16%' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -281,10 +281,10 @@ export default function Tickets() {
                       data-testid={`ticket-row-${t.id}`}
                       className="hover:bg-slate-800/40 transition-colors"
                     >
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3 w-72 max-w-xs">
                         <button
                           type="button"
-                          className="flex items-center gap-2 text-left w-full group cursor-pointer"
+                          className="text-left w-full group cursor-pointer block"
                           data-testid={`open-ticket-${t.id}`}
                           onClick={() => {
                             setSelected(t);
@@ -292,30 +292,33 @@ export default function Tickets() {
                             setNotes('');
                           }}
                         >
-                          <span className="font-mono font-bold text-sky-400 group-hover:underline whitespace-nowrap">
+                          <span className="font-mono font-bold text-sky-400 group-hover:underline block text-xs tracking-wide">
                             {t.number}
                           </span>
-                          <span className="font-semibold text-slate-100 group-hover:text-sky-300 truncate max-w-sm">
+                          <span
+                            className="font-medium text-slate-100 dark:text-slate-100 group-hover:text-sky-300 block truncate text-xs mt-0.5"
+                            title={t.title}
+                          >
                             {t.title}
                           </span>
                         </button>
                       </td>
                       <td
-                        className="px-5 py-3.5 font-mono font-medium text-slate-200 whitespace-nowrap"
+                        className="px-4 py-3 font-mono font-medium text-slate-200 whitespace-nowrap text-xs"
                         title={formatLocationWithCode(t.lab_name || t.lab_id)}
                       >
                         {t.asset_tag}
                       </td>
-                      <td className="px-5 py-3.5 text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3 text-slate-300 whitespace-nowrap text-xs">
                         {cleanAssignee}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap" title={sla.label}>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs" title={sla.label}>
                         <Status value={t.priority} id={`priority-${t.id}`} />
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-xs">
                         <Status value={t.status} id={`ticket-status-${t.id}`} />
                       </td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 text-right whitespace-nowrap text-xs">
                         <div className="flex items-center justify-end gap-1.5">
                           {user.role !== 'assistant' && (
                             <>
@@ -323,7 +326,7 @@ export default function Tickets() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  className="btn-ticket-action btn-start-work text-xs py-1 px-2.5 h-8"
+                                  className="btn-ticket-action btn-start-work text-xs py-1 px-2.5 h-7 whitespace-nowrap"
                                   data-testid={`start-work-${t.id}`}
                                   title="Move ticket to In Progress"
                                   disabled={busy}
@@ -339,7 +342,7 @@ export default function Tickets() {
                                 <Button
                                   size="sm"
                                   variant="primary"
-                                  className="btn-ticket-action btn-resolve-ticket text-xs py-1 px-2.5 h-8"
+                                  className="btn-ticket-action btn-resolve-ticket text-xs py-1 px-2.5 h-7 whitespace-nowrap"
                                   data-testid={`resolve-ticket-${t.id}`}
                                   title="Mark ticket as resolved and restore device"
                                   disabled={busy}
@@ -352,7 +355,7 @@ export default function Tickets() {
                                 </Button>
                               )}
                               {t.status === 'resolved' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium px-2 py-1">
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium px-2 py-0.5">
                                   <CheckCheck size={13} /> Resolved
                                 </span>
                               )}
@@ -360,7 +363,7 @@ export default function Tickets() {
                           )}
                           <button
                             type="button"
-                            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
+                            className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
                             title="View ticket details"
                             aria-label="View ticket details"
                             data-testid={`ticket-detail-${t.id}`}
