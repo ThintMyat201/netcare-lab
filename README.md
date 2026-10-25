@@ -237,6 +237,34 @@ netcare-lab/
 
 ---
 
+## Database collection structure
+
+The backend uses MongoDB collections (not SQL tables). The canonical structure is defined by runtime usage in `backend/*.py` plus index creation in `backend/core.py::indexes()`.
+
+| Collection | Core fields used by the app | Indexes / constraints |
+|---|---|---|
+| `alerts` | `id`, `asset_id`, `asset_tag`, `lab_id`, `lab_name`, `status`, `severity`, `title`, `detail`, `active`, `active_key`, `created_at`, `resolved_at`, `synthetic` | unique `id`; unique partial `active_key` (string only) |
+| `assets` | `id`, `tag`, `name`, `kind`, `lab_id`, `lab_name`, `ip`, `model`, `archived`, `scenario`, `scenario_at`, `last_seen`, `created_at`, `synthetic_override`, `degradation_progress`, `flap_state` | unique `id`; unique `tag` |
+| `audit` | `id`, `actor_id`, `actor`, `action`, `detail`, `resource_id`, `timestamp` | unique `id` |
+| `checklists` | `id`, `asset_id`, `asset_tag`, `lab_name`, `checks`, `notes`, `request_id`, `fingerprint`, `created_by`, `created_by_name`, `created_at`, `tickets`, `result` | unique `id`; unique compound `(created_by, request_id)` |
+| `counters` | `key`, `value` | no dedicated index in code; used for ticket sequence (`key='ticket'`) |
+| `cron_runs` | `run_id`, `status`, `created_at`, `finished_at`, `summary` | unique `run_id` |
+| `labs` | `id`, `name`, `building`, `floor`, `code` | unique `id` |
+| `locks` | `key`, `token`, `expires` | unique `key`; TTL on `expires` |
+| `login_attempts` | `identifier`, `count`, `expires_at` | unique `identifier`; TTL on `expires_at` |
+| `meta` | `key`, `value`, `created_at` | no dedicated index in code; used for seed markers (`key='seeded'`) |
+| `password_reset_tokens` | `expires_at` (reserved collection; password reset is currently simulated) | TTL on `expires_at` |
+| `reminders` | `id`, `shift_id`, `assistant_id`, `title`, `created_at`, `acknowledged_at`, `simulated` | unique `shift_id` (exactly one reminder per shift) |
+| `sessions` | `id`, `user_id`, `expires_at` | unique `id`; TTL on `expires_at` |
+| `shifts` | `id`, `assistant_id`, `assistant_name`, `lab_id`, `lab_name`, `start`, `end`, `acknowledged_at`, `completed_at`, `handover_notes`, `created_at`, `created_by`, `cancelled`, `shift_window` | unique `id` |
+| `telemetry` | `id`, `asset_id`, `lab_id`, `timestamp`, `clients`, `throughput`, `load`, `latency`, `queue_depth`, `status`, `synthetic`, `expires_at` | unique compound `(asset_id, timestamp)`; TTL on `expires_at` |
+| `tickets` | `id`, `number`, `asset_id`, `asset_tag`, `lab_name`, `category`, `tier`, `assigned_role`, `assigned_name`, `title`, `description`, `status`, `priority`, `active_key`, `reporter_ids`, `created_by`, `created_at`, `updated_at`, `resolved_at`, `resolution_notes`, `events`, `synthetic` | unique `id`; unique partial `active_key` (string only) |
+| `users` | `id`, `email`, `name`, `role`, `scope`, `active`, `password_hash`, `created_at` | unique `id`; unique `email` |
+
+Collection names above intentionally align with the requested reference set: `alerts`, `assets`, `audit`, `checklists`, `counters`, `cron_runs`, `labs`, `locks`, `login_attempts`, `meta`, `password_reset_tokens`, `reminders`, `sessions`, `shifts`, `telemetry`, `tickets`, and `users`.
+
+---
+
 ## API reference
 
 All routes are prefixed with `/api`.
