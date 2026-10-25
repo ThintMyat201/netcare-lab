@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Sparkles,
   Eye,
+  ArrowUpRight,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useAuth } from '../context';
@@ -443,45 +444,21 @@ export function Assets() {
                         </span>
                       </td>
 
-                      {/* 5. ACTIONS: Subtle neutral Edit button and subtle Archive icon button */}
+                      {/* 5. ACTIONS: Clean uniform action button to open detail modal */}
                       <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="btn-neutral-edit"
-                          data-testid={`details-asset-${a.id}`}
-                          onClick={() => handleOpenDetails(a, false)}
-                        >
-                          <Pencil size={12} />
-                          <span>Edit</span>
-                        </button>
-                        {!a.archived ? (
+                        <div className="inline-flex items-center gap-2 justify-end">
                           <button
                             type="button"
-                            className="icon-btn-subtle"
-                            title="Archive equipment"
-                            aria-label={`Archive ${a.tag}`}
-                            data-testid={`archive-asset-${a.id}`}
-                            disabled={busy}
-                            onClick={() => archive(a)}
+                            className="action-btn-uniform"
+                            data-testid={`details-asset-${a.id}`}
+                            title={`View and edit hardware details for ${a.tag}`}
+                            aria-label={`View and edit hardware details for ${a.tag}`}
+                            onClick={() => handleOpenDetails(a, false)}
                           >
-                            <Archive size={14} />
+                            <ArrowUpRight size={15} />
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="icon-btn-subtle danger"
-                            title="Delete equipment"
-                            aria-label={`Delete ${a.tag}`}
-                            data-testid={`delete-asset-${a.id}`}
-                            disabled={busy}
-                            onClick={() => handleDelete(a)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
                   </tr>
                 );
               })}

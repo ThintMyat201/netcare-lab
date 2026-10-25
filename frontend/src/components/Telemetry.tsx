@@ -99,61 +99,52 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                       </div>
                     </td>
 
-                    {/* 5. ACTION: Incident Ticket link / + Ticket for non-healthy; — for healthy */}
+                    {/* 5. ACTION: Unified action controls */}
                     <td style={{ textAlign: 'right' }}>
-                      <div className="ap-action-group" style={{ justifyContent: 'flex-end' }}>
-                        {isNonHealthy ? (
-                          linkedTicket ? (
-                            <Link
-                              to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
-                              className="ap-ticket-pill-badge"
-                              id={`view-ticket-${a.id}`}
-                              data-testid={`view-ticket-${a.id}`}
-                              onClick={(e: any) => e.stopPropagation()}
-                              title={`View linked ticket ${linkedTicket.number || ''}`}
-                            >
-                              <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
-                              <ArrowUpRight size={12} className="ap-pill-arrow" />
-                            </Link>
-                          ) : onCreateTicket ? (
-                            <button
-                              type="button"
-                              id={`create-ap-ticket-${a.id}`}
-                              data-testid={`create-ap-ticket-${a.id}`}
-                              className="ap-add-ticket-btn"
-                              onClick={(e: any) => {
-                                e.stopPropagation();
-                                onCreateTicket(a);
-                              }}
-                              title={`Create incident ticket for ${a.tag} (${a.status})`}
-                            >
-                              <Plus size={12} />
-                              <span>Ticket</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="ap-subtle-inspect-btn"
-                              data-testid={`inspect-${a.id}`}
-                              onClick={(e: any) => {
-                                e.stopPropagation();
-                                onSelect?.(a);
-                              }}
-                              title={`View telemetry details for ${a.tag}`}
-                            >
-                              <ChevronRight size={14} />
-                            </button>
-                          )
-                        ) : (
-                          <span
-                            id={`ping-ap-${a.id}`}
-                            data-testid={`ping-ap-${a.id}`}
-                            className="faint mono ap-action-dash"
-                            title={`Nominal ping latency: ${typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'}`}
+                      <div className="ap-action-group inline-flex items-center gap-2" style={{ justifyContent: 'flex-end' }}>
+                        {linkedTicket && (
+                          <Link
+                            to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
+                            className="ap-ticket-pill-badge"
+                            id={`view-ticket-${a.id}`}
+                            data-testid={`view-ticket-${a.id}`}
+                            onClick={(e: any) => e.stopPropagation()}
+                            title={`View linked ticket ${linkedTicket.number || ''}`}
                           >
-                            —
-                          </span>
+                            <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
+                            <ArrowUpRight size={12} className="ap-pill-arrow" />
+                          </Link>
                         )}
+                        {isNonHealthy && !linkedTicket && onCreateTicket && (
+                          <button
+                            type="button"
+                            id={`create-ap-ticket-${a.id}`}
+                            data-testid={`create-ap-ticket-${a.id}`}
+                            className="ap-add-ticket-btn"
+                            onClick={(e: any) => {
+                              e.stopPropagation();
+                              onCreateTicket(a);
+                            }}
+                            title={`Create incident ticket for ${a.tag} (${a.status})`}
+                          >
+                            <Plus size={12} />
+                            <span>Ticket</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          id={`ping-ap-${a.id}`}
+                          data-testid={`inspect-${a.id}`}
+                          className="action-btn-uniform"
+                          title={`Inspect telemetry & NOC diagnostics for ${a.tag}`}
+                          aria-label={`Inspect telemetry & NOC diagnostics for ${a.tag}`}
+                          onClick={(e: any) => {
+                            e.stopPropagation();
+                            onSelect?.(a);
+                          }}
+                        >
+                          <ArrowUpRight size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>

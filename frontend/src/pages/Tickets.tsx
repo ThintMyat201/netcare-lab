@@ -10,7 +10,6 @@ import {
   Play,
   Send,
   Clock,
-  MessageSquarePlus,
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
@@ -44,8 +43,6 @@ export default function Tickets() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
   const [notes, setNotes] = useState('');
-  const [commentText, setCommentText] = useState('');
-  const [postingComment, setPostingComment] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState('');
@@ -151,42 +148,6 @@ export default function Tickets() {
   const progress = async (status: string) => {
     if (selected) {
       await handleStatusChange(selected, status, notes);
-    }
-  };
-
-  const postComment = async (e: any) => {
-    e.preventDefault();
-    if (!selected || commentText.trim().length < 2 || postingComment) return;
-    setPostingComment(true);
-    setError('');
-    const text = commentText.trim();
-    try {
-      const r = await api.post(`/tickets/${selected.id}/comment`, { notes: text });
-      const enriched = enrichTicket(r.data);
-      saveLocalTicket(enriched);
-      setSelected(enriched);
-      setCommentText('');
-      list.load();
-    } catch {
-      const nowIso = new Date().toISOString();
-      const updated = enrichTicket({
-        ...selected,
-        updated_at: nowIso,
-        events: [
-          ...(selected.events || []),
-          {
-            actor: user.name,
-            action: 'Troubleshooting Note',
-            notes: text,
-            timestamp: nowIso,
-          },
-        ],
-      });
-      saveLocalTicket(updated);
-      setSelected(updated);
-      setCommentText('');
-    } finally {
-      setPostingComment(false);
     }
   };
 
@@ -363,9 +324,9 @@ export default function Tickets() {
                           )}
                           <button
                             type="button"
-                            className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
-                            title="View ticket details"
-                            aria-label="View ticket details"
+                            className="action-btn-uniform"
+                            title="View ticket details and actions"
+                            aria-label="View ticket details and actions"
                             data-testid={`ticket-detail-${t.id}`}
                             onClick={() => {
                               setSelected(t);
@@ -534,28 +495,8 @@ export default function Tickets() {
               ))}
             </div>
 
-            {selected.status !== 'resolved' && (
-              <form className="ticket-comment-form" onSubmit={postComment} data-testid="ticket-comment-form">
-                <input
-                  id="ticket-comment-input"
-                  data-testid="ticket-comment-input"
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  placeholder="Add a timestamped troubleshooting note or lab observation…"
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  id="submit-ticket-comment"
-                  disabled={postingComment || commentText.trim().length < 2}
-                >
-                  <MessageSquarePlus size={14} /> Post Note
-                </Button>
-              </form>
-            )}
-
             {selected.status === 'resolved' ? (
-              <div className="success-box" data-testid="resolution-notes">
+              <div className="success-box mt-4" data-testid="resolution-notes">
                 <CheckCircle2 size={20} />
                 <div>
                   <strong>Resolution Notes</strong>
@@ -564,34 +505,32 @@ export default function Tickets() {
               </div>
             ) : (
               user.role !== 'assistant' && (
-                <>
-                  {selected.status === 'in_progress' && (
-                    <Field label="Resolution Notes (Required)" id="resolution-notes-input">
-                      <textarea
-                        data-testid="resolution-notes-input"
-                        id="resolution-notes-input"
-                        rows={3}
-                        value={notes}
-                        maxLength={3000}
-                        onChange={e => setNotes(e.target.value)}
-                        placeholder="Describe what was investigated, repaired, and verified (minimum 10 characters)…"
-                      />
-                    </Field>
-                  )}
+                <div className="mt-4 flex flex-col gap-3">
+                  <Field label="Resolution Notes (Required)" id="resolution-notes-input">
+                    <textarea
+                      data-testid="resolution-notes-input"
+                      id="resolution-notes-input"
+                      rows={3}
+                      value={notes}
+                      maxLength={3000}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Describe what was investigated, repaired, and verified (minimum 10 characters)…"
+                    />
+                  </Field>
                   <ErrorBox error={error} />
-                  <div className="ticket-modal-actions">
+                  <div className="ticket-modal-actions flex items-center justify-end gap-3 mt-2">
                     {selected.status === 'open' && (
                       <Button
-                        variant="primary"
+                        variant="secondary"
                         id="start-investigation"
                         disabled={busy}
                         onClick={() => progress('in_progress')}
                       >
-                        <ArrowRight size={16} />Begin Investigation
+                        <ArrowRight size={15} />Begin Investigation
                       </Button>
                     )}
                     <Button
-                      variant={selected.status === 'in_progress' ? 'primary' : 'secondary'}
+                      variant="primary"
                       id="resolve-ticket"
                       disabled={busy}
                       onClick={() => progress('resolved')}
@@ -599,7 +538,7 @@ export default function Tickets() {
                       <CheckCircle2 size={16} />Mark as Resolved
                     </Button>
                   </div>
-                </>
+                </div>
               )
             )}
           </>

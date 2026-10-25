@@ -12,6 +12,7 @@ import {
   ArrowRight,
   FileCheck2,
   Lock,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
@@ -52,6 +53,7 @@ export default function Shifts() {
   const [version, setVersion] = useState(0);
 
   const [handoverShift, setHandoverShift] = useState<any>(null);
+  const [selectedShift, setSelectedShift] = useState<{ shift: any; progress: any } | null>(null);
   const [handoverNotes, setHandoverNotes] = useState('');
 
   useEffect(() => {
@@ -302,7 +304,8 @@ export default function Shifts() {
                     <tr
                       key={s.id}
                       data-testid={`shift-row-${s.id}`}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
+                      onClick={() => setSelectedShift({ shift: s, progress })}
                     >
                       <td className="px-5 py-4 shift-cell-lab whitespace-nowrap">
                         <span className="font-semibold shift-lab-text">
@@ -333,7 +336,7 @@ export default function Shifts() {
                       <td className="px-5 py-4 whitespace-nowrap">
                         <Status value={statusKey} id={`shift-status-${s.id}`} />
                       </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <td className="px-5 py-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {user.role === 'admin' && !s.cancelled && (
                             <Button
@@ -359,20 +362,7 @@ export default function Shifts() {
                           {user.role === 'assistant' && (
                             <>
                               {isCompleted ? (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-emerald-400 font-medium">Completed</span>
-                                  {s.handover_notes && (
-                                    <button
-                                      type="button"
-                                      className="p-1 text-slate-400 hover:text-slate-100 rounded"
-                                      title={`Handover Note: ${s.handover_notes}`}
-                                      data-testid={`shift-handover-${s.id}`}
-                                      onClick={() => openHandoverModal(s, progress)}
-                                    >
-                                      <FileCheck2 size={14} />
-                                    </button>
-                                  )}
-                                </div>
+                                <span className="text-xs text-emerald-400 font-medium">Completed</span>
                               ) : !isAcknowledged && !s.cancelled ? (
                                 isMyShift ? (
                                   <Button
@@ -419,11 +409,20 @@ export default function Shifts() {
                                 ) : (
                                   <span className="text-xs text-slate-400">On Duty</span>
                                 )
-                              ) : (
-                                <span className="text-xs text-slate-500">—</span>
-                              )}
+                              ) : null}
                             </>
                           )}
+
+                          <button
+                            type="button"
+                            className="action-btn-uniform"
+                            title="View shift details and operational actions"
+                            aria-label="View shift details and operational actions"
+                            data-testid={`shift-detail-${s.id}`}
+                            onClick={() => setSelectedShift({ shift: s, progress })}
+                          >
+                            <ArrowUpRight size={15} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -436,6 +435,124 @@ export default function Shifts() {
       ) : (
         <Empty text="No scheduled shifts found for this view." />
       )}
+
+      {/* SHIFT DETAILS & OPERATIONAL ACTIONS MODAL */}
+      <Modal
+        open={!!selectedShift}
+        onClose={() => setSelectedShift(null)}
+        title={selectedShift?.shift?.lab_name || 'Shift Details'}
+        description={`${selectedShift?.shift?.shift_window || ''} · Assigned to ${selectedShift?.shift?.assistant_name || 'Staff'}`}
+        id="shift-detail-dialog"
+      >
+        {selectedShift && (
+          <div className="flex flex-col gap-3">
+            <div className="detail-line">
+              <span>Status</span>
+              <Status
+                value={
+                  selectedShift.shift.lifecycle === 'cancelled'
+                    ? 'cancelled'
+                    : selectedShift.shift.lifecycle === 'completed' || Boolean(selectedShift.shift.completed_at)
+                    ? 'completed'
+                    : selectedShift.shift.acknowledged_at
+                    ? 'on_duty'
+                    : 'pending_ack'
+                }
+              />
+            </div>
+            <div className="detail-line">
+              <span>Lab Room</span>
+              <strong>{selectedShift.shift.lab_name}</strong>
+            </div>
+            <div className="detail-line">
+              <span>Assigned Assistant</span>
+              <strong>{selectedShift.shift.assistant_name}</strong>
+            </div>
+            <div className="detail-line">
+              <span>Shift Window</span>
+              <span className="font-mono text-xs">{selectedShift.shift.shift_window}</span>
+            </div>
+            <div className="detail-line">
+              <span>Inspection Progress</span>
+              <span className="font-mono text-xs">
+                {selectedShift.shift.acknowledged_at ? selectedShift.progress.checked : 0} / {selectedShift.progress.required} Checked
+              </span>
+            </div>
+
+            {selectedShift.shift.handover_notes && (
+              <div className="success-box mt-2" data-testid={`shift-handover-${selectedShift.shift.id}`}>
+                <FileCheck2 size={18} />
+                <div>
+                  <strong>Handover Summary</strong>
+                  <p>{selectedShift.shift.handover_notes}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              {user.role === 'admin' && !selectedShift.shift.cancelled && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  id={`cancel-shift-modal-${selectedShift.shift.id}`}
+                  disabled={busy}
+                  onClick={() => {
+                    const s = selectedShift.shift;
+                    setSelectedShift(null);
+                    cancelShift(s);
+                  }}
+                >
+                  Cancel Shift
+                </Button>
+              )}
+              {user.role === 'assistant' && !selectedShift.shift.acknowledged_at && !selectedShift.shift.cancelled && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  id={`ack-shift-modal-${selectedShift.shift.id}`}
+                  disabled={busy}
+                  onClick={() => {
+                    const s = selectedShift.shift;
+                    setSelectedShift(null);
+                    acknowledgeShift(s);
+                  }}
+                >
+                  <CheckCheck size={14} /> Acknowledge Shift
+                </Button>
+              )}
+              {user.role === 'assistant' && selectedShift.shift.acknowledged_at && !selectedShift.shift.completed_at && !selectedShift.shift.cancelled && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const { shift, progress } = selectedShift;
+                      setSelectedShift(null);
+                      runLabInspection(shift, progress);
+                    }}
+                  >
+                    Inspect Lab
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      const { shift, progress } = selectedShift;
+                      setSelectedShift(null);
+                      openHandoverModal(shift, progress);
+                    }}
+                  >
+                    Complete Handover
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setSelectedShift(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!handoverShift}

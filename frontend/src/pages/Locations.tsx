@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Eye,
   Network,
+  ArrowUpRight,
 } from 'lucide-react';
 import { api, errorText } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
@@ -441,30 +442,18 @@ export default function Locations() {
                         </span>
                       </td>
 
-                      {/* 4. ACTIONS: Clean neutral Edit and Delete buttons */}
+                      {/* 4. ACTIONS: Clean uniform action button to open detail modal */}
                       <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                        <div className="inline-flex items-center gap-2 justify-end">
                           <button
                             type="button"
-                            className="btn-neutral-edit"
-                            title="Edit Location"
-                            aria-label={`Edit ${loc.name}`}
+                            className="action-btn-uniform"
+                            title={`View location specifications & devices for ${loc.name}`}
+                            aria-label={`View location specifications & devices for ${loc.name}`}
                             data-testid={`edit-loc-${loc.id}`}
-                            onClick={() => handleOpenEdit(loc)}
+                            onClick={() => setSelectedRoom(loc)}
                           >
-                            <Pencil size={12} />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-btn-subtle danger"
-                            title="Remove Location"
-                            aria-label={`Delete ${loc.name}`}
-                            data-testid={`delete-loc-${loc.id}`}
-                            disabled={busy}
-                            onClick={() => handleDelete(loc)}
-                          >
-                            <Trash2 size={13} />
+                            <ArrowUpRight size={15} />
                           </button>
                         </div>
                       </td>
@@ -600,26 +589,45 @@ export default function Locations() {
               </Button>
             </div>
 
-            <div className="drawer-footer">
+            <div className="drawer-footer flex items-center justify-between gap-3">
               <Button
                 type="button"
-                variant="outline"
+                variant="danger"
+                size="sm"
+                data-testid={`delete-loc-${selectedRoom.id}`}
+                disabled={busy}
                 onClick={() => {
                   const loc = selectedRoom;
                   setSelectedRoom(null);
-                  handleOpenEdit(loc);
+                  handleDelete(loc);
                 }}
               >
-                <Pencil size={13} />
-                Edit Room
+                <Trash2 size={13} />
+                Delete Location
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSelectedRoom(null)}
-              >
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const loc = selectedRoom;
+                    setSelectedRoom(null);
+                    handleOpenEdit(loc);
+                  }}
+                >
+                  <Pencil size={13} />
+                  Edit Room
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedRoom(null)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </aside>
         </>
