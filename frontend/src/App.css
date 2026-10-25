@@ -7104,6 +7104,18 @@ input[aria-invalid="true"] {
    STANDARDIZED ENTERPRISE TABLES (GLOBAL NETWORK MONITORING STYLE)
    ========================================================================== */
 
+/* Universal Dark Theme Card Wrappers */
+.shifts-table-card-wrapper,
+.tickets-table-card-wrapper,
+.checklists-table-card-wrapper,
+.inventory-card-wrapper,
+.locations-table-wrapper {
+  background: var(--panel, #0f172a);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 /* Universal Dark Theme Table Styles */
 .clean-tickets-table,
 .clean-checklists-table,

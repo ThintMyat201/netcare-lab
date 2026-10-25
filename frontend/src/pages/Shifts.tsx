@@ -13,6 +13,8 @@ import {
   FileCheck2,
   Lock,
   ArrowUpRight,
+  Monitor,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
@@ -33,16 +35,21 @@ export default function Shifts() {
   const checklists = useData('/checklists');
   const assets = useData('/assets');
 
+  const SESSION_WINDOWS: Record<string, { start: string; end: string }> = {
+    morning: { start: '08:00', end: '12:00' },
+    afternoon: { start: '12:00', end: '16:00' },
+    evening: { start: '16:00', end: '20:00' },
+  };
+
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [shiftPreset, setShiftPreset] = useState('morning');
   const [form, setForm] = useState(() => {
     const today = getTodayMytDateString();
     return {
       assistant_id: '',
       lab_id: 'lab-1',
-      start: `${today}T08:00`,
-      end: `${today}T12:00`,
+      date: today,
+      session: 'morning' as 'morning' | 'afternoon' | 'evening',
     };
   });
   const [error, setError] = useState('');
@@ -81,14 +88,14 @@ export default function Shifts() {
     });
   }, [normalizedShifts, filter, scopeFilter, user]);
 
-  const unacknowledgedCount = useMemo(
-    () => normalizedShifts.filter((s: any) => !s.cancelled && !s.acknowledged_at && !s.completed_at).length,
-    [normalizedShifts]
-  );
-
   const add = async () => {
     setOpen(true);
     setError('');
+    setForm(prev => ({
+      ...prev,
+      date: getTodayMytDateString(),
+      session: 'morning',
+    }));
     try {
       setUsers((await api.get('/users')).data);
     } catch (e) {
@@ -96,24 +103,20 @@ export default function Shifts() {
     }
   };
 
-  const applyPreset = (presetKey: string) => {
-    setShiftPreset(presetKey);
-    const today = getTodayMytDateString();
-    const block = CAMPUS_SHIFT_BLOCKS.find(b => b.key === presetKey) || CAMPUS_SHIFT_BLOCKS[0];
-    setForm(prev => ({
-      ...prev,
-      lab_id: block.lab_id,
-      start: `${today}T${block.startHour.slice(0, 5)}`,
-      end: `${today}T${block.endHour.slice(0, 5)}`,
-    }));
-  };
-
   const submit = async (e: any) => {
     e.preventDefault();
     setBusy(true);
     setError('');
+    const win = SESSION_WINDOWS[form.session] || SESSION_WINDOWS.morning;
+    const startIso = `${form.date}T${win.start}`;
+    const endIso = `${form.date}T${win.end}`;
     try {
-      await api.post('/shifts', form);
+      await api.post('/shifts', {
+        assistant_id: form.assistant_id,
+        lab_id: form.lab_id,
+        start: startIso,
+        end: endIso,
+      });
       setOpen(false);
       setNotice('Shift assignment successfully created.');
       list.load();
@@ -201,6 +204,47 @@ export default function Shifts() {
     navigate(`/checklists?lab=${s.lab_id}&new=1&shift=${s.id}${nextAssetParam}`);
   };
 
+  const formatCompactShiftTime = (windowStr: string) => {
+    if (!windowStr) return '—';
+    const match = windowStr.match(/(\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2})/);
+    if (match) {
+      return match[1].replace('-', '–');
+    }
+    return windowStr.replace(/^(Morning|Afternoon|Evening|Night)\s*Shift:\s*/i, '').replace(/\s*MYT\s*$/i, '').trim();
+  };
+
+  const formatDetailedShiftWindow = (windowStr: string) => {
+    if (!windowStr) return '—';
+    const timeMatch = windowStr.match(/(\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2})/);
+    const periodMatch = windowStr.match(/^(Morning|Afternoon|Evening|Night)/i);
+    if (timeMatch && periodMatch) {
+      return `${timeMatch[1].replace('-', '–')} MYT (${periodMatch[1]})`;
+    }
+    if (timeMatch) {
+      return `${timeMatch[1].replace('-', '–')} MYT`;
+    }
+    return windowStr;
+  };
+
+  const selectedLabLoc = useMemo(() => {
+    if (!selectedShift?.shift) return null;
+    return findLocation(selectedShift.shift.lab_name || selectedShift.shift.lab_id);
+  }, [selectedShift]);
+
+  const targetWorkstations = useMemo(() => {
+    if (!selectedShift) return [];
+    if (selectedShift.progress?.labWorkstations?.length) {
+      return selectedShift.progress.labWorkstations.slice(0, 4);
+    }
+    const loc = selectedLabLoc;
+    const shortTag = loc?.short ? loc.short.replace('Lab ', 'CL-') : 'CL-A';
+    return [1, 2, 3, 4].map(num => ({
+      id: `pc-${shortTag.toLowerCase()}-0${num}`,
+      tag: `PC-${shortTag}-0${num}`,
+      name: `Workstation 0${num}`,
+    }));
+  }, [selectedShift, selectedLabLoc]);
+
   return (
     <>
       <PageTitle title={user.role === 'admin' ? 'Staff Schedule' : 'Your Shift Schedule'}>
@@ -213,8 +257,8 @@ export default function Shifts() {
 
       <ErrorBox error={list.error || (!open && error)} retry={list.load} />
 
-      <div className="listing-toolbar">
-        {user.role === 'assistant' ? (
+      <div className={`listing-toolbar mb-4 flex items-center ${user.role === 'assistant' ? 'justify-between' : 'justify-end'} gap-3`}>
+        {user.role === 'assistant' && (
           <div className="segmented shift-scope-segmented" role="tablist">
             <button
               type="button"
@@ -232,12 +276,6 @@ export default function Shifts() {
             >
               All Lab Shifts
             </button>
-          </div>
-        ) : (
-          <div className="text-xs text-slate-400 font-medium" data-testid="unacknowledged-shifts-counter">
-            {unacknowledgedCount > 0
-              ? `${unacknowledgedCount} unacknowledged shift${unacknowledgedCount === 1 ? '' : 's'}`
-              : 'All active shifts acknowledged'}
           </div>
         )}
 
@@ -260,31 +298,23 @@ export default function Shifts() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="shifts-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="shifts-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100">
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse clean-shifts-table" style={{ minWidth: '780px' }}>
+            <table className="w-full text-left text-sm border-collapse clean-shifts-table">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4" style={{ width: '25%' }}>LAB / ROOM</th>
-                  <th className="px-5 py-4" style={{ width: '18%' }}>ASSISTANT</th>
-                  <th className="px-5 py-4" style={{ width: '20%' }}>SHIFT WINDOW</th>
-                  <th className="px-5 py-4" style={{ width: '13%' }}>PROGRESS</th>
-                  <th className="px-5 py-4" style={{ width: '11%' }}>STATUS</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '13%' }}>ACTION</th>
+                  <th className="px-5 py-4" style={{ width: '34%' }}>ROOM</th>
+                  <th className="px-5 py-4" style={{ width: '22%' }}>ASSISTANT</th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>SHIFT TIME</th>
+                  <th className="px-5 py-4" style={{ width: '14%' }}>STATUS</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '12%' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {rows.map((s: any) => {
                   const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
-                  const isMyShift =
-                    user.role === 'admin' ||
-                    s.assistant_id === user.id ||
-                    s.assistant_name === user.name ||
-                    (user.role === 'assistant' && !s.assistant_id);
                   const isAcknowledged = Boolean(s.acknowledged_at);
                   const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
-                  const displayChecked = isAcknowledged ? progress.checked : 0;
-                  const isAllChecked = isAcknowledged && progress.checked >= progress.required;
 
                   const statusKey =
                     s.lifecycle === 'cancelled'
@@ -294,6 +324,15 @@ export default function Shifts() {
                       : isAcknowledged
                       ? 'on_duty'
                       : 'pending_ack';
+
+                  const statusLabel =
+                    s.lifecycle === 'cancelled'
+                      ? 'Cancelled'
+                      : isCompleted
+                      ? 'Completed'
+                      : isAcknowledged
+                      ? 'On Duty'
+                      : 'Pending';
 
                   const loc = findLocation(s.lab_name || s.lab_id);
                   const labRoomText = loc?.code
@@ -308,111 +347,35 @@ export default function Shifts() {
                       onClick={() => setSelectedShift({ shift: s, progress })}
                     >
                       <td className="px-5 py-4 shift-cell-lab whitespace-nowrap">
-                        <span className="font-semibold shift-lab-text">
+                        <span className="font-semibold text-slate-900 dark:text-slate-100 shift-lab-text">
                           {labRoomText}
                         </span>
                       </td>
                       <td className="px-5 py-4 shift-cell-assistant whitespace-nowrap">
-                        <span className="shift-assistant-text">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium shift-assistant-text">
                           {s.assistant_name}
                         </span>
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         <span
-                          className="font-mono text-xs shift-window-text"
+                          className="font-mono text-xs text-slate-600 dark:text-slate-400 shift-window-text"
                           data-testid={`shift-window-${s.id}`}
                         >
-                          {s.shift_window}
+                          {formatCompactShiftTime(s.shift_window)}
                         </span>
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         <span
-                          className="font-mono text-xs shift-progress-text"
-                          data-testid={`shift-progress-${s.id}`}
+                          data-testid={`shift-status-${s.id}`}
+                          className={`status ${statusKey}`}
+                          id={`shift-status-${s.id}`}
                         >
-                          {displayChecked} / {progress.required} Checked
+                          <i />
+                          {statusLabel}
                         </span>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <Status value={statusKey} id={`shift-status-${s.id}`} />
-                      </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {user.role === 'admin' && !s.cancelled && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              id={`cancel-shift-${s.id}`}
-                              className="text-xs py-1 px-2.5 h-7"
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    'Cancel this shift assignment? Its historical record will be retained.'
-                                  )
-                                ) {
-                                  cancelShift(s);
-                                }
-                              }}
-                            >
-                              Cancel Shift
-                            </Button>
-                          )}
-
-                          {user.role === 'assistant' && (
-                            <>
-                              {isCompleted ? (
-                                <span className="text-xs text-emerald-400 font-medium">Completed</span>
-                              ) : !isAcknowledged && !s.cancelled ? (
-                                isMyShift ? (
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    id={`ack-shift-${s.id}`}
-                                    className="text-xs py-1 px-2.5 h-7"
-                                    disabled={busy}
-                                    onClick={() => acknowledgeShift(s)}
-                                  >
-                                    Acknowledge
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs text-slate-400">Assigned</span>
-                                )
-                              ) : isAcknowledged && !s.cancelled ? (
-                                isMyShift ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <Button
-                                      size="sm"
-                                      variant="primary"
-                                      id={`run-shift-inspection-${s.id}`}
-                                      className="text-xs py-1 px-2.5 h-7"
-                                      onClick={() => runLabInspection(s, progress)}
-                                    >
-                                      Inspect Lab
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={isAllChecked ? 'primary' : 'secondary'}
-                                      id={`complete-shift-${s.id}`}
-                                      className="text-xs py-1 px-2.5 h-7"
-                                      disabled={busy}
-                                      onClick={() => openHandoverModal(s, progress)}
-                                      title={
-                                        isAllChecked
-                                          ? 'Complete shift handover'
-                                          : 'Submit handover note'
-                                      }
-                                    >
-                                      Handover
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-slate-400">On Duty</span>
-                                )
-                              ) : null}
-                            </>
-                          )}
-
+                      <td className="px-5 py-4 text-right whitespace-nowrap text-xs" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end">
                           <button
                             type="button"
                             className="action-btn-uniform"
@@ -440,118 +403,245 @@ export default function Shifts() {
       <Modal
         open={!!selectedShift}
         onClose={() => setSelectedShift(null)}
-        title={selectedShift?.shift?.lab_name || 'Shift Details'}
-        description={`${selectedShift?.shift?.shift_window || ''} · Assigned to ${selectedShift?.shift?.assistant_name || 'Staff'}`}
+        title={
+          (() => {
+            const s = selectedShift?.shift;
+            if (!s) return 'Shift Details';
+            const loc = selectedLabLoc;
+            const isAcknowledged = Boolean(s.acknowledged_at);
+            const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
+            const statusKey =
+              s.lifecycle === 'cancelled'
+                ? 'cancelled'
+                : isCompleted
+                ? 'completed'
+                : isAcknowledged
+                ? 'on_duty'
+                : 'pending_ack';
+            const statusLabel =
+              s.lifecycle === 'cancelled'
+                ? 'Cancelled'
+                : isCompleted
+                ? 'Completed'
+                : isAcknowledged
+                ? 'On Duty'
+                : 'Pending Acknowledgement';
+
+            return (
+              <div className="flex flex-wrap items-center gap-2.5">
+                {loc?.code && (
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                    {loc.code}
+                  </span>
+                )}
+                <span className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  {loc?.name || s.lab_name}
+                </span>
+                <span className={`status ${statusKey} text-[11px]`}>
+                  <i />
+                  {statusLabel}
+                </span>
+              </div>
+            );
+          })()
+        }
+        description="Campus Lab Shift & Workstation Inspection"
         id="shift-detail-dialog"
       >
-        {selectedShift && (
-          <div className="flex flex-col gap-3">
-            <div className="detail-line">
-              <span>Status</span>
-              <Status
-                value={
-                  selectedShift.shift.lifecycle === 'cancelled'
-                    ? 'cancelled'
-                    : selectedShift.shift.lifecycle === 'completed' || Boolean(selectedShift.shift.completed_at)
-                    ? 'completed'
-                    : selectedShift.shift.acknowledged_at
-                    ? 'on_duty'
-                    : 'pending_ack'
-                }
-              />
-            </div>
-            <div className="detail-line">
-              <span>Lab Room</span>
-              <strong>{selectedShift.shift.lab_name}</strong>
-            </div>
-            <div className="detail-line">
-              <span>Assigned Assistant</span>
-              <strong>{selectedShift.shift.assistant_name}</strong>
-            </div>
-            <div className="detail-line">
-              <span>Shift Window</span>
-              <span className="font-mono text-xs">{selectedShift.shift.shift_window}</span>
-            </div>
-            <div className="detail-line">
-              <span>Inspection Progress</span>
-              <span className="font-mono text-xs">
-                {selectedShift.shift.acknowledged_at ? selectedShift.progress.checked : 0} / {selectedShift.progress.required} Checked
-              </span>
-            </div>
+        {selectedShift && (() => {
+          const s = selectedShift.shift;
+          const progress = selectedShift.progress;
+          const isAcknowledged = Boolean(s.acknowledged_at);
+          const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
+          const displayChecked = isAcknowledged ? progress.checked : 0;
+          const percent = isAcknowledged ? progress.percent : 0;
+          const isAllChecked = isAcknowledged && progress.checked >= progress.required;
+          const checkedAssetTags = new Set((progress.labChecks || []).map((c: any) => c.asset_tag).filter(Boolean));
+          const checkedAssetIds = new Set((progress.labChecks || []).map((c: any) => c.asset_id).filter(Boolean));
 
-            {selectedShift.shift.handover_notes && (
-              <div className="success-box mt-2" data-testid={`shift-handover-${selectedShift.shift.id}`}>
-                <FileCheck2 size={18} />
-                <div>
-                  <strong>Handover Summary</strong>
-                  <p>{selectedShift.shift.handover_notes}</p>
+          return (
+            <div className="flex flex-col gap-3.5">
+              {/* 1. Compact 3-Column Summary Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Assigned Assistant
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
+                    <UserRound size={14} className="text-slate-400" />
+                    {s.assistant_name || 'Unassigned'}
+                  </span>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Shift Window
+                  </span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
+                    <Clock3 size={14} className="text-slate-400" />
+                    <span className="font-mono text-xs">{formatDetailedShiftWindow(s.shift_window)}</span>
+                  </span>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Inspection Progress
+                  </span>
+                  <div className="mt-1">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                        {displayChecked} / {progress.required} Checked
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-500">{percent}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="flex items-center justify-end gap-2.5 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60">
-              {user.role === 'admin' && !selectedShift.shift.cancelled && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  id={`cancel-shift-modal-${selectedShift.shift.id}`}
-                  disabled={busy}
-                  onClick={() => {
-                    const s = selectedShift.shift;
-                    setSelectedShift(null);
-                    cancelShift(s);
-                  }}
-                >
-                  Cancel Shift
-                </Button>
+              {/* 2. Shift Inspection Scope (2x2 Grid) */}
+              <div className="flex flex-col gap-2 mt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ClipboardCheck size={14} className="text-slate-400" />
+                    Shift Inspection Scope ({displayChecked} / 4 Workstations)
+                  </span>
+                  {isAcknowledged && !isCompleted && user.role === 'assistant' && (
+                    <span className="text-[11px] text-slate-400">
+                      Requires 4 workstations verified
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {targetWorkstations.map((pc: any) => {
+                    const isVerified = isCompleted || (isAcknowledged && (checkedAssetIds.has(pc.id) || checkedAssetTags.has(pc.tag)));
+                    return (
+                      <div
+                        key={pc.id || pc.tag}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors ${
+                          isVerified
+                            ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Monitor size={14} className={isVerified ? 'text-emerald-500 flex-shrink-0' : 'text-slate-400 flex-shrink-0'} />
+                          <div className="min-w-0 truncate">
+                            <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 block truncate">
+                              {pc.tag}
+                            </span>
+                            <span className="text-[11px] text-slate-500 block truncate">
+                              {pc.name || 'Workstation'}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                            isVerified
+                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {isVerified ? (
+                            <>
+                              <CheckCircle2 size={11} className="text-emerald-500" />
+                              Verified
+                            </>
+                          ) : (
+                            'Unchecked'
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. Handover Notes if present */}
+              {s.handover_notes && (
+                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-xs mt-1" data-testid={`shift-handover-${s.id}`}>
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                    <FileCheck2 size={14} className="text-emerald-500" />
+                    Handover Summary
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{s.handover_notes}</p>
+                </div>
               )}
-              {user.role === 'assistant' && !selectedShift.shift.acknowledged_at && !selectedShift.shift.cancelled && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  id={`ack-shift-modal-${selectedShift.shift.id}`}
-                  disabled={busy}
-                  onClick={() => {
-                    const s = selectedShift.shift;
-                    setSelectedShift(null);
-                    acknowledgeShift(s);
-                  }}
-                >
-                  <CheckCheck size={14} /> Acknowledge Shift
-                </Button>
-              )}
-              {user.role === 'assistant' && selectedShift.shift.acknowledged_at && !selectedShift.shift.completed_at && !selectedShift.shift.cancelled && (
-                <>
+
+              {/* 4. Clean Action Footer (Single Top Border) */}
+              <div className="flex items-center justify-end gap-2.5 mt-3 pt-3.5 border-t border-slate-200 dark:border-slate-800/80">
+                {user.role === 'admin' && !s.cancelled && (
                   <Button
-                    variant="secondary"
+                    variant="danger"
                     size="sm"
+                    id={`cancel-shift-modal-${s.id}`}
+                    disabled={busy}
                     onClick={() => {
-                      const { shift, progress } = selectedShift;
                       setSelectedShift(null);
-                      runLabInspection(shift, progress);
+                      cancelShift(s);
                     }}
                   >
-                    Inspect Lab
+                    Cancel Shift
                   </Button>
+                )}
+
+                {user.role === 'assistant' && !isAcknowledged && !s.cancelled && (
                   <Button
                     variant="primary"
                     size="sm"
+                    id={`ack-shift-modal-${s.id}`}
+                    disabled={busy}
                     onClick={() => {
-                      const { shift, progress } = selectedShift;
                       setSelectedShift(null);
-                      openHandoverModal(shift, progress);
+                      acknowledgeShift(s);
                     }}
                   >
-                    Complete Handover
+                    <CheckCheck size={14} className="mr-1" /> Acknowledge Shift
                   </Button>
-                </>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setSelectedShift(null)}>
-                Close
-              </Button>
+                )}
+
+                {user.role === 'assistant' && isAcknowledged && !isCompleted && !s.cancelled && (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      id={`run-shift-inspection-modal-${s.id}`}
+                      onClick={() => {
+                        setSelectedShift(null);
+                        runLabInspection(s, progress);
+                      }}
+                    >
+                      Run Lab Inspection <ArrowRight size={13} className="ml-1 inline" />
+                    </Button>
+                    {isAllChecked && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        id={`complete-shift-modal-${s.id}`}
+                        onClick={() => {
+                          setSelectedShift(null);
+                          openHandoverModal(s, progress);
+                        }}
+                      >
+                        Complete Handover
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                <Button variant="outline" size="sm" onClick={() => setSelectedShift(null)}>
+                  Close
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
 
       <Modal
@@ -587,7 +677,6 @@ export default function Shifts() {
         open={open}
         onClose={setOpen}
         title="Assign Lab Shift"
-        description="Campus timezone: Asia/Kuala Lumpur (MYT)"
         id="shift-dialog"
       >
         <form onSubmit={submit}>
@@ -604,56 +693,47 @@ export default function Shifts() {
                 .map(u => (
                   <option value={u.id} key={u.id}>
                     {u.name}
-                    {u.scope ? ` · ${u.scope}` : ''}                  </option>
+                  </option>
                 ))}
-            </Select>
-          </Field>
-
-          <Field label="Standard 4-Hour Shift Window" id="shift-preset">
-            <Select
-              id="shift-preset"
-              value={shiftPreset}
-              onChange={(e: any) => applyPreset(e.target.value)}
-            >
-              <option value="morning">Morning Shift: 08:00 – 12:00 MYT</option>
-              <option value="afternoon">Afternoon Shift: 12:00 – 16:00 MYT</option>
-              <option value="evening">Evening Shift: 16:00 – 20:00 MYT</option>
             </Select>
           </Field>
 
           <Field label="Assigned Lab" id="shift-lab">
             <Select
               id="shift-lab"
+              required
               value={form.lab_id}
               onChange={(e: any) => setForm({ ...form, lab_id: e.target.value })}
             >
-              <option value="lab-1">Computing Lab A</option>
-              <option value="lab-2">Computing Lab B</option>
-              <option value="lab-3">Innovation Lab</option>
+              <option value="lab-1">B-04-03 · Computing Lab A</option>
+              <option value="lab-2">B-04-04 · Computing Lab B</option>
+              <option value="lab-4">B-04-05 · Computing Lab C</option>
+              <option value="lab-3">Tech Lab 5-02 · Innovation Lab</option>
             </Select>
           </Field>
 
-          <div className="form-grid">
-            <Field label="Start Time (MYT)" id="shift-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Shift Date" id="shift-date">
               <input
-                type="datetime-local"
+                type="date"
                 required
-                data-testid="shift-start"
-                id="shift-start"
-                value={form.start}
-                onChange={e => setForm({ ...form, start: e.target.value })}
+                id="shift-date"
+                data-testid="shift-date"
+                value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
               />
             </Field>
 
-            <Field label="End Time (MYT)" id="shift-end">
-              <input
-                type="datetime-local"
-                required
-                data-testid="shift-end"
-                id="shift-end"
-                value={form.end}
-                onChange={e => setForm({ ...form, end: e.target.value })}
-              />
+            <Field label="Shift Window" id="shift-window">
+              <Select
+                id="shift-window"
+                value={form.session}
+                onChange={(e: any) => setForm({ ...form, session: e.target.value })}
+              >
+                <option value="morning">Morning (08:00 – 12:00)</option>
+                <option value="afternoon">Afternoon (12:00 – 16:00)</option>
+                <option value="evening">Evening (16:00 – 20:00)</option>
+              </Select>
             </Field>
           </div>
 

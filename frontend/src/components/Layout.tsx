@@ -205,8 +205,13 @@ export const Layout = ({ children }: any) => {
     item => item.roles.includes(user.role) && (item.label + ' ' + item.type).toLowerCase().includes(cmdQuery.toLowerCase())
   );
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', !light);
+    document.documentElement.classList.toggle('light-theme', light);
+  }, [light]);
+
   return (
-    <div className={`app-shell ${light ? 'light-theme' : ''}`}>
+    <div className={`app-shell ${light ? 'light-theme' : 'dark'}`}>
       <aside className={`sidebar ${mobile ? 'is-open' : ''}`}>
         <Link to="/" data-testid="brand-home">
           <Logo />
