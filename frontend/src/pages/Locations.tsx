@@ -395,82 +395,85 @@ export default function Locations() {
       {list.busy && !list.data ? (
         <Loading />
       ) : filtered.length ? (
-        <div className="locations-table-wrapper w-full overflow-x-auto">
-          <table className="clean-locations-table w-full">
-            <thead>
-              <tr>
-                <th style={{ width: '22%' }}>ROOM CODE</th>
-                <th style={{ width: '44%' }}>LOCATION NAME</th>
-                <th style={{ width: '20%' }}>DEVICES</th>
-                <th style={{ width: '14%', textAlign: 'right' }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(loc => {
-                const wsCount = loc.workstation_count ?? 0;
-                const apCount = loc.ap_count ?? 0;
-                const devParts: string[] = [];
-                if (wsCount > 0) devParts.push(`${wsCount} PC`);
-                if (apCount > 0) devParts.push(`${apCount} AP`);
-                const devicesSummary = devParts.length > 0 ? devParts.join(' · ') : '0';
+        <div className="locations-table-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="clean-locations-table w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4" style={{ width: '22%' }}>ROOM CODE</th>
+                  <th className="px-5 py-4" style={{ width: '44%' }}>LOCATION NAME</th>
+                  <th className="px-5 py-4" style={{ width: '20%' }}>DEVICES</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {filtered.map(loc => {
+                  const wsCount = loc.workstation_count ?? 0;
+                  const apCount = loc.ap_count ?? 0;
+                  const devParts: string[] = [];
+                  if (wsCount > 0) devParts.push(`${wsCount} PC`);
+                  if (apCount > 0) devParts.push(`${apCount} AP`);
+                  const devicesSummary = devParts.length > 0 ? devParts.join(' · ') : '0';
 
-                return (
-                  <tr
-                    key={loc.id}
-                    data-testid={`location-card-${loc.id}`}
-                    onClick={() => setSelectedRoom(loc)}
-                  >
-                    {/* 1. ROOM CODE: Bold room code in neutral text */}
-                    <td>
-                      <span className="loc-code-neutral mono" data-testid={`loc-code-${loc.id}`}>
-                        {loc.code}
-                      </span>
-                    </td>
+                  return (
+                    <tr
+                      key={loc.id}
+                      data-testid={`location-card-${loc.id}`}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      onClick={() => setSelectedRoom(loc)}
+                    >
+                      {/* 1. ROOM CODE: Bold room code in neutral text */}
+                      <td className="px-5 py-4">
+                        <span className="loc-code-neutral mono" data-testid={`loc-code-${loc.id}`}>
+                          {loc.code}
+                        </span>
+                      </td>
 
-                    {/* 2. LOCATION NAME: Clean text */}
-                    <td>
-                      <span className="loc-name-plain">{loc.name}</span>
-                    </td>
+                      {/* 2. LOCATION NAME: Clean text */}
+                      <td className="px-5 py-4">
+                        <span className="loc-name-plain">{loc.name}</span>
+                      </td>
 
-                    {/* 3. DEVICES: Compact summary, e.g. 10 PC · 6 AP or 2 AP or 0 */}
-                    <td>
-                      <span className="loc-devices-plain" data-testid={`loc-equipment-${loc.id}`}>
-                        {devicesSummary}
-                      </span>
-                    </td>
+                      {/* 3. DEVICES: Compact summary, e.g. 10 PC · 6 AP or 2 AP or 0 */}
+                      <td className="px-5 py-4">
+                        <span className="loc-devices-plain" data-testid={`loc-equipment-${loc.id}`}>
+                          {devicesSummary}
+                        </span>
+                      </td>
 
-                    {/* 4. ACTIONS: Clean neutral Edit and Delete buttons */}
-                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="btn-neutral-edit"
-                          title="Edit Location"
-                          aria-label={`Edit ${loc.name}`}
-                          data-testid={`edit-loc-${loc.id}`}
-                          onClick={() => handleOpenEdit(loc)}
-                        >
-                          <Pencil size={12} />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-btn-subtle danger"
-                          title="Remove Location"
-                          aria-label={`Delete ${loc.name}`}
-                          data-testid={`delete-loc-${loc.id}`}
-                          disabled={busy}
-                          onClick={() => handleDelete(loc)}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {/* 4. ACTIONS: Clean neutral Edit and Delete buttons */}
+                      <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="btn-neutral-edit"
+                            title="Edit Location"
+                            aria-label={`Edit ${loc.name}`}
+                            data-testid={`edit-loc-${loc.id}`}
+                            onClick={() => handleOpenEdit(loc)}
+                          >
+                            <Pencil size={12} />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn-subtle danger"
+                            title="Remove Location"
+                            aria-label={`Delete ${loc.name}`}
+                            data-testid={`delete-loc-${loc.id}`}
+                            disabled={busy}
+                            onClick={() => handleDelete(loc)}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <Empty text="No campus locations match your filter or search query." />

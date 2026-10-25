@@ -855,7 +855,11 @@ export default function Monitoring() {
         )}
       </div>
 
-      <div className="filter-tabs monitoring-filter-tabs" role="tablist" aria-label="Access Point Status Filter">
+      <div
+        className="flex items-center gap-2.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 monitoring-filter-tabs"
+        role="tablist"
+        aria-label="Access Point Status Filter"
+      >
         {[
           ['all', 'All Access Points', stats.total],
           ['online', 'Online', stats.online],
@@ -868,7 +872,7 @@ export default function Monitoring() {
             role="tab"
             aria-selected={status === key}
             data-testid={`ap-filter-${key}`}
-            className={status === key ? 'active' : ''}
+            className={`flex-shrink-0 whitespace-nowrap ${status === key ? 'active' : ''}`}
             onClick={() => setStatus(String(key))}
           >
             {label}

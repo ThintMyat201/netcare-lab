@@ -256,20 +256,20 @@ export default function Tickets() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+        <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="w-full overflow-x-auto">
             <table className="w-full table-fixed text-left text-sm border-collapse clean-tickets-table">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="px-4 py-3 w-72 max-w-xs" style={{ width: '28%' }}>TICKET</th>
-                  <th className="px-4 py-3" style={{ width: '14%' }}>DEVICE</th>
-                  <th className="px-4 py-3" style={{ width: '16%' }}>ASSIGNEE</th>
-                  <th className="px-4 py-3" style={{ width: '13%' }}>PRIORITY</th>
-                  <th className="px-4 py-3" style={{ width: '13%' }}>STATUS</th>
-                  <th className="px-4 py-3 text-right" style={{ width: '16%' }}>ACTION</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4 w-72 max-w-xs" style={{ width: '28%' }}>TICKET</th>
+                  <th className="px-5 py-4" style={{ width: '14%' }}>DEVICE</th>
+                  <th className="px-5 py-4" style={{ width: '16%' }}>ASSIGNEE</th>
+                  <th className="px-5 py-4" style={{ width: '13%' }}>PRIORITY</th>
+                  <th className="px-5 py-4" style={{ width: '13%' }}>STATUS</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '16%' }}>ACTION</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {rows.map((t: any) => {
                   const sla = getSlaBadge(t);
                   const cleanAssignee = t.assigned_name
@@ -279,9 +279,9 @@ export default function Tickets() {
                     <tr
                       key={t.id}
                       data-testid={`ticket-row-${t.id}`}
-                      className="hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-4 py-3 w-72 max-w-xs">
+                      <td className="px-5 py-4 w-72 max-w-xs">
                         <button
                           type="button"
                           className="text-left w-full group cursor-pointer block"
@@ -304,21 +304,21 @@ export default function Tickets() {
                         </button>
                       </td>
                       <td
-                        className="px-4 py-3 font-mono font-medium text-slate-200 whitespace-nowrap text-xs"
+                        className="px-5 py-4 font-mono font-medium text-slate-200 whitespace-nowrap text-xs"
                         title={formatLocationWithCode(t.lab_name || t.lab_id)}
                       >
                         {t.asset_tag}
                       </td>
-                      <td className="px-4 py-3 text-slate-300 whitespace-nowrap text-xs">
+                      <td className="px-5 py-4 text-slate-300 whitespace-nowrap text-xs">
                         {cleanAssignee}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs" title={sla.label}>
+                      <td className="px-5 py-4 whitespace-nowrap text-xs" title={sla.label}>
                         <Status value={t.priority} id={`priority-${t.id}`} />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs">
+                      <td className="px-5 py-4 whitespace-nowrap text-xs">
                         <Status value={t.status} id={`ticket-status-${t.id}`} />
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap text-xs">
+                      <td className="px-5 py-4 text-right whitespace-nowrap text-xs">
                         <div className="flex items-center justify-end gap-1.5">
                           {user.role !== 'assistant' && (
                             <>

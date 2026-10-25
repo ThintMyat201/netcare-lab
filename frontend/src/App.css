@@ -980,26 +980,29 @@
 .table-wrap {
   overflow-x: auto;
   width: 100%;
-  border: 2px solid var(--line);
-  border-radius: 7px;
+  border: 1px solid var(--border, var(--line));
+  border-radius: 12px;
   background: var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .data-table th {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
-  font-weight: 750;
+  font-weight: 600;
   background: var(--panel);
-  padding: 13px 16px;
-  border-bottom: 2px solid var(--line);
-  letter-spacing: .7px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border, var(--line));
+  letter-spacing: .05em;
+  text-transform: uppercase;
 }
 
 .data-table td {
-  padding: 13px 16px;
-  border-bottom: 2px solid var(--line);
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border, var(--line));
   color: var(--text);
-  font-weight: 550;
+  font-weight: 450;
+  vertical-align: middle;
 }
 
 .data-table tr:last-child td {
@@ -5125,36 +5128,17 @@ input[aria-invalid="true"] {
 
 /* Status Filter Pill Tabs (Never clipped, horizontally scrollable on mobile, wraps on desktop) */
 .monitoring-filter-tabs {
-  display: flex !important;
-  gap: 8px !important;
-  margin-bottom: 22px !important;
+  margin-bottom: 22px;
   border-bottom: none !important;
-  padding: 0 0 4px 0 !important;
-  width: 100% !important;
+  -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 768px) {
-  .monitoring-filter-tabs {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-    padding-bottom: 8px !important;
-  }
-  .monitoring-filter-tabs::-webkit-scrollbar {
-    display: none !important;
-  }
-  .monitoring-filter-tabs button {
-    flex-shrink: 0 !important;
-  }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
-@media (min-width: 769px) {
-  .monitoring-filter-tabs {
-    flex-wrap: wrap !important;
-    overflow-x: visible !important;
-  }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .monitoring-filter-tabs button {
@@ -7117,18 +7101,83 @@ input[aria-invalid="true"] {
 }
 
 /* ==========================================================================
-   STANDARDIZED ENTERPRISE TABLES (TICKETS, CHECKLISTS, SHIFTS)
+   STANDARDIZED ENTERPRISE TABLES (GLOBAL NETWORK MONITORING STYLE)
    ========================================================================== */
 
-/* Dark Theme Default Contrast */
-.clean-tickets-table {
+/* Universal Dark Theme Table Styles */
+.clean-tickets-table,
+.clean-checklists-table,
+.clean-shifts-table,
+.clean-inventory-table,
+.clean-locations-table,
+.clean-ap-table,
+.team-table,
+.dashboard-shifts-table,
+.data-table {
   width: 100%;
+  border-collapse: collapse;
+}
+
+.clean-tickets-table {
   table-layout: fixed;
 }
 
-.clean-checklists-table,
-.clean-shifts-table {
-  width: 100%;
+.clean-tickets-table th,
+.clean-checklists-table th,
+.clean-shifts-table th,
+.clean-inventory-table th,
+.clean-locations-table th,
+.clean-ap-table th,
+.team-table th,
+.dashboard-shifts-table th,
+.data-table th {
+  padding: 14px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  background: transparent;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+.clean-tickets-table td,
+.clean-checklists-table td,
+.clean-shifts-table td,
+.clean-inventory-table td,
+.clean-locations-table td,
+.clean-ap-table td,
+.team-table td,
+.dashboard-shifts-table td,
+.data-table td {
+  padding: 14px 20px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+  vertical-align: middle;
+}
+
+.clean-tickets-table tbody tr:last-child td,
+.clean-checklists-table tbody tr:last-child td,
+.clean-shifts-table tbody tr:last-child td,
+.clean-inventory-table tbody tr:last-child td,
+.clean-locations-table tbody tr:last-child td,
+.clean-ap-table tbody tr:last-child td,
+.team-table tbody tr:last-child td,
+.dashboard-shifts-table tbody tr:last-child td,
+.data-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+.clean-tickets-table tbody tr:hover,
+.clean-checklists-table tbody tr:hover,
+.clean-shifts-table tbody tr:hover,
+.clean-inventory-table tbody tr:hover,
+.clean-locations-table tbody tr:hover,
+.clean-ap-table tbody tr:hover,
+.team-table tbody tr:hover,
+.dashboard-shifts-table tbody tr:hover,
+.data-table tbody tr:hover {
+  background: rgba(51, 65, 85, 0.25);
 }
 
 .shift-lab-text {
@@ -7147,33 +7196,63 @@ input[aria-invalid="true"] {
   color: #94a3b8;
 }
 
-/* Light Theme High-Contrast Overrides */
+/* Universal Light Theme Card & Container Wrapper */
 .light-theme .tickets-table-card-wrapper,
 .light-theme .checklists-table-card-wrapper,
-.light-theme .shifts-table-card-wrapper {
+.light-theme .shifts-table-card-wrapper,
+.light-theme .inventory-card-wrapper,
+.light-theme .locations-table-wrapper,
+.light-theme .ap-table-scroll-wrap,
+.light-theme .ap-desktop-table-wrap,
+.light-theme .table-wrap {
   background: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
+/* Universal Light Theme Headers & Rows */
 .light-theme .clean-tickets-table th,
 .light-theme .clean-checklists-table th,
-.light-theme .clean-shifts-table th {
-  background: #f8fafc !important;
-  color: #475569 !important;
-  border-color: #e2e8f0 !important;
+.light-theme .clean-shifts-table th,
+.light-theme .clean-inventory-table th,
+.light-theme .clean-locations-table th,
+.light-theme .clean-ap-table th,
+.light-theme .team-table th,
+.light-theme .dashboard-shifts-table th,
+.light-theme .data-table th {
+  background: rgba(248, 250, 252, 0.8) !important;
+  color: #64748b !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
 }
 
 .light-theme .clean-tickets-table td,
 .light-theme .clean-checklists-table td,
-.light-theme .clean-shifts-table td {
-  border-color: #e2e8f0 !important;
+.light-theme .clean-shifts-table td,
+.light-theme .clean-inventory-table td,
+.light-theme .clean-locations-table td,
+.light-theme .clean-ap-table td,
+.light-theme .team-table td,
+.light-theme .dashboard-shifts-table td,
+.light-theme .data-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
 }
 
 .light-theme .clean-tickets-table tbody tr:hover,
 .light-theme .clean-checklists-table tbody tr:hover,
-.light-theme .clean-shifts-table tbody tr:hover {
-  background: rgba(0, 0, 0, 0.025) !important;
+.light-theme .clean-shifts-table tbody tr:hover,
+.light-theme .clean-inventory-table tbody tr:hover,
+.light-theme .clean-locations-table tbody tr:hover,
+.light-theme .clean-ap-table tbody tr:hover,
+.light-theme .team-table tbody tr:hover,
+.light-theme .dashboard-shifts-table tbody tr:hover,
+.light-theme .data-table tbody tr:hover {
+  background: rgba(248, 250, 252, 0.7) !important;
 }
 
 /* Light Theme Typography High Contrast */

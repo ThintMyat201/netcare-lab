@@ -525,37 +525,37 @@ export default function Checklists() {
       {busy && !data ? (
         <Loading />
       ) : filteredWorkstations.length ? (
-        <div className="checklists-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+        <div className="checklists-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse clean-checklists-table" style={{ minWidth: '780px' }}>
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="px-5 py-3.5" style={{ width: '18%' }}>WORKSTATION</th>
-                  <th className="px-5 py-3.5" style={{ width: '13%' }}>ROOM</th>
-                  <th className="px-5 py-3.5" style={{ width: '18%' }}>INSPECTED BY</th>
-                  <th className="px-5 py-3.5" style={{ width: '17%' }}>OUTCOME</th>
-                  <th className="px-5 py-3.5" style={{ width: '14%' }}>TICKET</th>
-                  <th className="px-5 py-3.5 text-right" style={{ width: '20%' }}>SUBMITTED / ACTION</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4" style={{ width: '18%' }}>WORKSTATION</th>
+                  <th className="px-5 py-4" style={{ width: '13%' }}>ROOM</th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>INSPECTED BY</th>
+                  <th className="px-5 py-4" style={{ width: '17%' }}>OUTCOME</th>
+                  <th className="px-5 py-4" style={{ width: '14%' }}>TICKET</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '20%' }}>SUBMITTED / ACTION</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {filteredWorkstations.map((w: any) => {
                   return (
                     <tr
                       key={w.id}
                       data-testid={`checklist-row-${w.latestCheck?.id || w.id}`}
-                      className="hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-5 py-3.5 font-mono font-bold text-slate-100 whitespace-nowrap">
+                      <td className="px-5 py-4 font-mono font-bold text-slate-100 whitespace-nowrap">
                         {w.tag}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-xs text-slate-300 whitespace-nowrap">
+                      <td className="px-5 py-4 font-mono text-xs text-slate-300 whitespace-nowrap">
                         {w.roomCode}
                       </td>
-                      <td className="px-5 py-3.5 text-slate-300 whitespace-nowrap">
+                      <td className="px-5 py-4 text-slate-300 whitespace-nowrap">
                         {w.inspectedBy}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span
                           className="inline-flex items-center gap-1.5 text-xs font-medium"
                           data-testid={`checklist-result-${w.latestCheck?.id || w.id}`}
@@ -586,7 +586,7 @@ export default function Checklists() {
                           </span>
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         {w.linkedTicket ? (
                           isAssistant ? (
                             <button
@@ -619,7 +619,7 @@ export default function Checklists() {
                           <span className="text-slate-500">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <span className="font-mono text-xs text-slate-400 whitespace-nowrap">
                             {w.submittedAt ? time(w.submittedAt, true) : '—'}

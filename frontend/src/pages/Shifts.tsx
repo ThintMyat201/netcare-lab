@@ -258,20 +258,20 @@ export default function Shifts() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="shifts-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+        <div className="shifts-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse clean-shifts-table" style={{ minWidth: '780px' }}>
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="px-5 py-3.5" style={{ width: '25%' }}>LAB / ROOM</th>
-                  <th className="px-5 py-3.5" style={{ width: '18%' }}>ASSISTANT</th>
-                  <th className="px-5 py-3.5" style={{ width: '20%' }}>SHIFT WINDOW</th>
-                  <th className="px-5 py-3.5" style={{ width: '13%' }}>PROGRESS</th>
-                  <th className="px-5 py-3.5" style={{ width: '11%' }}>STATUS</th>
-                  <th className="px-5 py-3.5 text-right" style={{ width: '13%' }}>ACTION</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4" style={{ width: '25%' }}>LAB / ROOM</th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>ASSISTANT</th>
+                  <th className="px-5 py-4" style={{ width: '20%' }}>SHIFT WINDOW</th>
+                  <th className="px-5 py-4" style={{ width: '13%' }}>PROGRESS</th>
+                  <th className="px-5 py-4" style={{ width: '11%' }}>STATUS</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '13%' }}>ACTION</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {rows.map((s: any) => {
                   const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
                   const isMyShift =
@@ -302,19 +302,19 @@ export default function Shifts() {
                     <tr
                       key={s.id}
                       data-testid={`shift-row-${s.id}`}
-                      className="hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-5 py-3.5 shift-cell-lab whitespace-nowrap">
+                      <td className="px-5 py-4 shift-cell-lab whitespace-nowrap">
                         <span className="font-semibold shift-lab-text">
                           {labRoomText}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 shift-cell-assistant whitespace-nowrap">
+                      <td className="px-5 py-4 shift-cell-assistant whitespace-nowrap">
                         <span className="shift-assistant-text">
                           {s.assistant_name}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span
                           className="font-mono text-xs shift-window-text"
                           data-testid={`shift-window-${s.id}`}
@@ -322,7 +322,7 @@ export default function Shifts() {
                           {s.shift_window}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span
                           className="font-mono text-xs shift-progress-text"
                           data-testid={`shift-progress-${s.id}`}
@@ -330,10 +330,10 @@ export default function Shifts() {
                           {displayChecked} / {progress.required} Checked
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <Status value={statusKey} id={`shift-status-${s.id}`} />
                       </td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           {user.role === 'admin' && !s.cancelled && (
                             <Button

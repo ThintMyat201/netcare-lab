@@ -393,56 +393,58 @@ export function Assets() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows.length ? (
-        <div className="inventory-card-wrapper w-full overflow-x-auto">
-          <table className="clean-inventory-table w-full">
-            <thead>
-              <tr>
-                <th style={{ width: '22%' }}>TAG</th>
-                <th style={{ width: '18%' }}>TYPE</th>
-                <th style={{ width: '30%' }}>MODEL</th>
-                <th style={{ width: '16%' }}>ROOM</th>
-                <th style={{ width: '14%', textAlign: 'right' }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((a: any) => {
-                const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
-                const locCode = loc?.code || 'CAMPUS';
-                const locName = a.lab_name || loc?.name || 'Unassigned';
-                const isPC = a.kind === 'PC';
-                const modelName = a.model || (isPC ? 'Dell OptiPlex 7010' : 'Aruba AP-515');
-                const fullRoomTooltip = `${locCode} · ${locName}${a.placement ? ` · ${a.placement}` : ''}`;
+        <div className="inventory-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="clean-inventory-table w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4" style={{ width: '22%' }}>TAG</th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>TYPE</th>
+                  <th className="px-5 py-4" style={{ width: '30%' }}>MODEL</th>
+                  <th className="px-5 py-4" style={{ width: '16%' }}>ROOM</th>
+                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {rows.map((a: any) => {
+                  const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
+                  const locCode = loc?.code || 'CAMPUS';
+                  const locName = a.lab_name || loc?.name || 'Unassigned';
+                  const isPC = a.kind === 'PC';
+                  const modelName = a.model || (isPC ? 'Dell OptiPlex 7010' : 'Aruba AP-515');
+                  const fullRoomTooltip = `${locCode} · ${locName}${a.placement ? ` · ${a.placement}` : ''}`;
 
-                return (
-                  <tr
-                    key={a.id}
-                    data-testid={`asset-row-${a.id}`}
-                    onClick={() => handleOpenDetails(a, false)}
-                  >
-                    {/* 1. TAG: Bold monospace/clean tag */}
-                    <td>
-                      <span className="device-tag-mono">{a.tag}</span>
-                    </td>
+                  return (
+                    <tr
+                      key={a.id}
+                      data-testid={`asset-row-${a.id}`}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      onClick={() => handleOpenDetails(a, false)}
+                    >
+                      {/* 1. TAG: Bold monospace/clean tag */}
+                      <td className="px-5 py-4">
+                        <span className="device-tag-mono">{a.tag}</span>
+                      </td>
 
-                    {/* 2. TYPE: Plain text */}
-                    <td>
-                      <span className="device-type-plain">{isPC ? 'Workstation' : 'Access Point'}</span>
-                    </td>
+                      {/* 2. TYPE: Plain text */}
+                      <td className="px-5 py-4">
+                        <span className="device-type-plain">{isPC ? 'Workstation' : 'Access Point'}</span>
+                      </td>
 
-                    {/* 3. MODEL: Full model name (never truncated) */}
-                    <td>
-                      <span className="device-model-plain">{modelName}</span>
-                    </td>
+                      {/* 3. MODEL: Full model name (never truncated) */}
+                      <td className="px-5 py-4">
+                        <span className="device-model-plain">{modelName}</span>
+                      </td>
 
-                    {/* 4. ROOM: Plain text room code only */}
-                    <td>
-                      <span className="device-room-mono mono" title={fullRoomTooltip} data-testid={`asset-room-code-${a.id}`}>
-                        {locCode}
-                      </span>
-                    </td>
+                      {/* 4. ROOM: Plain text room code only */}
+                      <td className="px-5 py-4">
+                        <span className="device-room-mono mono" title={fullRoomTooltip} data-testid={`asset-room-code-${a.id}`}>
+                          {locCode}
+                        </span>
+                      </td>
 
-                    {/* 5. ACTIONS: Subtle neutral Edit button and subtle Archive icon button */}
-                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      {/* 5. ACTIONS: Subtle neutral Edit button and subtle Archive icon button */}
+                      <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
                         <button
                           type="button"
@@ -485,6 +487,7 @@ export function Assets() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <Empty text="No equipment found in this location or matching your search." />
@@ -1241,58 +1244,63 @@ export function Team() {
       {list.busy && !members ? (
         <Loading />
       ) : rows.length ? (
-        <div className="table-wrap">
-          <table className="data-table team-table">
-            <thead>
-              <tr>
-                <th className="pl-6">TEAM MEMBER</th>
-                <th>ASSIGNED ROLE</th>
-                <th>OPERATIONAL SCOPE / ASSIGNMENT</th>
-                <th>STATUS</th>
-                <th>ACCOUNT TYPE</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((u, index) => {
-                const locked = isProtected(u);
-                const isNearBottom = index >= rows.length - 2;
-                return (
-                  <tr data-testid={`user-row-${u.id}`} key={u.id} className={u.active ? '' : 'is-suspended'}>
-                    <td className="pl-6">
-                      <div className="user-name">
-                        <span className="avatar w-9 h-9">{initialsOf(u.name)}</span>
-                        <div>
-                          <strong>
-                            {u.name}
-                            {isSelf(u) && <span className="you-badge">you</span>}
-                          </strong>
-                          <small>{u.email}</small>
+        <div className="table-wrap w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="data-table team-table w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4">TEAM MEMBER</th>
+                  <th className="px-5 py-4">ASSIGNED ROLE</th>
+                  <th className="px-5 py-4">OPERATIONAL SCOPE / ASSIGNMENT</th>
+                  <th className="px-5 py-4">STATUS</th>
+                  <th className="px-5 py-4">ACCOUNT TYPE</th>
+                  <th className="px-5 py-4" aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {rows.map((u, index) => {
+                  const locked = isProtected(u);
+                  const isNearBottom = index >= rows.length - 2;
+                  return (
+                    <tr
+                      data-testid={`user-row-${u.id}`}
+                      key={u.id}
+                      className={`${u.active ? '' : 'is-suspended'} hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors`}
+                    >
+                      <td className="px-5 py-4">
+                        <div className="user-name">
+                          <span className="avatar w-9 h-9">{initialsOf(u.name)}</span>
+                          <div>
+                            <strong>
+                              {u.name}
+                              {isSelf(u) && <span className="you-badge">you</span>}
+                            </strong>
+                            <small>{u.email}</small>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`role-badge role-${u.role}`} data-testid={`user-role-${u.id}`}>
-                        {roleLabel(u.role)}
-                      </span>
-                    </td>
-                    <td className="scope-cell">{u.scope || ROLE_DEFAULT_SCOPE[u.role]}</td>
-                    <td>
-                      <span className={`member-status ${u.active ? 'active' : 'suspended'}`} data-testid={`user-status-${u.id}`}>
-                        <i />
-                        {u.active ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                    <td className="muted">
-                      {isOwner(u) ? (
-                        <span className="owner-type">
-                          <ShieldCheck size={13} /> Workspace Owner
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`role-badge role-${u.role}`} data-testid={`user-role-${u.id}`}>
+                          {roleLabel(u.role)}
                         </span>
-                      ) : (
-                        'Standard Account'
-                      )}
-                    </td>
-                    <td>
+                      </td>
+                      <td className="px-5 py-4 scope-cell">{u.scope || ROLE_DEFAULT_SCOPE[u.role]}</td>
+                      <td className="px-5 py-4">
+                        <span className={`member-status ${u.active ? 'active' : 'suspended'}`} data-testid={`user-status-${u.id}`}>
+                          <i />
+                          {u.active ? 'Active' : 'Suspended'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 muted">
+                        {isOwner(u) ? (
+                          <span className="owner-type">
+                            <ShieldCheck size={13} /> Workspace Owner
+                          </span>
+                        ) : (
+                          'Standard Account'
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
                       <DropdownMenu.Root modal={false}>
                         <DropdownMenu.Trigger asChild>
                           <button
@@ -1359,6 +1367,7 @@ export function Team() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <Empty text="No team members match your search or role filter." />

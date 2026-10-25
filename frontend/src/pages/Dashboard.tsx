@@ -362,50 +362,51 @@ export default function Dashboard() {
                 Open Shift Schedule <ArrowRight size={13} />
               </Link>
             </SectionHead>
-            <div className="table-wrap dashboard-shifts-wrap">
-              <table className="data-table dashboard-shifts-table">
-                <thead>
-                  <tr>
-                    <th className="col-shift-name">LAB &amp; SHIFT WINDOW</th>
-                    <th className="col-shift-status">STATUS</th>
-                    <th className="col-shift-progress">INSPECTION PROGRESS</th>
-                    <th className="col-shift-action">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allShifts.slice(0, 3).map((s: any) => {
-                    const prog = getLabInspectionProgress(s.lab_id, s.lab_name, allChecklists, assetsData.data);
-                    const isAcknowledged = Boolean(s.acknowledged_at);
-                    const displayChecked = isAcknowledged ? prog.checked : 0;
-                    const displayPercent = isAcknowledged ? prog.percent : 0;
-                    const statusKey =
-                      s.lifecycle === 'completed'
-                        ? 'completed'
-                        : isAcknowledged
-                        ? 'on_duty'
-                        : 'pending_ack';
-                    return (
-                      <tr key={s.id} data-testid={`dashboard-shift-${s.id}`}>
-                        <td className="col-shift-name">
-                          <strong>{s.lab_name}</strong>
-                          <small className="cell-sub">{s.shift_window}</small>
-                        </td>
-                        <td className="col-shift-status">
-                          <Status value={statusKey} id={`dashboard-shift-status-${s.id}`} />
-                        </td>
-                        <td className="col-shift-progress">
-                          <div className="utilization">
-                            <span className="utilization-bar online">
-                              <i style={{ width: `${displayPercent}%` }} />
-                            </span>
-                            <span className="mono">
-                              {displayChecked}/{prog.required} Checked
-                            </span>
-                          </div>
-                        </td>
-                        <td className="col-shift-action">
-                          <div className="dashboard-shift-actions">
-                            {!isAcknowledged && s.assistant_id === user.id ? (
+            <div className="w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dashboard-shifts-wrap">
+              <div className="w-full overflow-x-auto">
+                <table className="data-table dashboard-shifts-table min-w-full">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 uppercase">
+                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-name">LAB &amp; SHIFT WINDOW</th>
+                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-status">STATUS</th>
+                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-progress">INSPECTION PROGRESS</th>
+                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-right col-shift-action">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {allShifts.slice(0, 3).map((s: any) => {
+                      const prog = getLabInspectionProgress(s.lab_id, s.lab_name, allChecklists, assetsData.data);
+                      const isAcknowledged = Boolean(s.acknowledged_at);
+                      const displayChecked = isAcknowledged ? prog.checked : 0;
+                      const displayPercent = isAcknowledged ? prog.percent : 0;
+                      const statusKey =
+                        s.lifecycle === 'completed'
+                          ? 'completed'
+                          : isAcknowledged
+                          ? 'on_duty'
+                          : 'pending_ack';
+                      return (
+                        <tr key={s.id} data-testid={`dashboard-shift-${s.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-5 py-4 col-shift-name">
+                            <strong>{s.lab_name}</strong>
+                            <small className="cell-sub">{s.shift_window}</small>
+                          </td>
+                          <td className="px-5 py-4 col-shift-status">
+                            <Status value={statusKey} id={`dashboard-shift-status-${s.id}`} />
+                          </td>
+                          <td className="px-5 py-4 col-shift-progress">
+                            <div className="utilization">
+                              <span className="utilization-bar online">
+                                <i style={{ width: `${displayPercent}%` }} />
+                              </span>
+                              <span className="mono">
+                                {displayChecked}/{prog.required} Checked
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 col-shift-action text-right">
+                            <div className="dashboard-shift-actions justify-end">
+                              {!isAcknowledged && s.assistant_id === user.id ? (
                               <Button
                                 id={`dashboard-shift-ack-${s.id}`}
                                 className="compact"
@@ -439,6 +440,7 @@ export default function Dashboard() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </section>
 

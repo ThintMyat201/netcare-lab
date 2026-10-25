@@ -434,93 +434,95 @@ export function Reports() {
             </div>
 
             <SectionHead title="Lab Performance & Health" />
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>LAB</th>
-                    <th>ACTIVE HARDWARE</th>
-                    <th>SHIFT INSPECTION COVERAGE</th>
-                    <th>ACTIVE INCIDENTS</th>
-                    <th>LAB HEALTH STATUS</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {computedReport.labs.map((l: any, i: number) => (
-                    <tr
-                      key={l.name}
-                      data-testid={`report-lab-${i}`}
-                      className="clickable"
-                      onClick={() => navigate(`/checklists?lab=${l.id}`)}
-                    >
-                      <td>
-                        <strong>{l.name}</strong>
-                        <small className="cell-sub">Campus Facility · {l.id.toUpperCase()}</small>
-                      </td>
-                      <td>
-                        <span className="report-hardware-cell">
-                          <i
-                            className={`tiny-dot ${
-                              l.healthyAssets === l.totalAssets ? 'green' : 'amber'
-                            }`}
-                          />
-                          <strong className="mono">
-                            {l.healthyAssets} / {l.totalAssets} Healthy
-                          </strong>
-                        </span>
-                      </td>
-                      <td>
-                        <div className="report-coverage-cell">
-                          <span className="mono">{l.inspections} completed</span>
-                          <span className={`tier-pill ${l.passRate >= 80 ? 'tier1' : 'tier2'}`}>
-                            {l.passRate}% pass
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <strong className="mono">{l.activeIncidents} active</strong>
-                        <small className="cell-sub">
-                          ({l.openOnly} Open · {l.inProgOnly} In Progress)
-                        </small>
-                      </td>
-                      <td>
-                        <span
-                          className={`status ${
-                            l.healthStatus === 'healthy'
-                              ? 'online'
-                              : l.healthStatus === 'attention'
-                              ? 'congested'
-                              : 'offline'
-                          }`}
-                          data-testid={`report-lab-status-${i}`}
-                        >
-                          <i />
-                          {l.healthLabel}
-                        </span>
-                      </td>
-                      <td onClick={e => e.stopPropagation()}>
-                        <div className="ap-action-group">
-                          <Link
-                            to={`/checklists?lab=${l.id}`}
-                            className="inline-link"
-                            data-testid={`report-lab-checklists-${i}`}
-                          >
-                            <ClipboardCheck size={13} /> Checklists
-                          </Link>
-                          <Link
-                            to="/tickets"
-                            className="inline-link"
-                            data-testid={`report-lab-tickets-${i}`}
-                          >
-                            <Ticket size={13} /> Tickets <ArrowUpRight size={12} />
-                          </Link>
-                        </div>
-                      </td>
+            <div className="table-wrap w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+              <div className="w-full overflow-x-auto">
+                <table className="data-table w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                      <th className="px-5 py-4">LAB</th>
+                      <th className="px-5 py-4">ACTIVE HARDWARE</th>
+                      <th className="px-5 py-4">SHIFT INSPECTION COVERAGE</th>
+                      <th className="px-5 py-4">ACTIVE INCIDENTS</th>
+                      <th className="px-5 py-4">LAB HEALTH STATUS</th>
+                      <th className="px-5 py-4">ACTIONS</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {computedReport.labs.map((l: any, i: number) => (
+                      <tr
+                        key={l.name}
+                        data-testid={`report-lab-${i}`}
+                        className="clickable hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                        onClick={() => navigate(`/checklists?lab=${l.id}`)}
+                      >
+                        <td className="px-5 py-4">
+                          <strong>{l.name}</strong>
+                          <small className="cell-sub">Campus Facility · {l.id.toUpperCase()}</small>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="report-hardware-cell">
+                            <i
+                              className={`tiny-dot ${
+                                l.healthyAssets === l.totalAssets ? 'green' : 'amber'
+                              }`}
+                            />
+                            <strong className="mono">
+                              {l.healthyAssets} / {l.totalAssets} Healthy
+                            </strong>
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="report-coverage-cell">
+                            <span className="mono">{l.inspections} completed</span>
+                            <span className={`tier-pill ${l.passRate >= 80 ? 'tier1' : 'tier2'}`}>
+                              {l.passRate}% pass
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <strong className="mono">{l.activeIncidents} active</strong>
+                          <small className="cell-sub">
+                            ({l.openOnly} Open · {l.inProgOnly} In Progress)
+                          </small>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`status ${
+                              l.healthStatus === 'healthy'
+                                ? 'online'
+                                : l.healthStatus === 'attention'
+                                ? 'congested'
+                                : 'offline'
+                            }`}
+                            data-testid={`report-lab-status-${i}`}
+                          >
+                            <i />
+                            {l.healthLabel}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
+                          <div className="ap-action-group">
+                            <Link
+                              to={`/checklists?lab=${l.id}`}
+                              className="inline-link"
+                              data-testid={`report-lab-checklists-${i}`}
+                            >
+                              <ClipboardCheck size={13} /> Checklists
+                            </Link>
+                            <Link
+                              to="/tickets"
+                              className="inline-link"
+                              data-testid={`report-lab-tickets-${i}`}
+                            >
+                              <Ticket size={13} /> Tickets <ArrowUpRight size={12} />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <p className="permission-notice" data-testid="report-scope">
@@ -584,27 +586,33 @@ export function Audit() {
       {busy && !data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>TIMESTAMP (MYT)</th>
-                <th>PERFORMED BY</th>
-                <th>ACTION</th>
-                <th>DETAILS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((a: any) => (
-                <tr key={a.id} data-testid={`audit-event-${a.id}`}>
-                  <td className="mono small">{time(a.timestamp, true)} MYT</td>
-                  <td>{a.actor}</td>
-                  <td className="audit-action">{a.action}</td>
-                  <td className="audit-detail muted">{a.detail}</td>
+        <div className="table-wrap w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="data-table w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                  <th className="px-5 py-4">TIMESTAMP (MYT)</th>
+                  <th className="px-5 py-4">PERFORMED BY</th>
+                  <th className="px-5 py-4">ACTION</th>
+                  <th className="px-5 py-4">DETAILS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {rows.map((a: any) => (
+                  <tr
+                    key={a.id}
+                    data-testid={`audit-event-${a.id}`}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                  >
+                    <td className="px-5 py-4 mono small">{time(a.timestamp, true)} MYT</td>
+                    <td className="px-5 py-4">{a.actor}</td>
+                    <td className="px-5 py-4 audit-action">{a.action}</td>
+                    <td className="px-5 py-4 audit-detail muted">{a.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <Empty text="No activity log events match your search." />
