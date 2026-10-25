@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   FlaskConical,
   RefreshCw,
@@ -41,6 +41,7 @@ import {
   CAMPUS_LOCATIONS,
   AP_LOCATION_GROUPS,
   formatLocationWithCode,
+  formatLocationBadge,
 } from '../lib/workflow';
 
 
@@ -182,6 +183,7 @@ function computeStats(aps: any[]) {
 export default function Monitoring() {
   const { user } = useAuth();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [lab, setLab] = useState(params.get('lab') || '');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
@@ -204,7 +206,6 @@ export default function Monitoring() {
   const [liveSamples, setLiveSamples] = useState<any[]>([]);
   const [lastSampleAt, setLastSampleAt] = useState<string>(() => new Date().toISOString());
 
-  const [ticketAp, setTicketAp] = useState<any>(null);
   const [ticketForm, setTicketForm] = useState({ title: '', description: '', priority: 'high' });
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<any>(null);
@@ -266,6 +267,17 @@ export default function Monitoring() {
     setRemediationNote('');
     if (!keepDetail) setDetail(null);
     setLocalError('');
+    const statusLabel =
+      a.status === 'stale'
+        ? 'Telemetry Feed Interrupted'
+        : a.status === 'offline'
+        ? 'Hardware Outage / Unreachable'
+        : `High Bandwidth Congestion (${a.load ?? 90}%)`;
+    setTicketForm({
+      title: `${statusLabel} — ${a.tag}`,
+      description: `Infrastructure telemetry escalation for ${a.tag} (${a.lab_name || a.lab_id}, IP ${a.ip}). Status: ${String(a.status).toUpperCase()}.`,
+      priority: 'high',
+    });
     try {
       const res = await api.get(`/monitoring/${a.id}/history`);
       setDetail({
@@ -503,36 +515,18 @@ export default function Monitoring() {
     return () => window.clearInterval(timerId);
   }, [sampleInterval, user.role]);
 
-  const openCreateNetworkTicket = (ap: any) => {
-    setTicketAp(ap);
-    const statusLabel =
-      ap.status === 'stale'
-        ? 'Telemetry Feed Interrupted'
-        : ap.status === 'offline'
-        ? 'Hardware Outage / Unreachable'
-        : `High Bandwidth Congestion (${ap.load ?? 90}%)`;
-    setTicketForm({
-      title: `${statusLabel} — ${ap.tag}`,
-      description: `Infrastructure telemetry escalation for ${ap.tag} (${ap.lab_name}, IP ${ap.ip}). Current Status: ${String(
-        ap.status
-      ).toUpperCase()} | Bandwidth Load: ${ap.load ?? 'N/A'}% | Connected Devices: ${ap.clients ?? 'N/A'} | Latency: ${
-        ap.latency ?? 'N/A'
-      } ms.`,
-      priority: 'high',
-    });
-  };
-
   const submitNetworkTicket = async (e: any) => {
     e.preventDefault();
-    if (!ticketAp) return;
+    const targetAp = detail?.asset || selected;
+    if (!targetAp) return;
     setCreatingTicket(true);
     setLocalError('');
     try {
       const r = await api.post('/incidents', {
-        asset_id: ticketAp.id,
+        asset_id: targetAp.id,
         category: 'network',
         title: ticketForm.title,
-        description: ticketForm.description,
+        description: ticketForm.description || `Infrastructure telemetry escalation for ${targetAp.tag}`,
         priority: ticketForm.priority,
       });
       const enriched = enrichTicket({
@@ -544,24 +538,25 @@ export default function Monitoring() {
       });
       saveLocalTicket(enriched);
       setCreatedTicket(enriched);
-      setTicketAp(null);
+      setWorkflowVersion(v => v + 1);
+      ticketsData.load();
     } catch {
       const fallbackNum = `INC-${1045 + Math.floor(Math.random() * 50)}`;
       const nowIso = new Date().toISOString();
       const enriched = enrichTicket({
-        id: `local-${ticketAp.id}-${Date.now()}`,
+        id: `local-${targetAp.id}-${Date.now()}`,
         number: fallbackNum,
-        asset_id: ticketAp.id,
-        asset_tag: ticketAp.tag,
-        asset_name: ticketAp.name,
+        asset_id: targetAp.id,
+        asset_tag: targetAp.tag,
+        asset_name: targetAp.name,
         asset_kind: 'AP',
-        lab_id: ticketAp.lab_id,
-        lab_name: ticketAp.lab_name,
+        lab_id: targetAp.lab_id,
+        lab_name: targetAp.lab_name,
         category: 'network',
         priority: ticketForm.priority,
         status: 'open',
         title: ticketForm.title,
-        description: ticketForm.description,
+        description: ticketForm.description || `Infrastructure telemetry escalation for ${targetAp.tag}`,
         created_at: nowIso,
         updated_at: nowIso,
         tier: 'Tier 2 · Network / Connectivity',
@@ -571,7 +566,8 @@ export default function Monitoring() {
       });
       saveLocalTicket(enriched);
       setCreatedTicket(enriched);
-      setTicketAp(null);
+      setWorkflowVersion(v => v + 1);
+      ticketsData.load();
     } finally {
       setCreatingTicket(false);
     }
@@ -933,7 +929,6 @@ export default function Monitoring() {
         <APTable
           aps={filteredAps}
           onSelect={inspect}
-          onCreateTicket={user.role !== 'assistant' ? openCreateNetworkTicket : undefined}
           ticketsByAsset={activeTicketsByAsset}
           onResetFilter={
             status !== 'all' || search || lab
@@ -949,213 +944,216 @@ export default function Monitoring() {
 
       <Simulation open={simulation} onClose={setSimulation} aps={activeAps} onDone={handleSimulationDone} />
 
-      <Modal
-        open={!!ticketAp}
-        onClose={() => setTicketAp(null)}
-        title={`Create Network Ticket · ${ticketAp?.tag || ''}`}
-        description={`${formatLocationWithCode(ticketAp?.lab_name || ticketAp?.lab_id)} · IP ${ticketAp?.ip || ''} · Tier 2 Network Escalation`}
-        id="ap-ticket-dialog"
-      >
-        {ticketAp && (
-          <form onSubmit={submitNetworkTicket}>
-            <div className="detail-metrics">
-              <div>
-                <Users size={17} />
-                <strong>{ticketAp.clients ?? '—'}</strong>
-                <span>Connected Devices</span>
-              </div>
-              <div>
-                <Activity size={17} />
-                <strong>{ticketAp.load == null ? '—' : `${ticketAp.load}%`}</strong>
-                <span>Bandwidth Load</span>
-              </div>
-              <div>
-                <Wifi size={17} />
-                <strong>{ticketAp.latency == null ? '—' : `${ticketAp.latency} ms`}</strong>
-                <span>Latency</span>
-              </div>
-            </div>
-
-            <Field label="Incident Title" id="ap-ticket-title">
-              <input
-                id="ap-ticket-title"
-                data-testid="ap-ticket-title"
-                required
-                value={ticketForm.title}
-                onChange={e => setTicketForm({ ...ticketForm, title: e.target.value })}
-              />
-            </Field>
-
-            <Field label="Telemetry & Diagnostic Summary" id="ap-ticket-description">
-              <textarea
-                id="ap-ticket-description"
-                data-testid="ap-ticket-description"
-                rows={4}
-                required
-                value={ticketForm.description}
-                onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })}
-              />
-            </Field>
-
-            <Field label="Priority Level" id="ap-ticket-priority">
-              <Select
-                id="ap-ticket-priority"
-                value={ticketForm.priority}
-                onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
-              >
-                <option value="high">High Priority (Tier 2 NOC)</option>
-                <option value="medium">Medium Priority</option>
-              </Select>
-            </Field>
-
-            <div className="form-footer">
-              <span>Assigned to: Network Engineer (Tier 2)</span>
-              <Button type="submit" variant="primary" id="submit-ap-ticket" disabled={creatingTicket}>
-                <Send size={15} />
-                {creatingTicket ? 'Creating Ticket…' : 'Create Network Ticket'}
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
-
+      {/* UNIFIED COMPACT AP ACTION MODAL */}
       <Modal
         open={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected?.tag || 'Access Point Details'}
-        description={`${formatLocationWithCode(selected?.lab_name || selected?.lab_id)} · Real-time device telemetry`}
+        onClose={() => {
+          setSelected(null);
+          setDetail(null);
+          setDiagResult(null);
+          setRemediationNote('');
+        }}
+        title={
+          <div className="flex items-center gap-2.5">
+            <span>{detail?.asset?.tag || selected?.tag || 'Access Point'}</span>
+            <Status value={detail?.asset?.status || selected?.status} id="detail-ap-status" />
+          </div>
+        }
+        description={(() => {
+          const ap = detail?.asset || selected;
+          if (!ap) return 'Real-time device telemetry';
+          const loc = formatLocationBadge(ap.lab_name || ap.lab_id);
+          return `${loc.code ? `${loc.code} · ` : ''}${loc.name || ap.lab_name || 'Campus'} · ${ap.ip || '10.20.0.1'} · ${ap.model || 'Aruba AP-515'}`;
+        })()}
         id="ap-detail-dialog"
       >
         <ErrorBox error={localError} />
-        {detail ? (
-          <>
-            <div className="ap-detail-meta">
-              <Status value={detail.asset.status} id="detail-ap-status" />
-              <span className="mono">{detail.asset.ip}</span>
-              <span>{detail.asset.model}</span>
-            </div>
-            <div className="detail-metrics">
-              <div>
-                <Users size={17} />
-                <strong>{detail.asset.clients ?? '—'}</strong>
-                <span>Connected Devices</span>
-              </div>
-              <div>
-                <Activity size={17} />
-                <strong>{detail.asset.load == null ? '—' : `${detail.asset.load}%`}</strong>
-                <span>Bandwidth Load</span>
-              </div>
-              <div>
-                <Wifi size={17} />
-                <strong>{detail.asset.latency == null ? '—' : `${detail.asset.latency} ms`}</strong>
-                <span>Network Latency</span>
-              </div>
-            </div>
-            {detail.asset.status === 'stale' && (
-              <div className="notice" data-testid="stale-explanation">
-                Telemetry feed is interrupted or expired. Device status is unconfirmed.
-              </div>
-            )}
+        {selected ? (
+          (() => {
+            const ap = detail?.asset || selected;
+            const linkedTicket = activeTicketsByAsset[ap.id] || activeTicketsByAsset[ap.tag] || ap.linked_ticket;
+            const isFaulted = ap.status === 'stale' || ap.status === 'congested' || ap.status === 'offline';
 
-            {remediationNote && (
-              <div className="success-box" data-testid="ap-remediation-banner">
-                <CheckCheck size={16} />
-                <span>{remediationNote}</span>
-              </div>
-            )}
-
-            {user.role !== 'assistant' && (
-              <div className="diag-console" data-testid="ap-diag-console">
-                <div className="diag-console-head">
+            return (
+              <div className="flex flex-col gap-3.5">
+                {/* 2. Compact 3-Metric Strip */}
+                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
                   <div>
-                    <strong>
-                      <Terminal size={14} /> NOC Remote Diagnostics & Remediation
-                    </strong>
-                    <span>Run live ICMP ping, PoE port draw check, or remote recovery actions</span>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Connected Devices</span>
+                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.clients ?? '—'}</strong>
                   </div>
-                  <div className="diag-action-row">
-                    <Button
-                      size="sm"
-                      id="run-ap-diagnostic"
-                      disabled={runningDiag}
-                      onClick={() => runDiagnostics(detail.asset)}
-                    >
-                      <Terminal size={13} />
-                      {runningDiag ? 'Probing…' : 'Run Ping & PoE Check'}
-                    </Button>
-                    {detail.asset.status === 'congested' && (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        id="remediate-ap-channel"
-                        disabled={remediating}
-                        onClick={() => runRemediation(detail.asset, 'rebalance_channel')}
-                      >
-                        <Radio size={13} /> Rebalance 5GHz Channel
-                      </Button>
-                    )}
-                    {detail.asset.status === 'stale' && (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        id="remediate-ap-agent"
-                        disabled={remediating}
-                        onClick={() => runRemediation(detail.asset, 'restart_agent')}
-                      >
-                        <Wrench size={13} /> Restart Telemetry Agent
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant={detail.asset.status === 'offline' ? 'primary' : 'secondary'}
-                      id="remediate-ap-reboot"
-                      disabled={remediating}
-                      onClick={() => runRemediation(detail.asset, 'reboot_poe')}
-                    >
-                      <Power size={13} /> {remediating ? 'Executing…' : 'Cycle PoE / Reboot AP'}
-                    </Button>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Bandwidth Load</span>
+                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.load == null ? '—' : `${ap.load}%`}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Latency</span>
+                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.latency == null ? '—' : `${ap.latency} ms`}</strong>
                   </div>
                 </div>
 
-                {diagResult && (
-                  <div className="diag-result-grid" data-testid="ap-diag-results">
-                    <div>
-                      <span>ICMP Packet Loss</span>
-                      <strong className={diagResult.packet_loss_pct > 0 ? 'text-amber' : 'text-green'}>
-                        {diagResult.packet_loss_pct}% ({diagResult.packets_received}/{diagResult.packets_sent} pkts)
-                      </strong>
-                    </div>
-                    <div>
-                      <span>RTT (Min / Avg / Max)</span>
-                      <strong className="mono">
-                        {diagResult.rtt_avg_ms == null
-                          ? 'Timeout'
-                          : `${diagResult.rtt_min_ms} / ${diagResult.rtt_avg_ms} / ${diagResult.rtt_max_ms} ms`}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Switch Port & PoE</span>
-                      <strong>
-                        {diagResult.switch_port} · {diagResult.poe_draw_watts}W
-                      </strong>
-                    </div>
-                    <div>
-                      <span>5GHz Radio & SNR</span>
-                      <strong>
-                        {diagResult.channel_5ghz} {diagResult.snr_db != null ? `(${diagResult.snr_db} dB)` : ''}
-                      </strong>
-                    </div>
-                    <p className="diag-summary-line">{diagResult.summary}</p>
+                {ap.status === 'stale' && (
+                  <div className="notice text-xs py-2 px-3" data-testid="stale-explanation">
+                    Telemetry feed is interrupted or expired. Device status is unconfirmed.
                   </div>
                 )}
-              </div>
-            )}
 
-            <TrafficChart history={detail.history} height={180} />
-            <p className="muted small" data-testid="ap-detail-last-seen">
-              Last reported: {time(detail.asset?.last_seen || detail.asset?.updated_at || detail.asset?.last_updated || new Date().toISOString(), true, true)} MYT
-            </p>
-          </>
+                {/* 3. Remote Recovery Actions */}
+                {user.role !== 'assistant' && (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        id="run-ap-diagnostic"
+                        disabled={runningDiag}
+                        onClick={() => runDiagnostics(ap)}
+                      >
+                        <Terminal size={13} />
+                        {runningDiag ? 'Probing…' : 'Run Ping Check'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={ap.status === 'congested' ? 'primary' : 'secondary'}
+                        id="remediate-ap-channel"
+                        disabled={remediating}
+                        onClick={() => runRemediation(ap, 'rebalance_channel')}
+                      >
+                        <Radio size={13} /> {remediating ? 'Applying…' : 'Rebalance 5GHz'}
+                      </Button>
+                      {ap.status === 'stale' && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          id="remediate-ap-agent"
+                          disabled={remediating}
+                          onClick={() => runRemediation(ap, 'restart_agent')}
+                        >
+                          <Wrench size={13} /> Restart Agent
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={ap.status === 'offline' ? 'primary' : 'secondary'}
+                        id="remediate-ap-reboot"
+                        disabled={remediating}
+                        onClick={() => runRemediation(ap, 'reboot_poe')}
+                      >
+                        <Power size={13} /> {remediating ? 'Executing…' : 'Reboot AP'}
+                      </Button>
+                    </div>
+
+                    {remediationNote && (
+                      <div className="success-box text-xs py-2 px-3" data-testid="ap-remediation-banner">
+                        <CheckCheck size={15} />
+                        <span>{remediationNote}</span>
+                      </div>
+                    )}
+
+                    {diagResult && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs" data-testid="ap-diag-results">
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase block">ICMP Loss</span>
+                          <strong className={diagResult.packet_loss_pct > 0 ? 'text-amber-500' : 'text-emerald-500'}>
+                            {diagResult.packet_loss_pct}% ({diagResult.packets_received}/{diagResult.packets_sent})
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase block">RTT Avg</span>
+                          <strong className="mono">{diagResult.rtt_avg_ms == null ? 'Timeout' : `${diagResult.rtt_avg_ms} ms`}</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase block">Port & PoE</span>
+                          <strong>{diagResult.switch_port} · {diagResult.poe_draw_watts}W</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase block">5GHz Radio</span>
+                          <strong>{diagResult.channel_5ghz}</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Contextual Incident Ticket Section */}
+                {linkedTicket ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Linked Ticket: {linkedTicket.number} ({linkedTicket.title || (isFaulted ? 'Congested / Offline' : 'Active')})
+                      </span>
+                      <span className="text-[11px] text-slate-500">Tier 2 Network Escalation · {linkedTicket.status}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      id={`view-ticket-${ap.id}`}
+                      data-testid={`view-ticket-${ap.id}`}
+                      onClick={() => {
+                        setSelected(null);
+                        navigate(`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`);
+                      }}
+                    >
+                      Open Ticket {linkedTicket.number} →
+                    </Button>
+                  </div>
+                ) : !isFaulted || ap.status === 'online' ? (
+                  <div className="text-xs text-slate-400 py-1">
+                    No active incident tickets for this access point.
+                  </div>
+                ) : user.role !== 'assistant' ? (
+                  <form onSubmit={submitNetworkTicket} className="flex flex-col gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Escalate Issue to NOC (Tier 2)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div className="sm:col-span-2">
+                        <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1" htmlFor="ap-ticket-title">
+                          Incident Title
+                        </label>
+                        <input
+                          id="ap-ticket-title"
+                          data-testid="ap-ticket-title"
+                          required
+                          className="w-full text-xs"
+                          value={ticketForm.title}
+                          onChange={e => setTicketForm({ ...ticketForm, title: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1" htmlFor="ap-ticket-priority">
+                          Priority
+                        </label>
+                        <Select
+                          id="ap-ticket-priority"
+                          value={ticketForm.priority}
+                          onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                        >
+                          <option value="high">High Priority</option>
+                          <option value="medium">Medium Priority</option>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        id="submit-ap-ticket"
+                        disabled={creatingTicket}
+                        size="sm"
+                      >
+                        <Send size={13} />
+                        {creatingTicket ? 'Creating Ticket…' : 'Create Network Ticket'}
+                      </Button>
+                    </div>
+                  </form>
+                ) : null}
+
+                <p className="muted small text-[11px] text-slate-400 mt-1" data-testid="ap-detail-last-seen">
+                  Last reported: {time(ap.last_seen || ap.updated_at || ap.last_updated || new Date().toISOString(), true, true)} MYT
+                </p>
+              </div>
+            );
+          })()
         ) : (
           !localError && <Loading />
         )}

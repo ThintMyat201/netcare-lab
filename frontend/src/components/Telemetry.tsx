@@ -99,45 +99,16 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                       </div>
                     </td>
 
-                    {/* 5. ACTION: Unified action controls */}
+                    {/* 5. ACTION: Single uniform action button */}
                     <td style={{ textAlign: 'right' }}>
-                      <div className="ap-action-group inline-flex items-center gap-2" style={{ justifyContent: 'flex-end' }}>
-                        {linkedTicket && (
-                          <Link
-                            to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
-                            className="ap-ticket-pill-badge"
-                            id={`view-ticket-${a.id}`}
-                            data-testid={`view-ticket-${a.id}`}
-                            onClick={(e: any) => e.stopPropagation()}
-                            title={`View linked ticket ${linkedTicket.number || ''}`}
-                          >
-                            <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
-                            <ArrowUpRight size={12} className="ap-pill-arrow" />
-                          </Link>
-                        )}
-                        {isNonHealthy && !linkedTicket && onCreateTicket && (
-                          <button
-                            type="button"
-                            id={`create-ap-ticket-${a.id}`}
-                            data-testid={`create-ap-ticket-${a.id}`}
-                            className="ap-add-ticket-btn"
-                            onClick={(e: any) => {
-                              e.stopPropagation();
-                              onCreateTicket(a);
-                            }}
-                            title={`Create incident ticket for ${a.tag} (${a.status})`}
-                          >
-                            <Plus size={12} />
-                            <span>Ticket</span>
-                          </button>
-                        )}
+                      <div className="ap-action-group inline-flex items-center justify-end">
                         <button
                           type="button"
                           id={`ping-ap-${a.id}`}
                           data-testid={`inspect-${a.id}`}
                           className="action-btn-uniform"
-                          title={`Inspect telemetry & NOC diagnostics for ${a.tag}`}
-                          aria-label={`Inspect telemetry & NOC diagnostics for ${a.tag}`}
+                          title={`Open AP Action Modal for ${a.tag}`}
+                          aria-label={`Open AP Action Modal for ${a.tag}`}
                           onClick={(e: any) => {
                             e.stopPropagation();
                             onSelect?.(a);

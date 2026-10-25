@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
-import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice, formatLocationWithCode } from '../lib/workflow';
+import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice, formatLocationWithCode, formatLocationBadge } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 'slate' } {
@@ -279,49 +279,8 @@ export default function Tickets() {
                       <td className="px-5 py-4 whitespace-nowrap text-xs">
                         <Status value={t.status} id={`ticket-status-${t.id}`} />
                       </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap text-xs">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {user.role !== 'assistant' && (
-                            <>
-                              {t.status === 'open' && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="btn-ticket-action btn-start-work text-xs py-1 px-2.5 h-7 whitespace-nowrap"
-                                  data-testid={`start-work-${t.id}`}
-                                  title="Move ticket to In Progress"
-                                  disabled={busy}
-                                  onClick={(e: any) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(t, 'in_progress');
-                                  }}
-                                >
-                                  <Play size={11} className="mr-1" /> Start Work
-                                </Button>
-                              )}
-                              {t.status !== 'resolved' && (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  className="btn-ticket-action btn-resolve-ticket text-xs py-1 px-2.5 h-7 whitespace-nowrap"
-                                  data-testid={`resolve-ticket-${t.id}`}
-                                  title="Mark ticket as resolved and restore device"
-                                  disabled={busy}
-                                  onClick={(e: any) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(t, 'resolved');
-                                  }}
-                                >
-                                  <CheckCircle2 size={12} className="mr-1" /> Resolve
-                                </Button>
-                              )}
-                              {t.status === 'resolved' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium px-2 py-0.5">
-                                  <CheckCheck size={13} /> Resolved
-                                </span>
-                              )}
-                            </>
-                          )}
+                      <td className="px-5 py-4 text-right whitespace-nowrap text-xs" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end">
                           <button
                             type="button"
                             className="action-btn-uniform"
@@ -448,64 +407,71 @@ export default function Tickets() {
         id="ticket-detail-dialog"
       >
         {selected && (
-          <>
-            <div className="ticket-detail-heading">
-              <h3 data-testid="detail-ticket-title">{selected.title}</h3>
-              <Status value={selected.status} id="detail-ticket-status" />
+          <div className="flex flex-col gap-4">
+            {/* 1. Header: Ticket ID + Status badge, Issue Title, 1-line description */}
+            <div className="flex flex-col gap-1.5 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-slate-500 uppercase tracking-wider">{selected.number}</span>
+                <Status value={selected.status} id="detail-ticket-status" />
+              </div>
+              <h3 data-testid="detail-ticket-title" className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                {selected.title}
+              </h3>
+              <p data-testid="detail-ticket-description" className="text-xs text-slate-500 leading-relaxed">
+                {selected.description}
+              </p>
             </div>
 
-            <p className="notes-block" data-testid="detail-ticket-description">
-              {selected.description}
-            </p>
+            {/* 2. Compact 4-Item Summary Grid */}
+            {(() => {
+              const loc = formatLocationBadge(selected.lab_name || selected.lab_id);
+              const devText = `${selected.asset_tag || ''}${loc.code ? ` (${loc.code})` : ''}`;
+              const assigneeText = selected.assigned_name?.replace(/\s*\(.*?\)/, '') || 'Unassigned';
+              const priorityText = selected.priority === 'high' ? 'High' : selected.priority === 'low' ? 'Low' : 'Medium';
+              const catText = selected.category ? selected.category.charAt(0).toUpperCase() + selected.category.slice(1) : 'Network';
 
-            <div className="detail-line">
-              <span>Escalation Tier</span>
-              <span className={`tier-pill ${selected.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
-                {selected.tier}
-              </span>
-            </div>
-
-            <div className="detail-line">
-              <span>Assigned To</span>
-              <strong>{selected.assigned_name}</strong>
-            </div>
-
-            <div className="detail-line">
-              <span>Fault Category</span>
-              <strong className="capitalize">{selected.category}</strong>
-            </div>
-
-            <div className="detail-line">
-              <span>Priority Level</span>
-              <Status value={selected.priority} id="detail-ticket-priority" />
-            </div>
-
-            <div className="ticket-events">
-              {(selected.events || []).map((event: any, i: number) => (
-                <div key={i} data-testid={`ticket-event-${i}`}>
-                  <span className="event-dot" />
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
                   <div>
-                    <strong>{event.action}</strong>
-                    <small>
-                      {event.actor} · {time(event.timestamp, true)} MYT
-                    </small>
-                    {event.notes && <p>{event.notes}</p>}
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Device</span>
+                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-0.5" title={devText}>
+                      {devText}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Assignee</span>
+                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-0.5" title={assigneeText}>
+                      {assigneeText}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Category</span>
+                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block mt-0.5">
+                      {catText}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Priority</span>
+                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block mt-0.5" id="detail-ticket-priority">
+                      {priorityText}
+                    </strong>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
 
+            {/* 3. Resolution Section */}
             {selected.status === 'resolved' ? (
-              <div className="success-box mt-4" data-testid="resolution-notes">
-                <CheckCircle2 size={20} />
+              <div className="success-box" data-testid="resolution-notes">
+                <CheckCircle2 size={18} />
                 <div>
                   <strong>Resolution Notes</strong>
-                  <p>{selected.resolution_notes}</p>
+                  <p>{selected.resolution_notes || 'Resolved and verified operational.'}</p>
                 </div>
               </div>
             ) : (
               user.role !== 'assistant' && (
-                <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                   <Field label="Resolution Notes (Required)" id="resolution-notes-input">
                     <textarea
                       data-testid="resolution-notes-input"
@@ -518,7 +484,7 @@ export default function Tickets() {
                     />
                   </Field>
                   <ErrorBox error={error} />
-                  <div className="ticket-modal-actions flex items-center justify-end gap-3 mt-2">
+                  <div className="ticket-modal-actions flex items-center justify-end gap-3 mt-1">
                     {selected.status === 'open' && (
                       <Button
                         variant="secondary"
@@ -541,7 +507,7 @@ export default function Tickets() {
                 </div>
               )
             )}
-          </>
+          </div>
         )}
       </Modal>
     </>
