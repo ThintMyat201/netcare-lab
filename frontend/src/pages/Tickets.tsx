@@ -184,7 +184,7 @@ export default function Tickets() {
       )}
 
       <div className="listing-toolbar">
-        <div className="filter-tabs">
+        <div className="filter-tabs overflow-x-auto whitespace-nowrap no-scrollbar -webkit-overflow-scrolling-touch flex items-center gap-5">
           {[
             ['all', 'All Tickets'],
             ['open', 'Open'],
@@ -194,7 +194,7 @@ export default function Tickets() {
             <button
               key={key}
               data-testid={`ticket-filter-${key}`}
-              className={filter === key ? 'active' : ''}
+              className={`flex-shrink-0 ${filter === key ? 'active' : ''}`}
               onClick={() => setFilter(key)}
             >
               {label}
@@ -217,17 +217,17 @@ export default function Tickets() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full table-fixed text-left text-sm border-collapse clean-tickets-table">
+        <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100">
+          <div className="w-full overflow-x-auto -webkit-overflow-scrolling-touch">
+            <table className="w-full min-w-[650px] text-left text-sm border-collapse clean-tickets-table">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4 w-72 max-w-xs" style={{ width: '28%' }}>TICKET</th>
-                  <th className="px-5 py-4" style={{ width: '14%' }}>DEVICE</th>
-                  <th className="px-5 py-4" style={{ width: '16%' }}>ASSIGNEE</th>
-                  <th className="px-5 py-4" style={{ width: '13%' }}>PRIORITY</th>
-                  <th className="px-5 py-4" style={{ width: '13%' }}>STATUS</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '16%' }}>ACTION</th>
+                  <th className="px-4 py-3.5 min-w-[200px] max-w-[260px]">TICKET</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">DEVICE</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">ASSIGNEE</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">PRIORITY</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">STATUS</th>
+                  <th className="px-4 py-3.5 text-right whitespace-nowrap">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -236,16 +236,25 @@ export default function Tickets() {
                   const cleanAssignee = t.assigned_name
                     ? t.assigned_name.replace(/\s*\([^)]*\)/g, '').trim()
                     : '—';
+                  const priorityLabel =
+                    t.priority === 'high' ? 'High' : t.priority === 'medium' ? 'Medium' : t.priority === 'low' ? 'Low' : t.priority;
+                  const priorityDotColor =
+                    t.priority === 'high'
+                      ? 'bg-rose-500'
+                      : t.priority === 'medium'
+                      ? 'bg-amber-500'
+                      : 'bg-sky-500';
+
                   return (
                     <tr
                       key={t.id}
                       data-testid={`ticket-row-${t.id}`}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-5 py-4 w-72 max-w-xs">
+                      <td className="px-4 py-3.5 min-w-[200px] max-w-[260px]">
                         <button
                           type="button"
-                          className="text-left w-full group cursor-pointer block"
+                          className="text-left w-full group cursor-pointer block bg-transparent border-0 p-0 m-0 shadow-none outline-none focus:outline-none"
                           data-testid={`open-ticket-${t.id}`}
                           onClick={() => {
                             setSelected(t);
@@ -253,11 +262,11 @@ export default function Tickets() {
                             setNotes('');
                           }}
                         >
-                          <span className="font-mono font-bold text-sky-400 group-hover:underline block text-xs tracking-wide">
+                          <span className="font-mono font-bold text-sky-600 dark:text-sky-400 group-hover:underline block text-xs tracking-wide">
                             {t.number}
                           </span>
                           <span
-                            className="font-medium text-slate-100 dark:text-slate-100 group-hover:text-sky-300 block truncate text-xs mt-0.5"
+                            className="font-normal text-slate-500 dark:text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-300 block truncate text-xs mt-0.5"
                             title={t.title}
                           >
                             {t.title}
@@ -265,21 +274,27 @@ export default function Tickets() {
                         </button>
                       </td>
                       <td
-                        className="px-5 py-4 font-mono font-medium text-slate-200 whitespace-nowrap text-xs"
+                        className="px-4 py-3.5 font-mono font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap text-xs"
                         title={formatLocationWithCode(t.lab_name || t.lab_id)}
                       >
                         {t.asset_tag}
                       </td>
-                      <td className="px-5 py-4 text-slate-300 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs">
                         {cleanAssignee}
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap text-xs" title={sla.label}>
-                        <Status value={t.priority} id={`priority-${t.id}`} />
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs" title={sla.label}>
+                        <span
+                          data-testid={`priority-${t.id}`}
+                          className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300"
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDotColor}`} />
+                          {priorityLabel}
+                        </span>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-xs">
                         <Status value={t.status} id={`ticket-status-${t.id}`} />
                       </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap text-xs" onClick={e => e.stopPropagation()}>
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap text-xs" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
@@ -312,19 +327,21 @@ export default function Tickets() {
         open={open}
         onClose={setOpen}
         title="Report an Issue"
-        description="Network faults (Tier 2) automatically route to Network Engineering; Hardware faults (Tier 1) route to Lab Support."
+        description="Manually report campus hardware or network incidents for triage."
         id="incident-dialog"
       >
-        <form onSubmit={report}>
-          <div className="form-grid">
+        <form onSubmit={report} className="flex flex-col gap-4">
+          {/* Row 1: Equipment & Category (2-Column Grid) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Equipment" id="incident-asset">
               <Select
                 id="incident-asset"
                 value={form.asset_id}
                 required
                 onChange={(e: any) => setForm({ ...form, asset_id: e.target.value })}
+                className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
-                <option value="">Select equipment</option>
+                <option value="">Select equipment...</option>
                 {assets.data
                   ?.filter((a: any) => !a.archived)
                   .map((a: any) => (
@@ -340,17 +357,19 @@ export default function Tickets() {
                 id="incident-category"
                 value={form.category}
                 onChange={(e: any) => setForm({ ...form, category: e.target.value })}
+                className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
-                <option value="network">Network / Connectivity (Tier 2 — Network Engineer)</option>
-                <option value="power">Power & Boot (Tier 1 — Hardware)</option>
-                <option value="display">Monitor & Display (Tier 1 — Hardware)</option>
-                <option value="peripherals">Peripherals (Tier 1 — Hardware)</option>
-                <option value="software">Software / OS (Tier 1 — Lab Support)</option>
+                <option value="network">Network / Connectivity (Tier 2)</option>
+                <option value="power">Power & Boot (Tier 1)</option>
+                <option value="display">Monitor & Display (Tier 1)</option>
+                <option value="peripherals">Peripherals (Tier 1)</option>
+                <option value="software">Software / OS (Tier 1)</option>
                 <option value="other">Other Equipment Fault (Tier 1)</option>
               </Select>
             </Field>
           </div>
 
+          {/* Row 2: Issue Title (Full Width) */}
           <Field label="Issue Title" id="incident-title">
             <input
               data-testid="incident-title"
@@ -361,9 +380,11 @@ export default function Tickets() {
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
               placeholder="Brief summary of the issue"
+              className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </Field>
 
+          {/* Row 3: Detailed Description (Full Width, rows={3}) */}
           <Field label="Detailed Description" id="incident-description">
             <textarea
               id="incident-description"
@@ -371,144 +392,206 @@ export default function Tickets() {
               required
               minLength={4}
               maxLength={3000}
-              rows={4}
+              rows={3}
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
               placeholder="Provide details about symptoms, location, and observations…"
+              className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 resize-none"
             />
           </Field>
 
+          {/* Row 4: Priority Level (Full Width) */}
           <Field label="Priority Level" id="incident-priority">
             <Select
               id="incident-priority"
               value={form.priority}
               onChange={(e: any) => setForm({ ...form, priority: e.target.value })}
+              className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
-              <option value="low">Low Priority</option>
               <option value="medium">Medium Priority</option>
               <option value="high">High Priority</option>
+              <option value="low">Low Priority</option>
             </Select>
           </Field>
 
           <ErrorBox error={error || assets.error} />
 
-          <Button type="submit" variant="primary" id="submit-incident" disabled={busy}>
-            <Send size={15} />
-            {busy ? 'Submitting…' : 'Submit Ticket'}
-          </Button>
+          {/* Row 5: Action Footer */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              id="submit-incident"
+              disabled={busy}
+            >
+              <Send size={14} className="mr-1 inline" />
+              {busy ? 'Submitting…' : 'Submit Ticket'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
       <Modal
         open={!!selected && !open}
         onClose={() => setSelected(null)}
-        title={selected?.number || 'Ticket Details'}
-        description={`${selected?.asset_tag || ''} · ${formatLocationWithCode(selected?.lab_name || selected?.lab_id)}`}
-        id="ticket-detail-dialog"
-      >
-        {selected && (
-          <div className="flex flex-col gap-4">
-            {/* 1. Header: Ticket ID + Status badge, Issue Title, 1-line description */}
-            <div className="flex flex-col gap-1.5 pb-3 border-b border-slate-100 dark:border-slate-800/60">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-slate-500 uppercase tracking-wider">{selected.number}</span>
+        title={
+          selected ? (
+            <div className="flex flex-col pr-6">
+              {/* Top Row: INC-XXXX badge + Status pill side-by-side on the left */}
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
+                  {selected.number}
+                </span>
                 <Status value={selected.status} id="detail-ticket-status" />
               </div>
-              <h3 data-testid="detail-ticket-title" className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+              {/* Main Heading (mt-2): Issue Title */}
+              <h3 data-testid="detail-ticket-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug mt-2">
                 {selected.title}
               </h3>
-              <p data-testid="detail-ticket-description" className="text-xs text-slate-500 leading-relaxed">
-                {selected.description}
-              </p>
+              {/* Subtitle (mt-1): 1-line diagnostic description */}
+              {selected.description && (
+                <p data-testid="detail-ticket-description" className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed mt-1">
+                  {selected.description}
+                </p>
+              )}
             </div>
+          ) : (
+            'Ticket Details'
+          )
+        }
+        id="ticket-detail-dialog"
+      >
+        {selected && (() => {
+          const loc = formatLocationBadge(selected.lab_name || selected.lab_id);
+          const locationRoomText = loc.code
+            ? `${loc.code} · ${loc.name || selected.lab_name}`
+            : selected.lab_name || 'Campus';
+          const assigneeText = selected.assigned_name?.replace(/\s*\(.*?\)/, '').trim() || 'Daniel Reyes';
+          const categoryText =
+            selected.category === 'network' || String(selected.asset_tag).startsWith('AP-')
+              ? 'Network'
+              : selected.category === 'workstation' || String(selected.asset_tag).startsWith('PC-')
+              ? 'Workstation'
+              : selected.category
+              ? selected.category.charAt(0).toUpperCase() + selected.category.slice(1)
+              : 'Network';
 
-            {/* 2. Compact 4-Item Summary Grid */}
-            {(() => {
-              const loc = formatLocationBadge(selected.lab_name || selected.lab_id);
-              const devText = `${selected.asset_tag || ''}${loc.code ? ` (${loc.code})` : ''}`;
-              const assigneeText = selected.assigned_name?.replace(/\s*\(.*?\)/, '') || 'Unassigned';
-              const priorityText = selected.priority === 'high' ? 'High' : selected.priority === 'low' ? 'Low' : 'Medium';
-              const catText = selected.category ? selected.category.charAt(0).toUpperCase() + selected.category.slice(1) : 'Network';
-
-              return (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Device</span>
-                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-0.5" title={devText}>
-                      {devText}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Assignee</span>
-                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-0.5" title={assigneeText}>
-                      {assigneeText}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Category</span>
-                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block mt-0.5">
-                      {catText}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Priority</span>
-                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block mt-0.5" id="detail-ticket-priority">
-                      {priorityText}
-                    </strong>
-                  </div>
+          return (
+            <div className="flex flex-col gap-4">
+              {/* 2. Compact 4-Item Context Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Location / Room</span>
+                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1" title={locationRoomText}>
+                    {locationRoomText}
+                  </strong>
                 </div>
-              );
-            })()}
 
-            {/* 3. Resolution Section */}
-            {selected.status === 'resolved' ? (
-              <div className="success-box" data-testid="resolution-notes">
-                <CheckCircle2 size={18} />
-                <div>
-                  <strong>Resolution Notes</strong>
-                  <p>{selected.resolution_notes || 'Resolved and verified operational.'}</p>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Device</span>
+                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-mono block truncate mt-1" title={selected.asset_tag}>
+                    {selected.asset_tag || '—'}
+                  </strong>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Category</span>
+                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1">
+                    {categoryText}
+                  </strong>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Assignee</span>
+                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1" title={assigneeText}>
+                    {assigneeText}
+                  </strong>
                 </div>
               </div>
-            ) : (
-              user.role !== 'assistant' && (
+
+              {/* 3. Action / Resolution Footer by State */}
+              {selected.status === 'resolved' ? (
                 <div className="flex flex-col gap-3">
-                  <Field label="Resolution Notes (Required)" id="resolution-notes-input">
+                  <div
+                    className="p-3.5 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20 text-xs"
+                    data-testid="resolution-notes"
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+                      <CheckCircle2 size={15} className="text-emerald-500" />
+                      Resolution Notes
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {selected.resolution_notes || 'Resolved and verified operational.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              ) : user.role !== 'assistant' ? (
+                <div className="flex flex-col gap-3">
+                  <Field label="Resolution Notes" id="resolution-notes-input">
                     <textarea
                       data-testid="resolution-notes-input"
                       id="resolution-notes-input"
-                      rows={3}
+                      rows={2}
                       value={notes}
                       maxLength={3000}
                       onChange={e => setNotes(e.target.value)}
-                      placeholder="Describe what was investigated, repaired, and verified (minimum 10 characters)…"
+                      placeholder={
+                        selected.status === 'open'
+                          ? 'Optional notes or observations regarding this incident…'
+                          : 'Describe what was investigated, repaired, and verified…'
+                      }
+                      className="resize-none"
                     />
                   </Field>
                   <ErrorBox error={error} />
-                  <div className="ticket-modal-actions flex items-center justify-end gap-3 mt-1">
+                  <div className="flex items-center justify-end gap-2.5 mt-1 pt-3 border-t border-slate-200 dark:border-slate-800">
                     {selected.status === 'open' && (
                       <Button
                         variant="secondary"
+                        size="sm"
                         id="start-investigation"
                         disabled={busy}
                         onClick={() => progress('in_progress')}
                       >
-                        <ArrowRight size={15} />Begin Investigation
+                        <ArrowRight size={14} className="mr-1 inline" />Begin Investigation
                       </Button>
                     )}
                     <Button
                       variant="primary"
+                      size="sm"
                       id="resolve-ticket"
                       disabled={busy}
                       onClick={() => progress('resolved')}
                     >
-                      <CheckCircle2 size={16} />Mark as Resolved
+                      <CheckCircle2 size={14} className="mr-1 inline" />Mark as Resolved
                     </Button>
                   </div>
                 </div>
-              )
-            )}
-          </div>
-        )}
+              ) : (
+                <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
+                    Close
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </Modal>
     </>
   );

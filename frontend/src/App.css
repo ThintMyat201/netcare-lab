@@ -7130,8 +7130,13 @@ input[aria-invalid="true"] {
   border-collapse: collapse;
 }
 
-.clean-tickets-table {
-  table-layout: fixed;
+.-webkit-overflow-scrolling-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+.clean-tickets-table th,
+.clean-tickets-table td {
+  padding: 14px 16px;
 }
 
 .clean-tickets-table th,
@@ -7221,6 +7226,40 @@ input[aria-invalid="true"] {
   border: 1px solid #e2e8f0 !important;
   border-radius: 12px !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Universal Light Theme Modal & Dialog Controls */
+.light-theme .atlas-modal {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.light-theme .atlas-modal h2,
+.light-theme .atlas-modal h3 {
+  color: #0f172a !important;
+}
+
+.light-theme .atlas-modal > p {
+  color: #64748b !important;
+}
+
+.light-theme .atlas-modal .field > span {
+  color: #475569 !important;
+}
+
+.light-theme .atlas-modal input,
+.light-theme .atlas-modal select,
+.light-theme .atlas-modal textarea {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light-theme .atlas-modal input::placeholder,
+.light-theme .atlas-modal textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
 /* Universal Light Theme Headers & Rows */
