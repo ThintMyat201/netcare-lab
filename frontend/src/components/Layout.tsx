@@ -70,7 +70,7 @@ const getNavigation = (role: string) => {
         label: 'OPERATIONS',
         items: [
           ['/', 'Dashboard', LayoutDashboard],
-          ['/monitoring', 'Device Monitoring', Radio],
+          ['/monitoring', 'Network Monitoring', Radio],
           ['/tickets', 'Incident Tickets', Tickets],
         ],
       },
@@ -81,7 +81,7 @@ const getNavigation = (role: string) => {
       label: 'OPERATIONS',
       items: [
         ['/', 'Dashboard', LayoutDashboard],
-        ['/monitoring', 'Device Monitoring', Radio],
+        ['/monitoring', 'Network Monitoring', Radio],
         ['/shifts', 'Shift Schedule', CalendarDays],
         ['/checklists', 'Equipment Checklists', ClipboardCheck],
         ['/tickets', 'Incident Tickets', Tickets],
@@ -515,7 +515,7 @@ export const Layout = ({ children }: any) => {
                               className="notif-footer-link"
                               onClick={() => setBellOpen(false)}
                             >
-                              Device Monitoring <ArrowUpRight size={13} />
+                              Network Monitoring <ArrowUpRight size={13} />
                             </Link>
                           </div>
                         </>
@@ -523,13 +523,13 @@ export const Layout = ({ children }: any) => {
                         <div className="notification-empty">
                           <CheckCircle2 size={26} className="text-green" />
                           <strong>All Systems Nominal</strong>
-                          <p>All 21 campus Access Points reporting healthy telemetry. Zero active fleet anomalies.</p>
+                          <p>All campus Access Points reporting healthy telemetry. Zero active fleet anomalies.</p>
                           <Link
                             to="/monitoring"
                             className="notif-link-center"
                             onClick={() => setBellOpen(false)}
                           >
-                            Open Device Monitoring <ArrowUpRight size={13} />
+                            Open Network Monitoring <ArrowUpRight size={13} />
                           </Link>
                         </div>
                       )}

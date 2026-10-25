@@ -19,6 +19,7 @@ import {
   Wrench,
   SlidersHorizontal,
   MapPin,
+  X,
 } from 'lucide-react';
 import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Modal, Field, useData } from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
@@ -269,7 +270,7 @@ export default function Monitoring() {
       const res = await api.get(`/monitoring/${a.id}/history`);
       setDetail({
         ...res.data,
-        asset: { ...res.data.asset, ...a },
+        asset: { ...res.data.asset, ...a, last_seen: a.last_seen || res.data?.asset?.last_seen || new Date().toISOString() },
       });
     } catch {
       const nowMs = Date.now();
@@ -286,7 +287,7 @@ export default function Monitoring() {
         };
       });
       setDetail({
-        asset: a,
+        asset: { ...a, last_seen: a.last_seen || new Date().toISOString() },
         history: syntheticHistory,
       });
     }
@@ -719,7 +720,7 @@ export default function Monitoring() {
   if (!data && !liveAps) {
     return (
       <>
-        <PageTitle title="Device Monitoring" />
+        <PageTitle title="Network Monitoring" />
         <ErrorBox error={error} retry={load} />
         {busy && <Loading />}
       </>
@@ -729,7 +730,6 @@ export default function Monitoring() {
   const query = search.trim().toLowerCase();
   const filteredAps = labScopedAps.filter((a: any) => {
     if (status !== 'all' && a.status !== status) return false;
-    if (zone !== 'all' && !matchesZone(a, zone)) return false;
     if (!query) return true;
     const haystack = [
       a.tag,
@@ -753,8 +753,7 @@ export default function Monitoring() {
   return (
     <>
       <PageTitle
-        title="Device Monitoring"
-        subtitle="Real-time access point status, bandwidth load, connection telemetry, and Tier 2 incident escalation"
+        title="Network Monitoring"
       />
 
       <ErrorBox error={error || (!selected && localError)} retry={load} />
@@ -784,7 +783,7 @@ export default function Monitoring() {
           <span data-testid="monitor-last-updated" className={`sample-timestamp ${pulseActive ? 'sample-timestamp-flash' : ''}`}>
             Last sample: {time(displayedLastUpdated, true, true)} MYT
           </span>
-          <span className="sample-retention-info">21 Campus APs · 4 Labs · 7-day retention</span>
+          <span className="sample-retention-info">{activeAps.length || 28} Campus APs · 7-day retention</span>
         </div>
 
         {user.role !== 'assistant' && (
@@ -831,8 +830,8 @@ export default function Monitoring() {
               onClick={simulationActive ? handleResetSimulation : handleTriggerSimulation}
               title={
                 simulationActive
-                  ? 'Reset all 21 access points to baseline healthy status'
-                  : 'Inject 21-AP demonstration dataset (9 Online, 5 Congested, 4 Offline, 3 Feed Interrupted)'
+                  ? 'Reset all access points to baseline healthy status'
+                  : 'Inject demonstration simulation dataset'
               }
             >
               {busySimulation ? (
@@ -882,18 +881,30 @@ export default function Monitoring() {
 
       <section className="monitor-table">
         <SectionHead title="Access Points">
-          <div className="section-actions">
-            <div className="search-field">
+          <div className="section-actions ap-filter-controls">
+            <div className="search-field ap-search-field">
               <Search size={15} />
               <input
                 data-testid="search-access-points"
-                placeholder="Search by tag, location, landmark (e.g. bus stop, canteen)…"
+                placeholder="Search access points..."
+                aria-label="Search access points"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+              {search && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  aria-label="Clear search"
+                  onClick={() => setSearch('')}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <Select
               id="monitor-lab-filter"
+              className="ap-location-select"
               value={lab}
               onChange={(e: any) => {
                 setLab(e.target.value);
@@ -915,34 +926,16 @@ export default function Monitoring() {
           </div>
         </SectionHead>
 
-        <div className="zone-pills monitor-zone-pills" role="group" aria-label="Filter access points by campus zone" data-testid="monitor-zone-filters">
-          <MapPin size={14} className="zone-pills-icon" />
-          {ZONE_FILTERS.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              data-testid={`monitor-zone-${key}`}
-              aria-pressed={zone === key}
-              className={`zone-pill ${zone === key ? 'active' : ''}`}
-              onClick={() => setZone(key)}
-            >
-              {label}
-              <span>{activeAps.filter((a: any) => (lab ? a.lab_id === lab : true) && matchesZone(a, key)).length}</span>
-            </button>
-          ))}
-        </div>
-
         <APTable
           aps={filteredAps}
           onSelect={inspect}
           onCreateTicket={user.role !== 'assistant' ? openCreateNetworkTicket : undefined}
           ticketsByAsset={activeTicketsByAsset}
           onResetFilter={
-            status !== 'all' || search || zone !== 'all' || lab
+            status !== 'all' || search || lab
               ? () => {
                   setStatus('all');
                   setSearch('');
-                  setZone('all');
                   setLab('');
                 }
               : undefined
@@ -1156,7 +1149,7 @@ export default function Monitoring() {
 
             <TrafficChart history={detail.history} height={180} />
             <p className="muted small" data-testid="ap-detail-last-seen">
-              Last reported: {time(detail.asset.last_seen, true, true)} MYT
+              Last reported: {time(detail.asset?.last_seen || detail.asset?.updated_at || detail.asset?.last_updated || new Date().toISOString(), true, true)} MYT
             </p>
           </>
         ) : (

@@ -1,10 +1,10 @@
 import React,{useState} from 'react';
 import {AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer} from 'recharts';
-import {ArrowUpRight,Radio,Wifi,ArrowRight,ArrowDownToLine,Activity,Users,Ellipsis,FlaskConical,RefreshCw,Check,Plus,ChevronRight} from 'lucide-react';
+import {ArrowUpRight,Radio,Wifi,ArrowRight,ArrowDownToLine,Activity,Users,Ellipsis,FlaskConical,RefreshCw,Check,Plus,ChevronRight,MapPin} from 'lucide-react';
 import {Link} from 'react-router-dom';
 import {Button,Status,Modal,Field,Select,ErrorBox,SectionHead} from './shared';
 import {api,errorText,time} from '../lib/api';
-import {formatLocationWithCode} from '../lib/workflow';
+import {formatLocationWithCode, formatLocationBadge} from '../lib/workflow';
 export const Metrics=({stats,openTickets}:any)=><div className="metric-grid">{[{title:'Active Access Points',value:stats.online,suffix:`/ ${stats.total}`,icon:Radio,foot:`${stats.congested} congested · ${stats.offline} offline · ${stats.stale} unmonitored`,tone:'green'},{title:'Connected Devices',value:stats.clients,suffix:'',icon:Users,foot:stats.stale?'Active feeds only':'All reporting access points',tone:'blue'},{title:'Active Alerts',value:stats.congested+stats.offline+stats.stale,suffix:'',icon:Activity,foot:`${stats.offline} critical failures · ${stats.congested+stats.stale} warnings`,tone:'amber'},{title:'Pending Tickets',value:openTickets,suffix:'',icon:ClipboardIcon,foot:'Requires investigation or resolution',tone:'violet'}].map((m,i)=><div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}><div className="metric-top"><span>{m.title}</span><m.icon size={17}/></div><div className="metric-value">{m.value}<span>{m.suffix}</span><div className={`spark-bars spark-${i}`}>{[18,26,22,34,25,39,32,43,37,48,44,52].map((h,j)=><i key={j} style={{height:Math.max(8,h-(i*7+j%3*4))}}/>)}</div></div><p><span className="tiny-dot"/>{m.foot}</p></div>)}</div>;
 const ClipboardIcon=({size}:any)=><ArrowDownToLine size={size}/>;
 export const TrafficChart=({history,title='Network Traffic & Load',height=235}:any)=>{
@@ -38,134 +38,143 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=235}:a
  const filtered=[...sampledHist,...livePoints];
  return <section className="chart-section"><SectionHead title={title}><div className="segmented">{['1h','6h','24h'].map(p=><button type="button" aria-pressed={period===p} data-testid={`chart-range-${p}`} onClick={()=>setPeriod(p)} className={period===p?'selected':''} key={p}>{p}</button>)}</div></SectionHead><div className="chart-legend"><button type="button" aria-pressed={showBandwidth} data-testid="toggle-series-bandwidth" className={`legend-toggle ${showBandwidth?'active':'inactive'}`} onClick={()=>setShowBandwidth(v=>!v)}><i className="green-square"/><span>Bandwidth (Mbps)</span><small className="axis-tag">Left</small></button><button type="button" aria-pressed={showDevices} data-testid="toggle-series-devices" className={`legend-toggle ${showDevices?'active':'inactive'}`} onClick={()=>setShowDevices(v=>!v)}><i className="blue-square"/><span>Connected Devices</span><small className="axis-tag">Right</small></button><span className="chart-unit">TELEMETRY FEED</span></div><div data-testid="network-activity-chart" className="traffic-chart" style={{height}}><ResponsiveContainer width="100%" height="100%"><AreaChart key={period} data={filtered} margin={{top:10,right:4,left:0,bottom:0}}><defs><linearGradient id={`clientsFill-${chartId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5293ff" stopOpacity={.26}/><stop offset="100%" stopColor="#5293ff" stopOpacity={0}/></linearGradient><linearGradient id={`trafficFill-${chartId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3cd4a0" stopOpacity={.18}/><stop offset="100%" stopColor="#3cd4a0" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="var(--line-strong, #38465d)" strokeWidth={1.5} strokeDasharray="3 4" vertical={false}/><XAxis dataKey="timestamp" stroke="var(--line-strong, #41516c)" strokeWidth={2} tickFormatter={x=>time(x,false,period==='1h'&&livePoints.length>0)} minTickGap={period==='1h'?24:period==='6h'?45:65} tick={{fill:'var(--text)',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} dy={7}/><YAxis yAxisId="left" orientation="left" width={44} hide={!showBandwidth&&showDevices} domain={[0,'auto']} stroke="var(--line-strong, #41516c)" strokeWidth={2} tick={{fill:'#3cd4a0',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}}/><YAxis yAxisId="right" orientation="right" width={42} allowDecimals={false} hide={!showDevices&&showBandwidth} domain={[0,'auto']} stroke="var(--line-strong, #41516c)" strokeWidth={2} tick={{fill:'#649cfb',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}}/><Tooltip contentStyle={{background:'var(--panel)',border:'2px solid var(--line-strong, #41516c)',borderRadius:6,fontSize:12,fontWeight:600,color:'var(--text)'}} labelFormatter={x=>`${time(String(x),true,true)} MYT`}/>{showBandwidth&&<Area yAxisId="left" type="monotone" name="Bandwidth (Mbps)" dataKey="throughput" stroke="#3cd4a0" strokeWidth={2.5} dot={false} activeDot={{r:5,strokeWidth:2,stroke:'#ffffff',fill:'#3cd4a0'}} fill={`url(#trafficFill-${chartId})`} animationDuration={350}/>}{showDevices&&<Area yAxisId="right" type="monotone" name="Connected Devices" dataKey="clients" stroke="#5293ff" strokeWidth={2.75} dot={false} activeDot={{r:5,strokeWidth:2,stroke:'#ffffff',fill:'#5293ff'}} fill={`url(#clientsFill-${chartId})`} animationDuration={350}/>}</AreaChart></ResponsiveContainer></div></section>;
 };
-export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, ticketsByAsset = {} }: any) => (
-  <div className="table-wrap">
-    {aps.length ? (
-      <table className="data-table ap-table">
-        <thead>
-          <tr>
-            <th>ACCESS POINT</th>
-            <th>STATUS</th>
-            <th>CONNECTED DEVICES</th>
-            <th>BANDWIDTH LOAD</th>
-            <th>LAST SEEN</th>
-            <th>ACTION</th>
-          </tr>
-        </thead>
-        <tbody>
-          {aps.slice(0, limit || aps.length).map((a: any) => {
-            const linkedTicket = a.linked_ticket || ticketsByAsset[a.id];
-            const isNonHealthy = a.status === 'congested' || a.status === 'stale' || a.status === 'offline';
-            return (
-              <tr key={a.id} data-testid={`ap-row-${a.id}`} onClick={() => onSelect?.(a)} className={onSelect ? 'clickable' : ''}>
-                <td>
-                  <div className="asset-name">
-                    <span className={`asset-icon ${a.status}`}>
-                      <Wifi size={16} />
-                    </span>
-                    <div>
-                      <strong>{a.tag}</strong>
-                      <small>{formatLocationWithCode(a.lab_name || a.lab_id)}{a.placement ? ` · ${a.placement}` : ''}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <Status value={a.status} id={`ap-status-${a.id}`} />
-                </td>
-                <td className="mono">{a.clients ?? '—'}</td>
-                <td>
-                  <div className="utilization">
-                    <span className={`utilization-bar ${a.status}`}>
-                      <i style={{ width: `${a.load || 0}%` }} />
-                    </span>
-                    <span className="mono">{a.load == null ? '—' : `${a.load}%`}</span>
-                  </div>
-                </td>
-                <td className="mono muted">
-                  {time(a.last_seen, false, true)} <span className="faint">MYT</span>
-                </td>
-                <td>
-                  <div className="ap-action-group">
-                    {isNonHealthy ? (
-                      linkedTicket ? (
-                        <Link
-                          to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
-                          className="ap-ticket-pill-badge"
-                          id={`view-ticket-${a.id}`}
-                          data-testid={`view-ticket-${a.id}`}
-                          onClick={(e: any) => e.stopPropagation()}
-                          title={`View linked ticket ${linkedTicket.number || ''}`}
-                        >
-                          <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
-                          <ArrowUpRight size={12} className="ap-pill-arrow" />
-                        </Link>
-                      ) : onCreateTicket ? (
-                        <button
-                          type="button"
-                          id={`create-ap-ticket-${a.id}`}
-                          data-testid={`create-ap-ticket-${a.id}`}
-                          className="ap-add-ticket-btn"
-                          onClick={(e: any) => {
-                            e.stopPropagation();
-                            onCreateTicket(a);
-                          }}
-                          title={`Create incident ticket for ${a.tag} (${a.status})`}
-                        >
-                          <Plus size={12} />
-                          <span>Ticket</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="ap-subtle-inspect-btn"
-                          data-testid={`inspect-${a.id}`}
-                          onClick={(e: any) => {
-                            e.stopPropagation();
-                            onSelect?.(a);
-                          }}
-                          title={`View telemetry details for ${a.tag}`}
-                        >
-                          <ChevronRight size={14} />
-                        </button>
-                      )
-                    ) : (
-                      <button
-                        type="button"
-                        id={`ping-ap-${a.id}`}
-                        data-testid={`ping-ap-${a.id}`}
-                        className="ap-healthy-indicator"
-                        onClick={(e: any) => {
-                          e.stopPropagation();
-                          onSelect?.(a);
-                        }}
-                        title={`Nominal ping latency: ${typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'} · View details`}
-                      >
-                        <span className="ap-ping-dot" />
-                        <span className="mono ap-latency-text">
-                          {typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'}
-                        </span>
-                        <ChevronRight size={12} className="ap-indicator-chevron" />
-                      </button>
-                    )}
-                  </div>
-                </td>
+export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, ticketsByAsset = {} }: any) => {
+  const displayedAps = aps.slice(0, limit || aps.length);
+
+  return (
+    <div className="table-wrap ap-monitoring-table-container">
+      {aps.length ? (
+        <div className="ap-table-scroll-wrap w-full overflow-x-auto">
+          <table className="data-table ap-table clean-ap-table w-full">
+            <thead>
+              <tr>
+                <th style={{ width: '26%' }}>ACCESS POINT</th>
+                <th style={{ width: '22%' }}>STATUS</th>
+                <th style={{ width: '16%' }}>CLIENTS</th>
+                <th style={{ width: '22%' }}>BANDWIDTH LOAD</th>
+                <th style={{ width: '14%', textAlign: 'right' }}>ACTION</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    ) : (
-      <div className="empty" data-testid="no-access-points">
-        <span>No access points match the selected filter.</span>
-        {onResetFilter && (
-          <Button id="reset-ap-filter" onClick={onResetFilter}>
-            Show All Access Points
-          </Button>
-        )}
-      </div>
-    )}
-  </div>
-);
+            </thead>
+            <tbody>
+              {displayedAps.map((a: any) => {
+                const linkedTicket = a.linked_ticket || ticketsByAsset[a.id];
+                const isNonHealthy = a.status === 'congested' || a.status === 'stale' || a.status === 'offline';
+                const locInfo = formatLocationBadge(a.lab_name || a.lab_id);
+                const locCode = locInfo.code;
+                const locName = locInfo.name;
+                const fullTooltip = `${a.tag} · ${locCode ? `[${locCode}] ` : ''}${locName}${a.placement ? ` · ${a.placement}` : ''}${a.ip ? ` (IP: ${a.ip})` : ''}`;
+
+                return (
+                  <tr
+                    key={a.id}
+                    data-testid={`ap-row-${a.id}`}
+                    onClick={() => onSelect?.(a)}
+                    className={onSelect ? 'clickable' : ''}
+                  >
+                    {/* 1. ACCESS POINT: Plain bold tag, location & IP in tooltip */}
+                    <td>
+                      <strong
+                        className="ap-tag-mono mono"
+                        title={fullTooltip}
+                      >
+                        {a.tag}
+                      </strong>
+                    </td>
+
+                    {/* 2. STATUS: Status badge with dot and text */}
+                    <td>
+                      <Status value={a.status} id={`ap-status-${a.id}`} />
+                    </td>
+
+                    {/* 3. CLIENTS: Connected devices count */}
+                    <td className="mono">{a.clients ?? '—'}</td>
+
+                    {/* 4. BANDWIDTH LOAD: Compact progress bar + percentage */}
+                    <td>
+                      <div className="utilization">
+                        <span className={`utilization-bar ${a.status}`}>
+                          <i style={{ width: `${a.load || 0}%` }} />
+                        </span>
+                        <span className="mono">{a.load == null ? '—' : `${a.load}%`}</span>
+                      </div>
+                    </td>
+
+                    {/* 5. ACTION: Incident Ticket link / + Ticket for non-healthy; — for healthy */}
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="ap-action-group" style={{ justifyContent: 'flex-end' }}>
+                        {isNonHealthy ? (
+                          linkedTicket ? (
+                            <Link
+                              to={`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`}
+                              className="ap-ticket-pill-badge"
+                              id={`view-ticket-${a.id}`}
+                              data-testid={`view-ticket-${a.id}`}
+                              onClick={(e: any) => e.stopPropagation()}
+                              title={`View linked ticket ${linkedTicket.number || ''}`}
+                            >
+                              <span className="mono ap-ticket-number">{linkedTicket.number || 'INC'}</span>
+                              <ArrowUpRight size={12} className="ap-pill-arrow" />
+                            </Link>
+                          ) : onCreateTicket ? (
+                            <button
+                              type="button"
+                              id={`create-ap-ticket-${a.id}`}
+                              data-testid={`create-ap-ticket-${a.id}`}
+                              className="ap-add-ticket-btn"
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                onCreateTicket(a);
+                              }}
+                              title={`Create incident ticket for ${a.tag} (${a.status})`}
+                            >
+                              <Plus size={12} />
+                              <span>Ticket</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="ap-subtle-inspect-btn"
+                              data-testid={`inspect-${a.id}`}
+                              onClick={(e: any) => {
+                                e.stopPropagation();
+                                onSelect?.(a);
+                              }}
+                              title={`View telemetry details for ${a.tag}`}
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          )
+                        ) : (
+                          <span
+                            id={`ping-ap-${a.id}`}
+                            data-testid={`ping-ap-${a.id}`}
+                            className="faint mono ap-action-dash"
+                            title={`Nominal ping latency: ${typeof a.latency === 'number' ? `${a.latency}ms` : 'Nominal'}`}
+                          >
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="empty" data-testid="no-access-points">
+          <span>No access points match the selected filter.</span>
+          {onResetFilter && (
+            <Button id="reset-ap-filter" onClick={onResetFilter}>
+              Show All Access Points
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 export const Simulation=({open,onClose,aps,onDone}:any)=>{
  const [asset,setAsset]=useState('all'),[scenario,setScenario]=useState('congestion'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('');
  const apply=async()=>{setBusy(true);setError('');setSuccess('');try{const r=await api.post('/simulation',{asset_id:asset,scenario});setSuccess(r.data.message);onDone?.(scenario,asset);}catch(e){setError(errorText(e));}finally{setBusy(false);}};

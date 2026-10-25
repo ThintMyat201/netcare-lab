@@ -310,7 +310,6 @@ export function Assets() {
     <>
       <PageTitle
         title="Hardware Inventory"
-        subtitle="Campus-wide access points and lab workstations — physical location, placement landmark, hardware ID, and DHCP-assigned network lease."
       >
         <Button
           id="add-asset"
@@ -334,9 +333,9 @@ export function Assets() {
         </div>
       )}
 
-      {/* Primary Tabs + Compact Location Dropdown & Search Bar */}
-      <div className="listing-toolbar">
-        <div className="filter-tabs">
+      {/* 2-Row Layout: Row 1 = Full-width Category Tabs (overflow-x-auto); Row 2 = Location Filter & Search */}
+      <div className="inventory-controls-stack">
+        <div className="filter-tabs inventory-filter-tabs w-full overflow-x-auto">
           {[
             ['all', 'All Hardware'],
             ['AP', 'Access Points'],
@@ -355,7 +354,7 @@ export function Assets() {
           ))}
         </div>
 
-        <div className="toolbar-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="inventory-filters-row">
           <div className="location-filter-wrap">
             <select
               aria-label="Filter by Campus Location"
@@ -379,7 +378,7 @@ export function Assets() {
               data-testid="asset-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search equipment by tag, room code, location, MAC…"
+              placeholder="Search equipment by tag, room code, MAC…"
               aria-label="Search equipment by tag, location, placement landmark, or MAC"
             />
             {search && (
@@ -394,73 +393,65 @@ export function Assets() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows.length ? (
-        <div className="inventory-card-wrapper">
-          <table className="clean-inventory-table">
+        <div className="inventory-card-wrapper w-full overflow-x-auto">
+          <table className="clean-inventory-table w-full">
             <thead>
               <tr>
-                <th style={{ width: '30%' }}>DEVICE</th>
-                <th style={{ width: '25%' }}>TYPE &amp; MODEL</th>
-                <th style={{ width: '27%' }}>LOCATION</th>
-                <th style={{ width: '18%', textAlign: 'right' }}>ACTIONS</th>
+                <th style={{ width: '22%' }}>TAG</th>
+                <th style={{ width: '18%' }}>TYPE</th>
+                <th style={{ width: '30%' }}>MODEL</th>
+                <th style={{ width: '16%' }}>ROOM</th>
+                <th style={{ width: '14%', textAlign: 'right' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((a: any) => {
                 const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
                 const locCode = loc?.code || 'CAMPUS';
+                const locName = a.lab_name || loc?.name || 'Unassigned';
                 const isPC = a.kind === 'PC';
+                const modelName = a.model || (isPC ? 'Dell OptiPlex 7010' : 'Aruba AP-515');
+                const fullRoomTooltip = `${locCode} · ${locName}${a.placement ? ` · ${a.placement}` : ''}`;
+
                 return (
                   <tr
                     key={a.id}
                     data-testid={`asset-row-${a.id}`}
                     onClick={() => handleOpenDetails(a, false)}
                   >
-                    {/* 1. DEVICE: Icon + Tag + Inline Name */}
+                    {/* 1. TAG: Bold monospace/clean tag */}
                     <td>
-                      <div className="device-cell">
-                        <div className={`device-icon-wrap ${isPC ? 'pc-icon' : 'ap-icon'}`}>
-                          {isPC ? <Monitor size={15} /> : <Wifi size={15} />}
-                        </div>
-                        <span className="device-tag">{a.tag}</span>
-                        <span className="device-subname">· {a.name}</span>
-                      </div>
+                      <span className="device-tag-mono">{a.tag}</span>
                     </td>
 
-                    {/* 2. TYPE & MODEL: Pill badge + Model */}
+                    {/* 2. TYPE: Plain text */}
                     <td>
-                      <div className="type-model-cell">
-                        <span className={`kind-pill ${isPC ? 'kind-workstation' : 'kind-ap'}`}>
-                          {isPC ? 'Workstation' : 'Access Point'}
-                        </span>
-                        <span className="model-name">
-                          {a.model || (isPC ? 'Dell OptiPlex 7010' : 'Aruba AP-515')}
-                        </span>
-                      </div>
+                      <span className="device-type-plain">{isPC ? 'Workstation' : 'Access Point'}</span>
                     </td>
 
-                    {/* 3. LOCATION: Room Code badge + Name (Strict 1 line) */}
+                    {/* 3. MODEL: Full model name (never truncated) */}
                     <td>
-                      <div className="location-compact-cell">
-                        <span className="room-code-badge" data-testid={`asset-room-code-${a.id}`}>
-                          [{locCode}]
-                        </span>
-                        <span className="location-compact-name">
-                          {a.lab_name || loc?.name || 'Unassigned'}
-                        </span>
-                      </div>
+                      <span className="device-model-plain">{modelName}</span>
                     </td>
 
-                    {/* 4. ACTIONS: Inspect/Edit + Archive/Delete */}
+                    {/* 4. ROOM: Plain text room code only */}
+                    <td>
+                      <span className="device-room-mono mono" title={fullRoomTooltip} data-testid={`asset-room-code-${a.id}`}>
+                        {locCode}
+                      </span>
+                    </td>
+
+                    {/* 5. ACTIONS: Subtle neutral Edit button and subtle Archive icon button */}
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
                         <button
                           type="button"
-                          className="btn-inspect"
+                          className="btn-neutral-edit"
                           data-testid={`details-asset-${a.id}`}
                           onClick={() => handleOpenDetails(a, false)}
                         >
                           <Pencil size={12} />
-                          Inspect / Edit
+                          <span>Edit</span>
                         </button>
                         {!a.archived ? (
                           <button

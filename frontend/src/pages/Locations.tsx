@@ -329,7 +329,6 @@ export default function Locations() {
     <>
       <PageTitle
         title="Campus Locations & Rooms"
-        subtitle="Manage university physical room codes (Block, Floor/Level, Room), computing labs, and coverage zones."
       >
         <Button
           id="add-location-btn"
@@ -353,31 +352,31 @@ export default function Locations() {
         </div>
       )}
 
-      {/* APSpace-Style Zone Filter Pills & Quick Search Bar */}
-      <div className="zone-filter-pills" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Zone Filter Tabs & Quick Search Bar */}
+      <div className="locations-controls-bar flex flex-wrap items-center justify-between gap-3">
+        <div className="filter-tabs locations-filter-tabs">
           {ZONE_PILLS.map(({ key, label }) => (
             <button
               key={key}
               data-testid={`loc-filter-${key}`}
-              className={`zone-pill-btn ${zonePill === key ? 'active' : ''}`}
+              className={zonePill === key ? 'active' : ''}
               onClick={() => setZonePill(key)}
             >
               {label}
-              <span style={{ marginLeft: '6px', fontSize: '11px', opacity: 0.8 }}>
+              <span>
                 {rawData.filter(loc => matchesZonePill(loc, key)).length}
               </span>
             </button>
           ))}
         </div>
 
-        <div className="search-field inventory-search" style={{ minWidth: '280px' }}>
+        <div className="search-field inventory-search" style={{ minWidth: '260px' }}>
           <Search size={15} />
           <input
             data-testid="location-search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search room code (e.g. B-04-03), name, block…"
+            placeholder="Search room code, name, block…"
             aria-label="Search campus locations"
           />
           {search && (
@@ -396,99 +395,82 @@ export default function Locations() {
       {list.busy && !list.data ? (
         <Loading />
       ) : filtered.length ? (
-        <div className="room-cards-grid">
-          {filtered.map(loc => {
-            const CatIcon = CATEGORY_ICONS[loc.category] || MapPin;
-            const badgeClass = CATEGORY_BADGE_CLASSES[loc.category] || 'zone-labs';
-            const wsCount = loc.workstation_count ?? 0;
-            const apCount = loc.ap_count ?? 0;
-            const totalEq = loc.equipment_count ?? wsCount + apCount;
+        <div className="locations-table-wrapper w-full overflow-x-auto">
+          <table className="clean-locations-table w-full">
+            <thead>
+              <tr>
+                <th style={{ width: '22%' }}>ROOM CODE</th>
+                <th style={{ width: '44%' }}>LOCATION NAME</th>
+                <th style={{ width: '20%' }}>DEVICES</th>
+                <th style={{ width: '14%', textAlign: 'right' }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(loc => {
+                const wsCount = loc.workstation_count ?? 0;
+                const apCount = loc.ap_count ?? 0;
+                const devParts: string[] = [];
+                if (wsCount > 0) devParts.push(`${wsCount} PC`);
+                if (apCount > 0) devParts.push(`${apCount} AP`);
+                const devicesSummary = devParts.length > 0 ? devParts.join(' · ') : '0';
 
-            return (
-              <div
-                key={loc.id}
-                className="apspace-room-card"
-                data-testid={`location-card-${loc.id}`}
-                onClick={() => setSelectedRoom(loc)}
-              >
-                {/* 1. TOP: Room Code Pill + Category Badge */}
-                <div className="room-card-top">
-                  <span className="apspace-code-pill" data-testid={`loc-code-${loc.id}`}>
-                    {loc.code}
-                  </span>
-                  <span className={`zone-badge ${badgeClass}`}>
-                    <CatIcon size={12} />
-                    {loc.category}
-                  </span>
-                </div>
+                return (
+                  <tr
+                    key={loc.id}
+                    data-testid={`location-card-${loc.id}`}
+                    onClick={() => setSelectedRoom(loc)}
+                  >
+                    {/* 1. ROOM CODE: Bold room code in neutral text */}
+                    <td>
+                      <span className="loc-code-neutral mono" data-testid={`loc-code-${loc.id}`}>
+                        {loc.code}
+                      </span>
+                    </td>
 
-                {/* 2. MIDDLE: Location Name + Subtext Breakdown */}
-                <div className="room-card-middle">
-                  <h3 className="room-name-title">{loc.name}</h3>
-                  <span className="room-location-subtext">
-                    <Building2 size={12} />
-                    {loc.block} · {loc.level} · {String(loc.room || '').toLowerCase().startsWith('room') ? String(loc.room) : (loc.room ? `Room ${loc.room}` : 'Common Area')}
-                  </span>
-                </div>
+                    {/* 2. LOCATION NAME: Clean text */}
+                    <td>
+                      <span className="loc-name-plain">{loc.name}</span>
+                    </td>
 
-                {/* 3. BOTTOM: Installed Hardware Chips + Actions */}
-                <div className="room-card-footer">
-                  <div className="room-devices-summary" data-testid={`loc-equipment-${loc.id}`}>
-                    {totalEq > 0 ? (
-                      <>
-                        {wsCount > 0 && (
-                          <span className="dev-count-chip pc">
-                            <Monitor size={12} />
-                            {wsCount} Workstation{wsCount > 1 ? 's' : ''}
-                          </span>
-                        )}
-                        {wsCount > 0 && apCount > 0 && <span style={{ color: 'var(--muted)' }}>·</span>}
-                        {apCount > 0 && (
-                          <span className="dev-count-chip ap">
-                            <Wifi size={12} />
-                            {apCount} AP{apCount > 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="dev-count-empty">No devices installed</span>
-                    )}
-                  </div>
+                    {/* 3. DEVICES: Compact summary, e.g. 10 PC · 6 AP or 2 AP or 0 */}
+                    <td>
+                      <span className="loc-devices-plain" data-testid={`loc-equipment-${loc.id}`}>
+                        {devicesSummary}
+                      </span>
+                    </td>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="icon-btn-subtle"
-                      title="Edit Location"
-                      aria-label={`Edit ${loc.name}`}
-                      data-testid={`edit-loc-${loc.id}`}
-                      onClick={() => handleOpenEdit(loc)}
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-btn-subtle danger"
-                      title="Remove Location"
-                      aria-label={`Delete ${loc.name}`}
-                      data-testid={`delete-loc-${loc.id}`}
-                      disabled={busy}
-                      onClick={() => handleDelete(loc)}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                    <span
-                      className="room-card-view-btn"
-                      onClick={() => setSelectedRoom(loc)}
-                      style={{ cursor: 'pointer', marginLeft: '4px' }}
-                    >
-                      View &rarr;
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                    {/* 4. ACTIONS: Clean neutral Edit and Delete buttons */}
+                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="btn-neutral-edit"
+                          title="Edit Location"
+                          aria-label={`Edit ${loc.name}`}
+                          data-testid={`edit-loc-${loc.id}`}
+                          onClick={() => handleOpenEdit(loc)}
+                        >
+                          <Pencil size={12} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn-subtle danger"
+                          title="Remove Location"
+                          aria-label={`Delete ${loc.name}`}
+                          data-testid={`delete-loc-${loc.id}`}
+                          disabled={busy}
+                          onClick={() => handleDelete(loc)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <Empty text="No campus locations match your filter or search query." />

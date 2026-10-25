@@ -9,8 +9,6 @@ import {
   CheckCheck,
   Play,
   Send,
-  LayoutGrid,
-  List,
   Clock,
   MessageSquarePlus,
 } from 'lucide-react';
@@ -42,7 +40,6 @@ export default function Tickets() {
   const list = useData('/tickets');
   const assets = useData('/assets');
   const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
@@ -201,32 +198,7 @@ export default function Tickets() {
 
   return (
     <>
-      <PageTitle
-        title="Incident Tickets"
-        subtitle={
-          user.role === 'assistant'
-            ? 'Track your reported issues, workstation inspection faults, and Tier 2 escalations.'
-            : 'Investigate, track, and resolve tiered campus network (Tier 2) and lab equipment (Tier 1) issues.'
-        }
-      >
-        <div className="view-toggle-group" data-testid="tickets-view-toggle">
-          <button
-            type="button"
-            className={viewMode === 'table' ? 'active' : ''}
-            data-testid="view-mode-table"
-            onClick={() => setViewMode('table')}
-          >
-            <List size={15} /> Table View
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'kanban' ? 'active' : ''}
-            data-testid="view-mode-kanban"
-            onClick={() => setViewMode('kanban')}
-          >
-            <LayoutGrid size={15} /> Kanban Board
-          </button>
-        </div>
+      <PageTitle title="Incident Tickets">
         <Button
           variant="primary"
           id="report-incident"
@@ -283,202 +255,131 @@ export default function Tickets() {
 
       {list.busy && !list.data ? (
         <Loading />
-      ) : viewMode === 'kanban' ? (
-        <div className="kanban-board" data-testid="tickets-kanban-board">
-          {[
-            { key: 'open', title: 'Open / Triage Queue', tone: 'amber' },
-            { key: 'in_progress', title: 'In Progress (Investigating)', tone: 'blue' },
-            { key: 'resolved', title: 'Resolved & Verified', tone: 'green' },
-          ].map(col => {
-            const colTickets = rows.filter((t: any) => t.status === col.key);
-            return (
-              <div key={col.key} className="kanban-col" data-testid={`kanban-col-${col.key}`}>
-                <div className={`kanban-col-head tone-${col.tone}`}>
-                  <strong>{col.title}</strong>
-                  <span>{colTickets.length}</span>
-                </div>
-                <div className="kanban-col-body">
-                  {colTickets.length ? (
-                    colTickets.map((t: any) => {
-                      const sla = getSlaBadge(t);
-                      return (
-                        <div
-                          key={t.id}
-                          className="kanban-card"
-                          data-testid={`kanban-card-${t.id}`}
-                          onClick={() => {
-                            setSelected(t);
-                            setError('');
-                            setNotes('');
-                          }}
-                        >
-                          <div className="kanban-card-top">
-                            <span className="mono small">{t.number}</span>
-                            <Status value={t.priority} />
-                          </div>
-                          <strong>{t.title}</strong>
-                          <div className="kanban-card-meta">
-                            <span className="mono">{t.asset_tag}</span>
-                            <span>·</span>
-                            <span>{formatLocationWithCode(t.lab_name || t.lab_id)}</span>
-                          </div>
-                          <div className="kanban-card-foot">
-                            <span className={`tier-pill ${t.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
-                              {t.tier_code === 'tier2' ? 'Tier 2 · NOC' : 'Tier 1 · Lab'}
-                            </span>
-                            <span className={`sla-chip tone-${sla.tone}`}>
-                              <Clock size={11} /> {sla.label}
-                            </span>
-                          </div>
-                          {user.role !== 'assistant' && t.status !== 'resolved' && (
-                            <div className="kanban-card-actions" onClick={e => e.stopPropagation()}>
-                              {t.status === 'open' && (
-                                <button
-                                  type="button"
-                                  className="kanban-action-btn start-work"
-                                  onClick={() => handleStatusChange(t, 'in_progress')}
-                                  title="Move to In Progress"
-                                >
-                                  <Play size={11} /> Start
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="kanban-action-btn resolve"
-                                onClick={() => handleStatusChange(t, 'resolved')}
-                                title="Resolve ticket &amp; restore device"
-                              >
-                                <CheckCircle2 size={11} /> Resolve
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="kanban-empty">No tickets in {col.title.toLowerCase()}</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       ) : rows?.length ? (
-        <div className="table-wrap tickets-table-wrap">
-          <table className="data-table tickets-table">
-            <thead>
-              <tr>
-                <th className="col-ticket-title">TICKET</th>
-                <th className="col-ticket-equipment">EQUIPMENT</th>
-                <th className="col-ticket-tier">TIER &amp; ROUTING</th>
-                <th className="col-ticket-priority">PRIORITY &amp; SLA</th>
-                <th className="col-ticket-status">STATUS</th>
-                <th className="col-ticket-reported">REPORTED (MYT)</th>
-                <th className="col-ticket-action">ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((t: any) => {
-                const sla = getSlaBadge(t);
-                return (
-                  <tr key={t.id} data-testid={`ticket-row-${t.id}`}>
-                    <td className="col-ticket-title">
-                      <button
-                        className="ticket-title"
-                        data-testid={`open-ticket-${t.id}`}
-                        onClick={() => {
-                          setSelected(t);
-                          setError('');
-                          setNotes('');
-                        }}
-                      >
-                        <span>{t.number}</span>
-                        <strong>{t.title}</strong>
-                      </button>
-                    </td>
-                    <td className="col-ticket-equipment">
-                      <strong className="mono small">{t.asset_tag}</strong>
-                      <small className="cell-sub">{formatLocationWithCode(t.lab_name || t.lab_id)}</small>
-                    </td>
-                    <td className="col-ticket-tier">
-                      <span className={`tier-pill ${t.tier_code === 'tier2' ? 'tier2' : 'tier1'}`}>
-                        {t.tier}
-                      </span>
-                      <small className="cell-sub">{t.assigned_name}</small>
-                    </td>
-                    <td className="col-ticket-priority">
-                      <Status value={t.priority} id={`priority-${t.id}`} />
-                      <small className={`cell-sub sla-text-${sla.tone}`}>{sla.label}</small>
-                    </td>
-                    <td className="col-ticket-status">
-                      <Status value={t.status} id={`ticket-status-${t.id}`} />
-                    </td>
-                    <td className="col-ticket-reported mono small">
-                      {time(t.created_at, true)} MYT
-                    </td>
-                    <td className="col-ticket-action">
-                      <div className="ticket-actions-group">
-                        {user.role !== 'assistant' && (
-                          <>
-                            {t.status === 'open' && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="btn-ticket-action btn-start-work"
-                                data-testid={`start-work-${t.id}`}
-                                title="Move ticket to In Progress"
-                                disabled={busy}
-                                onClick={(e: any) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(t, 'in_progress');
-                                }}
-                              >
-                                <Play size={12} /> Start Work
-                              </Button>
-                            )}
-                            {t.status !== 'resolved' && (
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                className="btn-ticket-action btn-resolve-ticket"
-                                data-testid={`resolve-ticket-${t.id}`}
-                                title="Mark ticket as resolved and restore device"
-                                disabled={busy}
-                                onClick={(e: any) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(t, 'resolved');
-                                }}
-                              >
-                                <CheckCircle2 size={12} /> Resolve
-                              </Button>
-                            )}
-                            {t.status === 'resolved' && (
-                              <span className="ticket-resolved-chip">
-                                <CheckCheck size={12} /> Resolved
-                              </span>
-                            )}
-                          </>
-                        )}
+        <div className="tickets-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse clean-tickets-table" style={{ minWidth: '780px' }}>
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <th className="px-5 py-3.5" style={{ width: '32%' }}>TICKET</th>
+                  <th className="px-5 py-3.5" style={{ width: '14%' }}>DEVICE</th>
+                  <th className="px-5 py-3.5" style={{ width: '16%' }}>ASSIGNEE</th>
+                  <th className="px-5 py-3.5" style={{ width: '13%' }}>PRIORITY</th>
+                  <th className="px-5 py-3.5" style={{ width: '11%' }}>STATUS</th>
+                  <th className="px-5 py-3.5 text-right" style={{ width: '14%' }}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {rows.map((t: any) => {
+                  const sla = getSlaBadge(t);
+                  const cleanAssignee = t.assigned_name
+                    ? t.assigned_name.replace(/\s*\([^)]*\)/g, '').trim()
+                    : '—';
+                  return (
+                    <tr
+                      key={t.id}
+                      data-testid={`ticket-row-${t.id}`}
+                      className="hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="px-5 py-3.5">
                         <button
-                          className="icon-button"
-                          title="View ticket details"
-                          aria-label="View ticket details"
-                          data-testid={`ticket-detail-${t.id}`}
+                          type="button"
+                          className="flex items-center gap-2 text-left w-full group cursor-pointer"
+                          data-testid={`open-ticket-${t.id}`}
                           onClick={() => {
                             setSelected(t);
                             setError('');
                             setNotes('');
                           }}
                         >
-                          <ArrowUpRight size={16} />
+                          <span className="font-mono font-bold text-sky-400 group-hover:underline whitespace-nowrap">
+                            {t.number}
+                          </span>
+                          <span className="font-semibold text-slate-100 group-hover:text-sky-300 truncate max-w-sm">
+                            {t.title}
+                          </span>
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td
+                        className="px-5 py-3.5 font-mono font-medium text-slate-200 whitespace-nowrap"
+                        title={formatLocationWithCode(t.lab_name || t.lab_id)}
+                      >
+                        {t.asset_tag}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-300 whitespace-nowrap">
+                        {cleanAssignee}
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap" title={sla.label}>
+                        <Status value={t.priority} id={`priority-${t.id}`} />
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <Status value={t.status} id={`ticket-status-${t.id}`} />
+                      </td>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {user.role !== 'assistant' && (
+                            <>
+                              {t.status === 'open' && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="btn-ticket-action btn-start-work text-xs py-1 px-2.5 h-8"
+                                  data-testid={`start-work-${t.id}`}
+                                  title="Move ticket to In Progress"
+                                  disabled={busy}
+                                  onClick={(e: any) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(t, 'in_progress');
+                                  }}
+                                >
+                                  <Play size={11} className="mr-1" /> Start Work
+                                </Button>
+                              )}
+                              {t.status !== 'resolved' && (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  className="btn-ticket-action btn-resolve-ticket text-xs py-1 px-2.5 h-8"
+                                  data-testid={`resolve-ticket-${t.id}`}
+                                  title="Mark ticket as resolved and restore device"
+                                  disabled={busy}
+                                  onClick={(e: any) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(t, 'resolved');
+                                  }}
+                                >
+                                  <CheckCircle2 size={12} className="mr-1" /> Resolve
+                                </Button>
+                              )}
+                              {t.status === 'resolved' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium px-2 py-1">
+                                  <CheckCheck size={13} /> Resolved
+                                </span>
+                              )}
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
+                            title="View ticket details"
+                            aria-label="View ticket details"
+                            data-testid={`ticket-detail-${t.id}`}
+                            onClick={() => {
+                              setSelected(t);
+                              setError('');
+                              setNotes('');
+                            }}
+                          >
+                            <ArrowUpRight size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <Empty text="No tickets match the selected filter." />

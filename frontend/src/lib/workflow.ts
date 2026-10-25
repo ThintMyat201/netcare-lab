@@ -454,15 +454,17 @@ export const SIMULATION_FLEET_APS = [
 export function getSharedFleetAps(): any[] {
   const isSim = isMonitoringSimActive();
   const overrides = getApOverrides();
+  const nowIso = new Date().toISOString();
 
   if (!isSim) {
-    // Healthy baseline: all 21 APs online
-    return SIMULATION_FLEET_APS.map(ap => {
+    // Healthy baseline: all 28 APs online
+    return SIMULATION_FLEET_APS.map((ap: any) => {
       const idKey = String(ap.id).toLowerCase();
       const tagKey = String(ap.tag).toUpperCase();
       const override = overrides[idKey] || overrides[tagKey] || {};
       return {
         ...ap,
+        last_seen: ap.last_seen || override.last_seen || nowIso,
         status: 'online',
         scenario: 'normal',
         clients: 28 + ((parseInt(ap.id.replace(/\D/g, '') || '1', 10) * 3) % 15),
@@ -471,18 +473,25 @@ export function getSharedFleetAps(): any[] {
         throughput: 32.5,
         ...override,
       };
-    }).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
+    }).sort((a: any, b: any) => (a.tag || '').localeCompare(b.tag || ''));
   }
 
-  return SIMULATION_FLEET_APS.map(ap => {
+  return SIMULATION_FLEET_APS.map((ap: any) => {
     const idKey = String(ap.id).toLowerCase();
     const tagKey = String(ap.tag).toUpperCase();
     const override = overrides[idKey] || overrides[tagKey];
     if (override) {
-      return { ...ap, ...override };
+      return {
+        ...ap,
+        last_seen: ap.last_seen || override.last_seen || nowIso,
+        ...override,
+      };
     }
-    return ap;
-  }).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
+    return {
+      ...ap,
+      last_seen: ap.last_seen || nowIso,
+    };
+  }).sort((a: any, b: any) => (a.tag || '').localeCompare(b.tag || ''));
 }
 
 export function restoreDevice(assetIdOrTag: string) {

@@ -22,6 +22,7 @@ import {
   saveLocalTicket,
   getLabInspectionProgress,
   formatLocationWithCode,
+  findLocation,
 } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, SectionHead, useData } from '../components/shared';
 
@@ -398,11 +399,8 @@ export default function Checklists() {
     }
   };
 
-  const mapWorkstations = useMemo(() => {
-    const targetLabName = LAB_NAMES[mapLab] || 'Computing Lab A';
-    const pcs = (assets.data || []).filter(
-      (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === mapLab || a.lab_name === targetLabName)
-    );
+  const allWorkstations = useMemo(() => {
+    const pcs = (assets.data || []).filter((a: any) => a.kind === 'PC' && !a.archived);
     return pcs.map((pc: any) => {
       const activeTicket = allTickets.find(
         (t: any) => t.status !== 'resolved' && (t.asset_id === pc.id || t.asset_tag === pc.tag)
@@ -410,31 +408,41 @@ export default function Checklists() {
       const latestCheck = allChecklists.find(
         (c: any) => c.asset_id === pc.id || c.asset_tag === pc.tag
       );
-      const deskState = activeTicket || latestCheck?.result === 'failed'
-        ? 'fault'
+      const linkedTicket = activeTicket || (latestCheck?.tickets && latestCheck.tickets[0]) || null;
+      const outcomeKey = activeTicket || latestCheck?.result === 'failed'
+        ? 'failed'
         : latestCheck?.result === 'passed'
-        ? 'verified'
+        ? 'passed'
         : 'unchecked';
+      const loc = findLocation(pc.lab_name || pc.lab_id);
+      const roomCode = loc?.code || pc.lab_id || '—';
+
       return {
         ...pc,
-        deskState,
         activeTicket,
         latestCheck,
+        linkedTicket,
+        outcomeKey,
+        roomCode,
+        inspectedBy: latestCheck?.created_by_name || '—',
+        submittedAt: latestCheck?.created_at || null,
       };
     });
-  }, [assets.data, mapLab, allTickets, allChecklists]);
+  }, [assets.data, allTickets, allChecklists]);
 
-  const filteredChecklists = useMemo(() => {
-    return allChecklists.filter((c: any) => {
+  const filteredWorkstations = useMemo(() => {
+    return allWorkstations.filter((w: any) => {
       const matchesLab =
         labFilter === 'all' ||
-        c.lab_id === labFilter ||
-        c.lab_name === LAB_NAMES[labFilter] ||
-        c.lab_name === labFilter;
-      const matchesOutcome = outcomeFilter === 'all' || c.result === outcomeFilter;
+        w.lab_id === labFilter ||
+        w.lab_name === LAB_NAMES[labFilter] ||
+        w.lab_name === labFilter;
+      const matchesOutcome =
+        outcomeFilter === 'all' ||
+        w.outcomeKey === outcomeFilter;
       return matchesLab && matchesOutcome;
     });
-  }, [allChecklists, labFilter, outcomeFilter]);
+  }, [allWorkstations, labFilter, outcomeFilter]);
 
   const selectableWorkstations = useMemo(() => {
     const pcs = (assets.data || []).filter((a: any) => a.kind === 'PC' && !a.archived);
@@ -445,33 +453,26 @@ export default function Checklists() {
 
   return (
     <>
-      <PageTitle
-        title="Equipment Checklists"
-        subtitle="Interactive 2D lab floor map, batch shift inspections, and tiered fault escalation."
-      >
+      <PageTitle title="Equipment Checklists">
         {isAssistant && (
-          <Button id="new-checklist" variant="primary" onClick={() => start()}>
-            <Plus size={16} />Start Inspection
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              id="batch-verify-lab"
+              variant="secondary"
+              disabled={batchBusy}
+              onClick={batchVerifyLab}
+            >
+              <Sparkles size={14} className="mr-1" />
+              {batchBusy ? 'Verifying…' : 'Batch Pass Lab'}
+            </Button>
+            <Button id="new-checklist" variant="primary" onClick={() => start()}>
+              <Plus size={16} className="mr-1" />Start Inspection
+            </Button>
+          </div>
         )}
       </PageTitle>
 
       <ErrorBox error={error} retry={load} />
-
-      <div className="summary-strip">
-        <span>
-          <ClipboardCheck size={18} />
-          <strong>{filteredChecklists.length}</strong> inspections completed
-        </span>
-        <span>
-          <i className="tiny-dot green" />
-          {filteredChecklists.filter((c: any) => c.result === 'passed').length} all checks passed
-        </span>
-        <span>
-          <i className="tiny-dot amber" />
-          {filteredChecklists.filter((c: any) => c.result === 'failed').length} with reported faults
-        </span>
-      </div>
 
       {batchNotice && (
         <div className="success-box" data-testid="batch-verify-confirmation">
@@ -483,122 +484,13 @@ export default function Checklists() {
         </div>
       )}
 
-      {/* Interactive 2D Lab Floor Map */}
-      <section className="lab-floor-panel" data-testid="lab-floor-map">
-        <div className="lab-floor-header">
-          <div>
-            <span className="eyebrow">INTERACTIVE 2D ROOM LAYOUT</span>
-            <h3>
-              <LayoutGrid size={17} /> {formatLocationWithCode(LAB_NAMES[mapLab] || 'Computing Lab A')} — Workstation Seat Map
-            </h3>
-          </div>
-          <div className="lab-floor-controls">
-            <div className="segmented">
-              {[
-                ['lab-1', 'Lab A (B-04-03)'],
-                ['lab-2', 'Lab B (B-04-04)'],
-                ['lab-4', 'Lab C (B-04-05)'],
-                ['lab-3', 'Innovation (Tech Lab 5-02)'],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  data-testid={`floor-map-tab-${id}`}
-                  className={mapLab === id ? 'selected' : ''}
-                  onClick={() => {
-                    setMapLab(id);
-                    setLabFilter(id);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {isAssistant && (
-              <Button
-                id="batch-verify-lab"
-                variant="secondary"
-                disabled={batchBusy}
-                onClick={batchVerifyLab}
-              >
-                <Sparkles size={14} />
-                {batchBusy ? 'Verifying…' : 'Batch Pass Healthy Desks'}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="lab-seat-grid">
-          {mapWorkstations.map((pc: any) => (
-            <div
-              key={pc.id}
-              data-testid={`seat-tile-${pc.id}`}
-              className={`lab-seat-tile ${pc.deskState} ${isAssistant ? 'interactive' : ''}`}
-              onClick={() => {
-                if (isAssistant) {
-                  start(pc.id);
-                } else if (pc.latestCheck) {
-                  setSelected(pc.latestCheck);
-                }
-              }}
-            >
-              <div className="seat-tile-top">
-                <span className={`seat-icon ${pc.deskState}`}>
-                  <Monitor size={15} />
-                </span>
-                <span className={`seat-dot ${pc.deskState}`} />
-              </div>
-              <strong>{pc.tag}</strong>
-              <small className="mono">{pc.ip}</small>
-              <div className="seat-tile-foot">
-                {pc.activeTicket ? (
-                  isAssistant ? (
-                    <span
-                      className="seat-ticket-badge non-nav"
-                      title={`Incident ${pc.activeTicket.number} · Escalated to Network Engineering (Click to view)`}
-                      onClick={e => {
-                        e.stopPropagation();
-                        setViewTicket({
-                          ...pc.activeTicket,
-                          routingLabel: 'Escalated to Network Eng',
-                          statusLabel: pc.activeTicket.status === 'resolved' ? 'Resolved' : 'Open',
-                          assetTag: pc.tag,
-                          labName: mapLab,
-                        });
-                      }}
-                    >
-                      <AlertTriangle size={11} /> {pc.activeTicket.number}
-                    </span>
-                  ) : (
-                    <Link
-                      to={`/tickets?ticket=${pc.activeTicket.id}`}
-                      className="seat-ticket-badge"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <AlertTriangle size={11} /> {pc.activeTicket.number}
-                    </Link>
-                  )
-                ) : pc.deskState === 'verified' ? (
-                  <span className="seat-state-label verified">
-                    <Check size={11} /> Verified
-                  </span>
-                ) : (
-                  <span className="seat-state-label unchecked">
-                    {isAssistant ? 'Click to Inspect' : 'Unchecked'}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <div className="listing-toolbar">
         <div className="filter-tabs">
           {[
-            ['all', 'All', allChecklists.length],
-            ['failed', 'Faults Reported', allChecklists.filter((c: any) => c.result === 'failed').length],
-            ['passed', 'All Checks Passed', allChecklists.filter((c: any) => c.result === 'passed').length],
+            ['all', 'All Workstations', allWorkstations.length],
+            ['passed', 'Passed', allWorkstations.filter((w: any) => w.outcomeKey === 'passed').length],
+            ['failed', 'Faults Reported', allWorkstations.filter((w: any) => w.outcomeKey === 'failed').length],
+            ['unchecked', 'Unchecked', allWorkstations.filter((w: any) => w.outcomeKey === 'unchecked').length],
           ].map(([key, label, count]) => (
             <button
               key={key}
@@ -622,7 +514,7 @@ export default function Checklists() {
             if (e.target.value !== 'all') setMapLab(e.target.value);
           }}
         >
-          <option value="all">All Labs</option>
+          <option value="all">All Campus Labs</option>
           <option value="lab-1">[B-04-03] Computing Lab A</option>
           <option value="lab-2">[B-04-04] Computing Lab B</option>
           <option value="lab-4">[B-04-05] Computing Lab C</option>
@@ -632,127 +524,137 @@ export default function Checklists() {
 
       {busy && !data ? (
         <Loading />
-      ) : filteredChecklists.length ? (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>WORKSTATION</th>
-                <th>INSPECTED BY</th>
-                <th>OUTCOME</th>
-                <th>LINKED TICKETS &amp; ROUTING</th>
-                <th>SUBMITTED (MYT)</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {filteredChecklists.map((c: any) => {
-                const hasNetTicket =
-                  c.checks?.network === 'fail' ||
-                  (c.tickets || []).some((t: any) => t.category === 'network');
-                return (
-                  <tr key={c.id} data-testid={`checklist-row-${c.id}`}>
-                    <td>
-                      <div className="asset-name">
-                        <span className="asset-icon">
-                          <Monitor size={17} />
+      ) : filteredWorkstations.length ? (
+        <div className="checklists-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse clean-checklists-table" style={{ minWidth: '780px' }}>
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <th className="px-5 py-3.5" style={{ width: '18%' }}>WORKSTATION</th>
+                  <th className="px-5 py-3.5" style={{ width: '13%' }}>ROOM</th>
+                  <th className="px-5 py-3.5" style={{ width: '18%' }}>INSPECTED BY</th>
+                  <th className="px-5 py-3.5" style={{ width: '17%' }}>OUTCOME</th>
+                  <th className="px-5 py-3.5" style={{ width: '14%' }}>TICKET</th>
+                  <th className="px-5 py-3.5 text-right" style={{ width: '20%' }}>SUBMITTED / ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {filteredWorkstations.map((w: any) => {
+                  return (
+                    <tr
+                      key={w.id}
+                      data-testid={`checklist-row-${w.latestCheck?.id || w.id}`}
+                      className="hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="px-5 py-3.5 font-mono font-bold text-slate-100 whitespace-nowrap">
+                        {w.tag}
+                      </td>
+                      <td className="px-5 py-3.5 font-mono text-xs text-slate-300 whitespace-nowrap">
+                        {w.roomCode}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-300 whitespace-nowrap">
+                        {w.inspectedBy}
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs font-medium"
+                          data-testid={`checklist-result-${w.latestCheck?.id || w.id}`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              w.outcomeKey === 'passed'
+                                ? 'bg-emerald-400'
+                                : w.outcomeKey === 'failed'
+                                ? 'bg-amber-400'
+                                : 'bg-slate-500'
+                            }`}
+                          />
+                          <span
+                            className={
+                              w.outcomeKey === 'passed'
+                                ? 'text-emerald-400'
+                                : w.outcomeKey === 'failed'
+                                ? 'text-amber-400'
+                                : 'text-slate-400'
+                            }
+                          >
+                            {w.outcomeKey === 'passed'
+                              ? 'Passed'
+                              : w.outcomeKey === 'failed'
+                              ? 'Fault Reported'
+                              : 'Unchecked'}
+                          </span>
                         </span>
-                        <div>
-                          <strong>{c.asset_tag}</strong>
-                          <small>{formatLocationWithCode(c.lab_name || c.lab_id)}</small>
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        {w.linkedTicket ? (
+                          isAssistant ? (
+                            <button
+                              type="button"
+                              className="font-mono text-xs font-semibold text-sky-400 hover:underline cursor-pointer"
+                              data-testid={`checklist-ticket-${w.latestCheck?.id || w.id}-${w.linkedTicket.id}`}
+                              onClick={() => {
+                                const isNet = w.linkedTicket.category === 'network' || w.latestCheck?.checks?.network === 'fail';
+                                setViewTicket({
+                                  ...w.linkedTicket,
+                                  routingLabel: isNet ? 'Escalated to Network Eng' : 'Tier 1 Hardware Fault',
+                                  statusLabel: w.linkedTicket.status === 'resolved' ? 'Resolved' : 'Open',
+                                  assetTag: w.tag,
+                                  labName: w.roomCode,
+                                });
+                              }}
+                            >
+                              {w.linkedTicket.number}
+                            </button>
+                          ) : (
+                            <Link
+                              className="font-mono text-xs font-semibold text-sky-400 hover:underline"
+                              data-testid={`checklist-ticket-${w.latestCheck?.id || w.id}-${w.linkedTicket.id}`}
+                              to={`/tickets?ticket=${w.linkedTicket.id}`}
+                            >
+                              {w.linkedTicket.number}
+                            </Link>
+                          )
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="font-mono text-xs text-slate-400 whitespace-nowrap">
+                            {w.submittedAt ? time(w.submittedAt, true) : '—'}
+                          </span>
+                          {isAssistant && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="btn-inspect-workstation text-xs py-1 px-2.5 h-7"
+                              data-testid={`inspect-asset-${w.id}`}
+                              onClick={() => start(w.id)}
+                            >
+                              Inspect
+                            </Button>
+                          )}
+                          {w.latestCheck && (
+                            <button
+                              type="button"
+                              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
+                              title="View inspection details"
+                              aria-label="View inspection details"
+                              data-testid={`view-checklist-${w.latestCheck.id}`}
+                              onClick={() => setSelected(w.latestCheck)}
+                            >
+                              <ArrowUpRight size={15} />
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td>{c.created_by_name}</td>
-                    <td>
-                      <span
-                        className={`status ${c.result === 'passed' ? 'online' : 'congested'}`}
-                        data-testid={`checklist-result-${c.id}`}
-                      >
-                        <i />
-                        {c.result === 'passed' ? 'All Checks Passed' : 'Faults Reported'}
-                      </span>
-                    </td>
-                    <td>
-                      {c.tickets?.length ? (
-                        <div className="checklist-ticket-cell">
-                          <div className="checklist-ticket-chips">
-                            {c.tickets.map((t: any) => {
-                              const isNetworkFault = t.category === 'network' || hasNetTicket;
-                              const routingLabel = isNetworkFault
-                                ? 'Escalated to Network Eng'
-                                : 'Tier 1 Hardware Fault';
-                              const statusLabel =
-                                t.status === 'resolved'
-                                  ? 'Resolved'
-                                  : t.status === 'in_progress'
-                                  ? 'In Progress'
-                                  : 'Open';
-
-                              if (isAssistant) {
-                                return (
-                                  <button
-                                    type="button"
-                                    key={t.id}
-                                    className="checklist-ticket-badge non-nav"
-                                    data-testid={`checklist-ticket-${c.id}-${t.id}`}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      setViewTicket({
-                                        ...t,
-                                        routingLabel,
-                                        statusLabel,
-                                        assetTag: c.asset_tag,
-                                        labName: c.lab_name,
-                                      });
-                                    }}
-                                    title={`Click to view ticket status: ${t.number || 'Incident'} (${statusLabel})`}
-                                  >
-                                    <span className="mono ticket-badge-num">{t.number}</span>
-                                    <span className="ticket-badge-pill">{routingLabel}</span>
-                                  </button>
-                                );
-                              }
-
-                              return (
-                                <Link
-                                  className="inline-link"
-                                  data-testid={`checklist-ticket-${c.id}-${t.id}`}
-                                  key={t.id}
-                                  to={`/tickets?ticket=${t.id}`}
-                                >
-                                  {t.number}{' '}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                          <small className="cell-sub">
-                            {hasNetTicket
-                              ? 'Tier 2 · Routed to Network Engineer'
-                              : 'Tier 1 · Hardware / Peripheral'}
-                          </small>
-                        </div>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="mono">{time(c.created_at, true)}</td>
-                    <td>
-                      <button
-                        className="icon-button"
-                        title="View inspection details"
-                        aria-label="View inspection details"
-                        data-testid={`view-checklist-${c.id}`}
-                        onClick={() => setSelected(c)}
-                      >
-                        <ArrowUpRight size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <Empty text="No equipment inspections match the selected filters." />

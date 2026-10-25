@@ -21,6 +21,7 @@ import {
   normalizeCampusShifts,
   saveShiftOverride,
   getLabInspectionProgress,
+  findLocation,
 } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
@@ -200,53 +201,48 @@ export default function Shifts() {
 
   return (
     <>
-      <PageTitle
-        title={user.role === 'admin' ? 'Staff Schedule' : 'Your Shift Schedule'}
-        subtitle="Standard 4-hour campus lab shifts, inspection task tracking, and shift handovers · Asia/Kuala Lumpur (MYT)"
-      >
+      <PageTitle title={user.role === 'admin' ? 'Staff Schedule' : 'Your Shift Schedule'}>
         {user.role === 'admin' && (
           <Button id="assign-shift" variant="primary" onClick={add}>
-            <Plus size={16} />Assign Shift
+            <Plus size={16} className="mr-1" />Assign Shift
           </Button>
         )}
       </PageTitle>
 
       <ErrorBox error={list.error || (!open && error)} retry={list.load} />
 
-      <div className="simulation-strip shift-scope-bar">
-        <div>
-          <Bell size={16} />
-          <strong>In-App Reminders</strong>
-          <span data-testid="unacknowledged-shifts-counter">
-            {unacknowledgedCount} unacknowledged shift{unacknowledgedCount === 1 ? '' : 's'} · in-app notifications only
-          </span>
-        </div>
-        <div className="shift-filter-controls">
-          {user.role === 'assistant' && (
-            <div className="segmented shift-scope-segmented" role="tablist">
-              <button
-                type="button"
-                className={scopeFilter === 'my' ? 'selected' : ''}
-                onClick={() => setScopeFilter('my')}
-                data-testid="shift-scope-my"
-              >
-                My Shifts
-              </button>
-              <button
-                type="button"
-                className={scopeFilter === 'all' ? 'selected' : ''}
-                onClick={() => setScopeFilter('all')}
-                data-testid="shift-scope-all"
-              >
-                All Lab Shifts
-              </button>
-            </div>
-          )}
-          <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
-            <option value="active">Active Shifts</option>
-            <option value="all">All Shifts (Including Cancelled)</option>
-          </Select>
-        </div>
+      <div className="listing-toolbar">
+        {user.role === 'assistant' ? (
+          <div className="segmented shift-scope-segmented" role="tablist">
+            <button
+              type="button"
+              className={scopeFilter === 'my' ? 'selected' : ''}
+              onClick={() => setScopeFilter('my')}
+              data-testid="shift-scope-my"
+            >
+              My Shifts
+            </button>
+            <button
+              type="button"
+              className={scopeFilter === 'all' ? 'selected' : ''}
+              onClick={() => setScopeFilter('all')}
+              data-testid="shift-scope-all"
+            >
+              All Lab Shifts
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 font-medium" data-testid="unacknowledged-shifts-counter">
+            {unacknowledgedCount > 0
+              ? `${unacknowledgedCount} unacknowledged shift${unacknowledgedCount === 1 ? '' : 's'}`
+              : 'All active shifts acknowledged'}
+          </div>
+        )}
+
+        <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
+          <option value="active">Active Shifts</option>
+          <option value="all">All Shifts (Including Cancelled)</option>
+        </Select>
       </div>
 
       {notice && (
@@ -262,197 +258,180 @@ export default function Shifts() {
       {list.busy && !list.data ? (
         <Loading />
       ) : rows?.length ? (
-        <div className="shift-grid">
-          {rows.map((s: any) => {
-            const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
-            const isMyShift =
-              user.role === 'admin' ||
-              s.assistant_id === user.id ||
-              s.assistant_name === user.name ||
-              (user.role === 'assistant' && !s.assistant_id);
-            const isAcknowledged = Boolean(s.acknowledged_at);
-            const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
-            const displayChecked = isAcknowledged ? progress.checked : 0;
-            const displayPercent = isAcknowledged ? progress.percent : 0;
-            const isAllChecked = isAcknowledged && progress.checked >= progress.required;
+        <div className="shifts-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse clean-shifts-table" style={{ minWidth: '780px' }}>
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-900/90 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <th className="px-5 py-3.5" style={{ width: '25%' }}>LAB / ROOM</th>
+                  <th className="px-5 py-3.5" style={{ width: '18%' }}>ASSISTANT</th>
+                  <th className="px-5 py-3.5" style={{ width: '20%' }}>SHIFT WINDOW</th>
+                  <th className="px-5 py-3.5" style={{ width: '13%' }}>PROGRESS</th>
+                  <th className="px-5 py-3.5" style={{ width: '11%' }}>STATUS</th>
+                  <th className="px-5 py-3.5 text-right" style={{ width: '13%' }}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {rows.map((s: any) => {
+                  const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
+                  const isMyShift =
+                    user.role === 'admin' ||
+                    s.assistant_id === user.id ||
+                    s.assistant_name === user.name ||
+                    (user.role === 'assistant' && !s.assistant_id);
+                  const isAcknowledged = Boolean(s.acknowledged_at);
+                  const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
+                  const displayChecked = isAcknowledged ? progress.checked : 0;
+                  const isAllChecked = isAcknowledged && progress.checked >= progress.required;
 
-            const statusKey =
-              s.lifecycle === 'cancelled'
-                ? 'cancelled'
-                : isCompleted
-                ? 'completed'
-                : isAcknowledged
-                ? 'on_duty'
-                : 'pending_ack';
+                  const statusKey =
+                    s.lifecycle === 'cancelled'
+                      ? 'cancelled'
+                      : isCompleted
+                      ? 'completed'
+                      : isAcknowledged
+                      ? 'on_duty'
+                      : 'pending_ack';
 
-            return (
-              <article className={`shift-card ${s.lifecycle}`} data-testid={`shift-card-${s.id}`} key={s.id}>
-                <div className="shift-card-top">
-                  <span className="calendar-icon">
-                    <CalendarDays size={20} />
-                  </span>
-                  <Status value={statusKey} id={`shift-status-${s.id}`} />
-                </div>
+                  const loc = findLocation(s.lab_name || s.lab_id);
+                  const labRoomText = loc?.code
+                    ? `${loc.code} · ${loc.name || s.lab_name}`
+                    : s.lab_name;
 
-                <h2>{s.lab_name}</h2>
-                <p className="shift-window-badge" data-testid={`shift-window-${s.id}`}>
-                  <Clock3 size={13} />
-                  <span>{s.shift_window}</span>
-                </p>
-
-                <div className="shift-info">
-                  <span className={!isMyShift ? 'text-amber' : ''}>
-                    <UserRound size={15} />
-                    {s.assistant_name}
-                  </span>
-                  <span>
-                    <CalendarDays size={15} />
-                    {time(s.start, true)} – {time(s.end)} MYT
-                  </span>
-                </div>
-
-                <div className="shift-progress-box" data-testid={`shift-progress-${s.id}`}>
-                  <div className="shift-progress-head">
-                    <span>
-                      <ClipboardCheck size={14} />
-                      Lab Inspection Progress
-                    </span>
-                    <strong>
-                      {displayChecked} / {progress.required} Workstations Checked
-                    </strong>
-                  </div>
-                  <div className="shift-progress-bar">
-                    <i style={{ width: `${displayPercent}%` }} />
-                  </div>
-                  <small className="shift-progress-sub">
-                    {!isAcknowledged
-                      ? 'Shift pending acknowledgement — inspections unlock once On Duty.'
-                      : isAllChecked
-                      ? 'All required shift workstation checks completed — ready for handover.'
-                      : progress.nextUnchecked
-                      ? `Next workstation due: ${progress.nextUnchecked.tag}`
-                      : `${progress.required - displayChecked} workstation(s) remaining this shift`}
-                  </small>
-                </div>
-
-                {s.completed_at && s.handover_notes && (
-                  <div className="shift-handover-summary" data-testid={`shift-handover-${s.id}`}>
-                    <strong>
-                      <FileCheck2 size={13} /> Handover Note ({time(s.completed_at)} MYT)
-                    </strong>
-                    <p>{s.handover_notes}</p>
-                  </div>
-                )}
-
-                {!s.cancelled && user.role === 'assistant' && !isCompleted && (
-                  <div className="shift-workflow-actions">
-                    {!isMyShift ? (
-                      <Button
-                        disabled
-                        variant="secondary"
-                        className="shift-locked-btn"
-                        title={`This shift is assigned to ${s.assistant_name}`}
-                      >
-                        <Lock size={14} /> Assigned to {s.assistant_name}
-                      </Button>
-                    ) : (
-                      <Button
-                        id={`run-shift-inspection-${s.id}`}
-                        variant={isAcknowledged ? 'primary' : 'secondary'}
-                        disabled={!isAcknowledged}
-                        title={
-                          !isAcknowledged
-                            ? 'Acknowledge shift first to unlock lab inspection'
-                            : 'Run physical workstation inspections for this shift'
-                        }
-                        onClick={() => runLabInspection(s, progress)}
-                      >
-                        {!isAcknowledged ? <Lock size={14} /> : <ClipboardCheck size={15} />}
-                        Run Lab Inspection <ArrowRight size={14} />
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                <div className="shift-card-foot">
-                  {isCompleted ? (
-                    <span className="ack-label completed">
-                      <CheckCheck size={15} />
-                      Shift Completed · {time(s.completed_at)} MYT
-                    </span>
-                  ) : !isAcknowledged && !s.cancelled ? (
-                    user.role === 'assistant' ? (
-                      isMyShift ? (
-                        <Button
-                          id={`ack-shift-${s.id}`}
-                          onClick={() => acknowledgeShift(s)}
-                          disabled={busy}
-                          variant="primary"
-                          className="ack-shift-btn"
-                        >
-                          <Check size={15} /> ✓ Acknowledge Shift
-                        </Button>
-                      ) : (
-                        <span className="muted small">Assigned to {s.assistant_name}</span>
-                      )
-                    ) : (
-                      <span className="muted small">Pending Assistant Acknowledgement</span>
-                    )
-                  ) : isAcknowledged && !s.cancelled ? (
-                    <div className="shift-duty-foot">
-                      <span className="ack-label on-duty">
-                        <CheckCheck size={15} />
-                        On Duty · Acknowledged {time(s.acknowledged_at)} MYT
-                      </span>
-                      {user.role === 'assistant' && isMyShift && isAllChecked && (
-                        <Button
-                          id={`complete-shift-${s.id}`}
-                          variant="primary"
-                          className="handover-complete-btn"
-                          onClick={() => openHandoverModal(s, progress)}
-                          disabled={busy}
-                          title="All 4 workstations checked — complete shift handover"
-                        >
-                          <CheckCheck size={15} />
-                          ✓ Complete Shift Handover
-                        </Button>
-                      )}
-                      {user.role === 'assistant' && isMyShift && !isAllChecked && (
-                        <Button
-                          id={`complete-shift-${s.id}`}
-                          variant="secondary"
-                          onClick={() => openHandoverModal(s, progress)}
-                          disabled={busy}
-                          className="compact faint-handover-btn"
-                          title="Submit early handover note"
-                        >
-                          <FileCheck2 size={14} />
-                          Handover Note
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="muted small">Assignment Cancelled</span>
-                  )}
-
-                  {user.role === 'admin' && !s.cancelled && (
-                    <Button
-                      id={`cancel-shift-${s.id}`}
-                      onClick={() => {
-                        if (window.confirm('Cancel this shift assignment? Its historical record will be retained.')) {
-                          cancelShift(s);
-                        }
-                      }}
-                      disabled={busy}
-                      className="compact"
+                  return (
+                    <tr
+                      key={s.id}
+                      data-testid={`shift-row-${s.id}`}
+                      className="hover:bg-slate-800/40 transition-colors"
                     >
-                      Cancel Shift
-                    </Button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+                      <td className="px-5 py-3.5 shift-cell-lab whitespace-nowrap">
+                        <span className="font-semibold shift-lab-text">
+                          {labRoomText}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 shift-cell-assistant whitespace-nowrap">
+                        <span className="shift-assistant-text">
+                          {s.assistant_name}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className="font-mono text-xs shift-window-text"
+                          data-testid={`shift-window-${s.id}`}
+                        >
+                          {s.shift_window}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className="font-mono text-xs shift-progress-text"
+                          data-testid={`shift-progress-${s.id}`}
+                        >
+                          {displayChecked} / {progress.required} Checked
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <Status value={statusKey} id={`shift-status-${s.id}`} />
+                      </td>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {user.role === 'admin' && !s.cancelled && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              id={`cancel-shift-${s.id}`}
+                              className="text-xs py-1 px-2.5 h-7"
+                              disabled={busy}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    'Cancel this shift assignment? Its historical record will be retained.'
+                                  )
+                                ) {
+                                  cancelShift(s);
+                                }
+                              }}
+                            >
+                              Cancel Shift
+                            </Button>
+                          )}
+
+                          {user.role === 'assistant' && (
+                            <>
+                              {isCompleted ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-emerald-400 font-medium">Completed</span>
+                                  {s.handover_notes && (
+                                    <button
+                                      type="button"
+                                      className="p-1 text-slate-400 hover:text-slate-100 rounded"
+                                      title={`Handover Note: ${s.handover_notes}`}
+                                      data-testid={`shift-handover-${s.id}`}
+                                      onClick={() => openHandoverModal(s, progress)}
+                                    >
+                                      <FileCheck2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : !isAcknowledged && !s.cancelled ? (
+                                isMyShift ? (
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    id={`ack-shift-${s.id}`}
+                                    className="text-xs py-1 px-2.5 h-7"
+                                    disabled={busy}
+                                    onClick={() => acknowledgeShift(s)}
+                                  >
+                                    Acknowledge
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-slate-400">Assigned</span>
+                                )
+                              ) : isAcknowledged && !s.cancelled ? (
+                                isMyShift ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      id={`run-shift-inspection-${s.id}`}
+                                      className="text-xs py-1 px-2.5 h-7"
+                                      onClick={() => runLabInspection(s, progress)}
+                                    >
+                                      Inspect Lab
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={isAllChecked ? 'primary' : 'secondary'}
+                                      id={`complete-shift-${s.id}`}
+                                      className="text-xs py-1 px-2.5 h-7"
+                                      disabled={busy}
+                                      onClick={() => openHandoverModal(s, progress)}
+                                      title={
+                                        isAllChecked
+                                          ? 'Complete shift handover'
+                                          : 'Submit handover note'
+                                      }
+                                    >
+                                      Handover
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-slate-400">On Duty</span>
+                                )
+                              ) : (
+                                <span className="text-xs text-slate-500">—</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <Empty text="No scheduled shifts found for this view." />
