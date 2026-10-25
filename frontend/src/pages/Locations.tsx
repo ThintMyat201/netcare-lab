@@ -472,17 +472,17 @@ export default function Locations() {
       {selectedRoom && (
         <>
           <div className="slide-over-scrim" onClick={() => setSelectedRoom(null)} />
-          <aside className="slide-over-drawer" aria-label="Room Inspector" data-testid="room-inspector-drawer">
-            <div className="drawer-header">
-              <div className="drawer-header-info">
-                <span className="apspace-code-pill" style={{ fontSize: '15px', padding: '4px 10px' }}>
+          <aside className="slide-over-drawer bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800" aria-label="Room Inspector" data-testid="room-inspector-drawer">
+            <div className="drawer-header border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="drawer-header-info flex items-center gap-2.5">
+                <span className="apspace-code-pill font-mono text-xs font-bold px-2.5 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   {selectedRoom.code}
                 </span>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>
+                  <h3 className="m-0 text-[15px] font-bold text-slate-900 dark:text-slate-100">
                     {selectedRoom.name}
                   </h3>
-                  <small style={{ color: 'var(--muted)', fontSize: '12px' }}>
+                  <small className="text-slate-500 dark:text-slate-400 text-xs">
                     {selectedRoom.block} · {selectedRoom.level}
                   </small>
                 </div>
@@ -494,76 +494,68 @@ export default function Locations() {
 
             <div className="drawer-body">
               {/* Room Details Card */}
-              <div className="drawer-card">
-                <div className="drawer-card-header">
+              <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <Building2 size={13} />
                   <span>Physical Room Specifications</span>
                 </div>
-                <div className="spec-grid">
-                  <div className="spec-item">
-                    <span className="spec-label">Category</span>
-                    <span className="spec-value">{selectedRoom.category}</span>
+                <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
+                  <div className="spec-item flex flex-col gap-0.5">
+                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Category</span>
+                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.category}</span>
                   </div>
-                  <div className="spec-item">
-                    <span className="spec-label">Building Block</span>
-                    <span className="spec-value">{selectedRoom.block}</span>
+                  <div className="spec-item flex flex-col gap-0.5">
+                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Building Block</span>
+                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.block}</span>
                   </div>
-                  <div className="spec-item">
-                    <span className="spec-label">Floor / Level</span>
-                    <span className="spec-value">{selectedRoom.level}</span>
+                  <div className="spec-item flex flex-col gap-0.5">
+                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Floor / Level</span>
+                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.level}</span>
                   </div>
-                  <div className="spec-item">
-                    <span className="spec-label">Room Identifier</span>
-                    <span className="spec-value">{selectedRoom.room || 'General Area'}</span>
+                  <div className="spec-item flex flex-col gap-0.5">
+                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Room Identifier</span>
+                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.room || 'General Area'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Installed Equipment Fleet */}
-              <div className="drawer-card">
-                <div className="drawer-card-header" style={{ justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     <Cpu size={13} />
                     <span>Installed Hardware Fleet</span>
                   </div>
-                  <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 600 }}>
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                     {selectedRoomDevices.length} Device{selectedRoomDevices.length === 1 ? '' : 's'}
                   </span>
                 </div>
 
                 {selectedRoomDevices.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                  <div className="max-h-64 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg p-2 space-y-2">
                     {selectedRoomDevices.map((dev: any) => {
                       const isPC = dev.kind === 'PC';
                       return (
                         <div
                           key={dev.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 12px',
-                            background: 'rgba(0,0,0,0.2)',
-                            borderRadius: '6px',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                          }}
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60"
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div className={`device-icon-wrap ${isPC ? 'pc-icon' : 'ap-icon'}`} style={{ width: '24px', height: '24px' }}>
-                              {isPC ? <Monitor size={13} /> : <Wifi size={13} />}
+                          <div className="flex items-center gap-2.5">
+                            <div className={`device-icon-wrap ${isPC ? 'pc-icon' : 'ap-icon'}`} style={{ width: '26px', height: '26px' }}>
+                              {isPC ? <Monitor size={14} /> : <Wifi size={14} />}
                             </div>
                             <div>
-                              <strong style={{ fontSize: '12.5px', color: 'var(--text)' }}>{dev.tag}</strong>
-                              <small style={{ display: 'block', fontSize: '11px', color: 'var(--muted)' }}>
+                              <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100">{dev.tag}</strong>
+                              <small className="block text-[11px] text-slate-500 dark:text-slate-400">
                                 {dev.model || (isPC ? 'OptiPlex 7010' : 'AP-515')}
                               </small>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#60a5fa' }}>
+                          <div className="text-right">
+                            <span className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 block">
                               {dev.ip || 'DHCP'}
                             </span>
-                            <small style={{ display: 'block', fontSize: '10px', color: dev.archived ? '#f87171' : '#34d399' }}>
+                            <small className={`block text-[10px] font-medium ${dev.archived ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                               {dev.archived ? 'Archived' : 'Active'}
                             </small>
                           </div>
@@ -572,7 +564,7 @@ export default function Locations() {
                     })}
                   </div>
                 ) : (
-                  <div style={{ padding: '16px 8px', textAlign: 'center', color: 'var(--muted)', fontSize: '12.5px', fontStyle: 'italic' }}>
+                  <div className="p-4 text-center text-slate-400 dark:text-slate-500 text-xs italic">
                     No hardware devices currently registered in this room.
                   </div>
                 )}
@@ -589,7 +581,7 @@ export default function Locations() {
               </Button>
             </div>
 
-            <div className="drawer-footer flex items-center justify-between gap-3">
+            <div className="drawer-footer flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <Button
                 type="button"
                 variant="danger"
@@ -641,17 +633,18 @@ export default function Locations() {
         description="Register a new room code, computing lab, or coverage zone with APSpace-standard code generator."
         id="add-location-dialog"
       >
-        <form onSubmit={handleAddSubmit}>
+        <form onSubmit={handleAddSubmit} className="flex flex-col gap-4">
           {/* APSpace Live Auto-Code Preview Banner */}
           <div className="auto-code-preview-bar">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Sparkles size={16} style={{ color: '#60a5fa' }} />
               <span className="auto-code-preview-label">Generated APSpace Room Code:</span>
             </div>
-            <span className="auto-code-preview-val">{form.code || 'B-04-06'}</span>
+            <span className="auto-code-preview-val font-mono font-bold">{form.code || 'B-04-06'}</span>
           </div>
 
-          <div className="form-grid">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Row 1: Building Block | Floor / Level */}
             <Field label="Building Block" id="loc-add-block">
               <Select
                 id="loc-add-block"
@@ -681,9 +674,8 @@ export default function Locations() {
                 ))}
               </Select>
             </Field>
-          </div>
 
-          <div className="form-grid">
+            {/* Row 2: Room Number / Identifier | Location Category */}
             <Field label="Room Number / Identifier" id="loc-add-room">
               <input
                 required
@@ -711,41 +703,46 @@ export default function Locations() {
                 ))}
               </Select>
             </Field>
+
+            {/* Row 3 (Full Width): Location / Lab Name */}
+            <div className="sm:col-span-2">
+              <Field label="Location / Lab Name" id="loc-add-name">
+                <input
+                  required
+                  minLength={2}
+                  maxLength={80}
+                  id="loc-add-name"
+                  data-testid="loc-input-name"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Computing Lab D or Design Studio A"
+                />
+              </Field>
+            </div>
           </div>
 
-          <Field label="Location / Lab Name" id="loc-add-name">
-            <input
-              required
-              minLength={2}
-              maxLength={80}
-              id="loc-add-name"
-              data-testid="loc-input-name"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Computing Lab D or Design Studio A"
-            />
-          </Field>
-
-          <Field label="Room / Location Code (Auto-Generated, Customizable)" id="loc-add-code">
-            <input
-              required
-              minLength={2}
-              maxLength={40}
-              id="loc-add-code"
-              data-testid="loc-input-code"
-              value={form.code}
-              onChange={e => setForm({ ...form, code: e.target.value })}
-              placeholder="e.g. B-04-06 or Tech Lab 5-02"
-              spellCheck={false}
-            />
-          </Field>
+          <input type="hidden" data-testid="loc-input-code" value={form.code} readOnly />
 
           <ErrorBox error={error} />
 
-          <Button id="save-location-btn" variant="primary" type="submit" disabled={busy} style={{ marginTop: '14px' }}>
-            <Save size={15} />
-            {busy ? 'Saving…' : 'Create Location'}
-          </Button>
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpenAdd(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              id="save-location-btn"
+              variant="primary"
+              type="submit"
+              disabled={busy}
+            >
+              <Save size={14} />
+              {busy ? 'Saving…' : 'Create Location'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
@@ -757,8 +754,8 @@ export default function Locations() {
         description="Update physical room code, block, floor, or category. Changes sync automatically across hardware inventory."
         id="edit-location-dialog"
       >
-        <form onSubmit={handleEditSubmit}>
-          <div className="form-grid">
+        <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Room / Location Code" id="loc-edit-code">
               <input
                 required
@@ -786,22 +783,22 @@ export default function Locations() {
                 ))}
               </Select>
             </Field>
-          </div>
 
-          <Field label="Location / Lab Name" id="loc-edit-name">
-            <input
-              required
-              minLength={2}
-              maxLength={80}
-              id="loc-edit-name"
-              data-testid="loc-edit-input-name"
-              value={editForm.name}
-              onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-              placeholder="e.g. Computing Lab A"
-            />
-          </Field>
+            <div className="sm:col-span-2">
+              <Field label="Location / Lab Name" id="loc-edit-name">
+                <input
+                  required
+                  minLength={2}
+                  maxLength={80}
+                  id="loc-edit-name"
+                  data-testid="loc-edit-input-name"
+                  value={editForm.name}
+                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="e.g. Computing Lab A"
+                />
+              </Field>
+            </div>
 
-          <div className="form-grid">
             <Field label="Building Block" id="loc-edit-block">
               <Select
                 id="loc-edit-block"
@@ -831,27 +828,38 @@ export default function Locations() {
                 ))}
               </Select>
             </Field>
-          </div>
 
-          <Field label="Room Number / Landmark" id="loc-edit-room">
-            <input
-              required
-              minLength={1}
-              maxLength={40}
-              id="loc-edit-room"
-              data-testid="loc-edit-input-room"
-              value={editForm.room}
-              onChange={e => setEditForm({ ...editForm, room: e.target.value })}
-              placeholder="e.g. 03"
-            />
-          </Field>
+            <div className="sm:col-span-2">
+              <Field label="Room Number / Landmark" id="loc-edit-room">
+                <input
+                  required
+                  minLength={1}
+                  maxLength={40}
+                  id="loc-edit-room"
+                  data-testid="loc-edit-input-room"
+                  value={editForm.room}
+                  onChange={e => setEditForm({ ...editForm, room: e.target.value })}
+                  placeholder="e.g. 03"
+                />
+              </Field>
+            </div>
+          </div>
 
           <ErrorBox error={error} />
 
-          <Button id="save-edit-location-btn" variant="primary" type="submit" disabled={busy} style={{ marginTop: '14px' }}>
-            <Save size={15} />
-            {busy ? 'Saving Changes…' : 'Save Changes'}
-          </Button>
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditingLoc(null)}
+            >
+              Cancel
+            </Button>
+            <Button id="save-edit-location-btn" variant="primary" type="submit" disabled={busy}>
+              <Save size={14} />
+              {busy ? 'Saving Changes…' : 'Save Changes'}
+            </Button>
+          </div>
         </form>
       </Modal>
     </>

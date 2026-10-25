@@ -7387,6 +7387,66 @@ input[aria-invalid="true"] {
   border-color: #cbd5e1 !important;
 }
 
+/* ==========================================================================
+   SLIDE-OVER DRAWER LIGHT THEME SUPPORT
+   ========================================================================== */
+
+.light-theme .slide-over-drawer {
+  background: #ffffff !important;
+  border-left: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-theme .slide-over-drawer .drawer-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light-theme .slide-over-drawer .drawer-title-tag {
+  color: #0f172a !important;
+}
+
+.light-theme .slide-over-drawer .drawer-footer {
+  background: #ffffff !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+.light-theme .slide-over-drawer .drawer-card {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.light-theme .slide-over-drawer .drawer-card-header {
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.light-theme .slide-over-drawer .spec-label {
+  color: #64748b !important;
+}
+
+.light-theme .slide-over-drawer .spec-value {
+  color: #0f172a !important;
+}
+
+.light-theme .auto-code-preview-bar {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.light-theme .auto-code-preview-label {
+  color: #2563eb !important;
+}
+
+.light-theme .auto-code-preview-val {
+  color: #1d4ed8 !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+
+
 
 
 

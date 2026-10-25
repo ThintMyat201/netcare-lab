@@ -475,11 +475,42 @@ export function Assets() {
         open={open}
         onClose={setOpen}
         title="Register Equipment"
-        description="Campus IT asset registration · network address is leased automatically by DHCP"
+        description="Register new campus hardware assets. Network IP is provisioned automatically via DHCP."
         id="asset-dialog"
       >
-        <form onSubmit={submit}>
-          <div className="form-grid">
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Row 1: Equipment Type | Assigned Location / Zone */}
+            <Field label="Equipment Type" id="asset-kind">
+              <Select id="asset-kind" value={form.kind} onChange={(e: any) => changeKind(e.target.value)}>
+                <option value="PC">Workstation</option>
+                <option value="AP">Access Point</option>
+              </Select>
+            </Field>
+
+            <Field label="Assigned Location / Zone" id="asset-lab">
+              <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => changeLocation(e.target.value)}>
+                {form.kind === 'AP'
+                  ? AP_LOCATION_GROUPS.map(group => (
+                      <optgroup key={group.label} label={group.label}>
+                        {locationChoices
+                          .filter(l => group.zones.includes(l.zone_group))
+                          .map(l => (
+                            <option key={l.id} value={l.id}>
+                              [{l.code}] {l.name} ({l.block}, {l.level})
+                            </option>
+                          ))}
+                      </optgroup>
+                    ))
+                  : locationChoices.map(l => (
+                      <option key={l.id} value={l.id}>
+                        [{l.code}] {l.name} ({l.block}, {l.level})
+                      </option>
+                    ))}
+              </Select>
+            </Field>
+
+            {/* Row 2: Equipment Tag | Device Name */}
             <Field label="Equipment Tag" id="asset-tag">
               <input
                 required
@@ -492,68 +523,37 @@ export function Assets() {
                 placeholder={form.kind === 'AP' ? 'e.g. AP-CANTEEN-03' : 'e.g. PC-CL-A-11'}
               />
             </Field>
-            <Field label="Equipment Type" id="asset-kind">
-              <Select id="asset-kind" value={form.kind} onChange={(e: any) => changeKind(e.target.value)}>
-                <option value="PC">Workstation</option>
-                <option value="AP">Access Point</option>
-              </Select>
+
+            <Field label="Device Name" id="asset-name">
+              <input
+                required
+                minLength={2}
+                maxLength={80}
+                id="asset-name"
+                data-testid="asset-name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder={form.kind === 'AP' ? 'e.g. Campus Canteen · AP 03' : 'e.g. Student Workstation 11'}
+              />
             </Field>
-          </div>
 
-          <Field label="Device Name" id="asset-name">
-            <input
-              required
-              minLength={2}
-              maxLength={80}
-              id="asset-name"
-              data-testid="asset-name"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              placeholder={form.kind === 'AP' ? 'e.g. Campus Canteen · AP 03' : 'e.g. Student Workstation 11'}
-            />
-          </Field>
+            {/* Row 3 (Full Width): Physical Placement / Landmark */}
+            <div className="sm:col-span-2">
+              <Field label="Physical Placement / Landmark" id="asset-placement">
+                <input
+                  required
+                  minLength={3}
+                  maxLength={120}
+                  id="asset-placement"
+                  data-testid="asset-placement"
+                  value={form.placement}
+                  onChange={e => setForm({ ...form, placement: e.target.value })}
+                  placeholder={selectedLocation?.placeholder || 'e.g. Row 1, Desk 1'}
+                />
+              </Field>
+            </div>
 
-          <Field label="Assigned Location / Zone" id="asset-lab">
-            <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => changeLocation(e.target.value)}>
-              {form.kind === 'AP'
-                ? AP_LOCATION_GROUPS.map(group => (
-                    <optgroup key={group.label} label={group.label}>
-                      {locationChoices
-                        .filter(l => group.zones.includes(l.zone_group))
-                        .map(l => (
-                          <option key={l.id} value={l.id}>
-                            [{l.code}] {l.name} ({l.block}, {l.level})
-                          </option>
-                        ))}
-                    </optgroup>
-                  ))
-                : locationChoices.map(l => (
-                    <option key={l.id} value={l.id}>
-                      [{l.code}] {l.name} ({l.block}, {l.level})
-                    </option>
-                  ))}
-            </Select>
-          </Field>
-          <p className="field-hint" data-testid="asset-location-hint">
-            {form.kind === 'AP'
-              ? 'Access points can be deployed anywhere on campus — labs, classrooms, library, canteen, lounge, or outdoor bus stop.'
-              : 'Lab workstations are registered to a campus computing lab.'}
-          </p>
-
-          <Field label="Physical Placement / Landmark" id="asset-placement">
-            <input
-              required
-              minLength={3}
-              maxLength={120}
-              id="asset-placement"
-              data-testid="asset-placement"
-              value={form.placement}
-              onChange={e => setForm({ ...form, placement: e.target.value })}
-              placeholder={selectedLocation?.placeholder || 'e.g. Row 1, Desk 1'}
-            />
-          </Field>
-
-          <div className="form-grid">
+            {/* Row 4: Hardware Model | MAC / Serial Tag */}
             <Field label="Hardware Model (Optional)" id="asset-model">
               <input
                 maxLength={80}
@@ -564,7 +564,8 @@ export function Assets() {
                 placeholder={form.kind === 'AP' ? 'e.g. Aruba AP-535' : 'e.g. Dell OptiPlex 7090'}
               />
             </Field>
-            <Field label="MAC Address / Serial Tag" id="asset-mac">
+
+            <Field label="MAC / Serial Tag" id="asset-mac">
               <input
                 maxLength={40}
                 data-testid="asset-mac"
@@ -578,28 +579,29 @@ export function Assets() {
             </Field>
           </div>
 
-          {/* Clean Single-line DHCP Provisioning Notice */}
-          <div
-            className="field-hint"
-            data-testid="asset-dhcp-preview"
-            style={{
-              marginTop: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              color: 'var(--muted)',
-            }}
-          >
-            <Network size={14} style={{ flexShrink: 0, color: '#60a5fa' }} />
-            <span>Network IP &amp; MAC are provisioned automatically upon registration ({dhcpScopePreview(form.kind, form.lab_id)}).</span>
-          </div>
+          <span data-testid="asset-dhcp-preview" className="sr-only" aria-hidden="true" />
+          <span data-testid="asset-location-hint" className="sr-only" aria-hidden="true" />
 
           <ErrorBox error={error} />
 
-          <Button id="save-asset" variant="primary" type="submit" disabled={busy} style={{ marginTop: '16px' }}>
-            <Save size={15} />
-            {busy ? 'Registering…' : 'Register Equipment'}
-          </Button>
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              id="save-asset"
+              variant="primary"
+              type="submit"
+              disabled={busy}
+            >
+              <Save size={14} />
+              {busy ? 'Registering…' : 'Register Equipment'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
@@ -614,23 +616,23 @@ export function Assets() {
             }}
           />
           <aside
-            className="slide-over-drawer"
+            className="slide-over-drawer bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800"
             aria-label="Equipment Inspector"
             data-testid="asset-inspector-drawer"
           >
-            <div className="drawer-header">
+            <div className="drawer-header border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div className="drawer-header-info">
                 <div className={`device-icon-wrap ${detailsAsset.kind === 'PC' ? 'pc-icon' : 'ap-icon'}`}>
                   {detailsAsset.kind === 'PC' ? <Monitor size={16} /> : <Wifi size={16} />}
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="drawer-title-tag">{detailsAsset.tag}</span>
+                    <span className="drawer-title-tag text-slate-900 dark:text-slate-100">{detailsAsset.tag}</span>
                     <span className={`drawer-status-pill ${detailsAsset.archived ? 'archived' : 'active'}`}>
                       {detailsAsset.archived ? 'Archived' : 'Active'}
                     </span>
                   </div>
-                  <small style={{ color: 'var(--muted)', fontSize: '12px' }}>{detailsAsset.name}</small>
+                  <small className="text-slate-500 dark:text-slate-400 text-xs">{detailsAsset.name}</small>
                 </div>
               </div>
               <button
@@ -766,32 +768,32 @@ export function Assets() {
                     const loc = findLocation(detailsAsset.lab_id) || findLocation(detailsAsset.lab_name);
                     const locCode = loc?.code || 'CAMPUS';
                     return (
-                      <div className="drawer-card">
-                        <div className="drawer-card-header">
-                          <MapPin size={13} />
+                      <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          <MapPin size={14} />
                           <span>Exact Campus Location</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="room-code-badge" data-testid={`asset-room-code-${detailsAsset.id}`}>[{locCode}]</span>
-                          <strong style={{ fontSize: '14px', color: 'var(--text)' }}>
+                        <div className="flex items-center gap-2">
+                          <span className="room-code-badge font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" data-testid={`asset-room-code-${detailsAsset.id}`}>[{locCode}]</span>
+                          <strong className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {detailsAsset.lab_name || loc?.name || 'Unassigned'}
                           </strong>
                         </div>
-                        <div className="spec-grid" style={{ marginTop: '4px' }}>
-                          <div className="spec-item">
-                            <span className="spec-label">Building &amp; Floor</span>
-                            <span className="spec-value">
+                        <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
+                          <div className="spec-item flex flex-col gap-0.5">
+                            <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Building &amp; Floor</span>
+                            <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
                               {loc ? `${loc.block} · ${loc.level}` : 'Main Campus'}
                             </span>
                           </div>
-                          <div className="spec-item">
-                            <span className="spec-label">Room / Zone</span>
-                            <span className="spec-value">{loc?.room || 'General Area'}</span>
+                          <div className="spec-item flex flex-col gap-0.5">
+                            <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Room / Zone</span>
+                            <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{loc?.room || 'General Area'}</span>
                           </div>
                         </div>
-                        <div style={{ marginTop: '8px', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <span className="spec-label" style={{ display: 'block', marginBottom: '2px' }}>Placement Landmark</span>
-                          <span className="spec-value" data-testid={`asset-placement-${detailsAsset.id}`} style={{ fontSize: '12.5px', color: '#93c5fa' }}>
+                        <div className="p-2.5 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                          <span className="spec-label block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">Placement Landmark</span>
+                          <span className="spec-value text-[13px] font-medium text-blue-600 dark:text-blue-400" data-testid={`asset-placement-${detailsAsset.id}`}>
                             {detailsAsset.placement || 'Placement landmark not recorded'}
                           </span>
                         </div>
@@ -800,33 +802,33 @@ export function Assets() {
                   })()}
 
                   {/* Card 2: Technical Specifications */}
-                  <div className="drawer-card">
-                    <div className="drawer-card-header">
-                      <Cpu size={13} />
+                  <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Cpu size={14} />
                       <span>Technical Specifications</span>
                     </div>
-                    <div className="spec-grid">
-                      <div className="spec-item">
-                        <span className="spec-label">Equipment Type</span>
-                        <span className="spec-value">
+                    <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Equipment Type</span>
+                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
                           {detailsAsset.kind === 'PC' ? 'Desktop Workstation' : 'Wireless Access Point'}
                         </span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">Hardware Model</span>
-                        <span className="spec-value">
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Hardware Model</span>
+                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
                           {detailsAsset.model || (detailsAsset.kind === 'PC' ? 'Dell OptiPlex 7010' : 'Aruba AP-515')}
                         </span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">MAC / Serial Tag</span>
-                        <span className="spec-value" style={{ fontFamily: 'monospace' }}>
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">MAC / Serial Tag</span>
+                        <span className="spec-value text-xs font-mono font-medium text-slate-800 dark:text-slate-200">
                           {detailsAsset.mac || 'Provisioned by DHCP'}
                         </span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">Registration Date</span>
-                        <span className="spec-value">
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Registration Date</span>
+                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
                           {detailsAsset.created_at ? new Date(detailsAsset.created_at).toLocaleDateString() : 'Baseline Fleet'}
                         </span>
                       </div>
@@ -834,31 +836,31 @@ export function Assets() {
                   </div>
 
                   {/* Card 3: Network & DHCP Lease */}
-                  <div className="drawer-card">
-                    <div className="drawer-card-header">
-                      <Network size={13} />
+                  <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <Network size={14} />
                       <span>Network &amp; DHCP Lease</span>
                     </div>
-                    <div className="spec-grid">
-                      <div className="spec-item">
-                        <span className="spec-label">IP Address</span>
-                        <span className="spec-value" style={{ fontFamily: 'monospace', color: '#60a5fa' }}>
+                    <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">IP Address</span>
+                        <span className="spec-value text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">
                           {detailsAsset.ip || 'DHCP Pending'}
                         </span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">VLAN Assignment</span>
-                        <span className="spec-value">
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">VLAN Assignment</span>
+                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
                           VLAN {detailsAsset.vlan || vlanFor(detailsAsset.kind)} ({detailsAsset.kind === 'PC' ? 'Workstation VLAN' : 'AP VLAN'})
                         </span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">Addressing Protocol</span>
-                        <span className="spec-value">Dynamic Host Configuration (DHCP)</span>
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Addressing Protocol</span>
+                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">Dynamic Host Configuration (DHCP)</span>
                       </div>
-                      <div className="spec-item">
-                        <span className="spec-label">Operational State</span>
-                        <span className="spec-value" style={{ color: detailsAsset.archived ? '#f87171' : '#34d399' }}>
+                      <div className="spec-item flex flex-col gap-0.5">
+                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Operational State</span>
+                        <span className={`spec-value text-xs font-medium ${detailsAsset.archived ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}`}>
                           {detailsAsset.archived ? 'Archived / Decommissioned' : 'Active & Leased'}
                         </span>
                       </div>
@@ -868,7 +870,7 @@ export function Assets() {
               )}
             </div>
 
-            <div className="drawer-footer">
+            <div className="drawer-footer flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div>
                 {!detailsAsset.archived ? (
                   <Button
@@ -882,7 +884,7 @@ export function Assets() {
                     Archive
                   </Button>
                 ) : (
-                  <div style={{ display: 'flex', gap: '6px' }}>
+                  <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -906,7 +908,7 @@ export function Assets() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex items-center gap-2">
                 {isDrawerEditing ? (
                   <>
                     <Button
@@ -1359,16 +1361,30 @@ export function Team() {
         }
         id="user-dialog"
       >
-        <form onSubmit={submit} noValidate>
-          <div className="member-preview">
-            <span className="avatar">{initialsOf(form.name)}</span>
-            <div>
-              <strong>{form.name.trim() || 'New team member'}</strong>
-              <span className={`role-badge role-${form.role}`}>{roleLabel(form.role)}</span>
+        <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+          {/* Header Profile Card */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <span className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800">
+              {initialsOf(form.name)}
+            </span>
+            <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <strong className="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                  {form.name.trim() || 'New team member'}
+                </strong>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
+                  {form.email.trim() || 'No email provided'}
+                </span>
+              </div>
+              <span className={`role-badge role-${form.role} text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0`}>
+                {roleLabel(form.role)}
+              </span>
             </div>
           </div>
 
-          <div className="form-grid">
+          {/* Form Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Row 1: Full Name | Email Address */}
             <Field label="Full Name" id="user-name">
               <input
                 data-testid="user-name"
@@ -1383,28 +1399,29 @@ export function Team() {
               />
             </Field>
 
-            <Field label="Email Address" id="user-email">
-              <input
-                type="email"
-                id="user-email"
-                data-testid="user-email"
-                required
-                autoComplete="email"
-                aria-invalid={!!emailError}
-                aria-describedby={emailError ? 'user-email-error' : undefined}
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="name@campus.edu.my"
-              />
-            </Field>
-          </div>
-          {emailError && (
-            <p className="field-error" id="user-email-error" data-testid="user-email-error">
-              {emailError}
-            </p>
-          )}
+            <div>
+              <Field label="Email Address" id="user-email">
+                <input
+                  type="email"
+                  id="user-email"
+                  data-testid="user-email"
+                  required
+                  autoComplete="email"
+                  aria-invalid={!!emailError}
+                  aria-describedby={emailError ? 'user-email-error' : undefined}
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="name@campus.edu.my"
+                />
+              </Field>
+              {emailError && (
+                <p className="field-error text-xs text-red-500 mt-1" id="user-email-error" data-testid="user-email-error">
+                  {emailError}
+                </p>
+              )}
+            </div>
 
-          <div className="form-grid">
+            {/* Row 2: Assigned Role | Primary Assignment / Scope */}
             <Field label="Assigned Role" id="user-role">
               <Select id="user-role" value={form.role} disabled={lockRole} onChange={(e: any) => changeRole(e.target.value)}>
                 {['admin', 'engineer', 'assistant'].map(r => (
@@ -1424,50 +1441,67 @@ export function Team() {
                 ))}
               </Select>
             </Field>
+
+            {/* Row 3: Account Status | Reset / Initial Password */}
+            <Field label={mode === 'edit' ? 'Account Status' : 'Initial Status'} id="user-active">
+              <Select
+                id="user-active"
+                value={String(form.active)}
+                disabled={lockStatus}
+                onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
+              >
+                <option value="true">Active</option>
+                <option value="false">Inactive / Suspended</option>
+              </Select>
+            </Field>
+
+            <Field label={mode === 'edit' ? 'Reset Password (optional)' : 'Initial Password (optional)'} id="user-password">
+              <input
+                type="password"
+                id="user-password"
+                data-testid="user-password"
+                minLength={10}
+                maxLength={72}
+                autoComplete="new-password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Leave blank to auto-generate'}
+              />
+            </Field>
           </div>
 
-          <Field label={mode === 'edit' ? 'Account Status' : 'Initial Status'} id="user-active">
-            <Select
-              id="user-active"
-              value={String(form.active)}
-              disabled={lockStatus}
-              onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
-            >
-              <option value="true">Active</option>
-              <option value="false">Inactive / Suspended</option>
-            </Select>
-          </Field>
-
           {(lockRole || lockStatus) && (
-            <p className="protected-note" data-testid="user-protected-note">
-              <Lock size={13} /> {protectedReason(selected)}. Name, email, and scope can still be edited.
+            <p className="protected-note flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" data-testid="user-protected-note">
+              <Lock size={13} className="flex-shrink-0" /> {protectedReason(selected)}. Name, email, and scope can still be edited.
             </p>
           )}
 
-          <Field label={mode === 'edit' ? 'Reset Password (optional)' : 'Initial Password (optional)'} id="user-password">
-            <input
-              type="password"
-              id="user-password"
-              data-testid="user-password"
-              minLength={10}
-              maxLength={72}
-              autoComplete="new-password"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              placeholder={mode === 'edit' ? 'Leave blank to keep current password' : 'Leave blank to auto-generate a secure temporary password'}
-            />
-          </Field>
-
-          <p className="permission-notice">
-            Suspending an account or resetting its password signs the member out immediately. Every change is recorded in the Activity Log.
-          </p>
+          {/* Security Notice Callout */}
+          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            <ShieldCheck size={16} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
+            <span>Suspending an account or resetting its password signs the member out immediately. All changes are logged.</span>
+          </div>
 
           <ErrorBox error={error} />
 
-          <Button variant="primary" id="save-user" disabled={busy || !!emailError} type="submit">
-            <Save size={15} />
-            {busy ? 'Saving…' : mode === 'edit' ? 'Save Member Changes' : 'Add Team Member'}
-          </Button>
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => closeForm()}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              id="save-user"
+              disabled={busy || !!emailError}
+              type="submit"
+            >
+              <Save size={14} />
+              {busy ? 'Saving…' : mode === 'edit' ? 'Save Member Changes' : 'Add Team Member'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
@@ -1479,21 +1513,21 @@ export function Team() {
         id="remove-user-dialog"
       >
         {removing && (
-          <>
-            <p className="remove-confirm" data-testid="remove-user-confirm-text">
-              Are you sure you want to remove <strong>{removing.name}</strong> ({roleLabel(removing.role)} · {removing.scope})? Their
+          <div className="flex flex-col gap-4">
+            <p className="remove-confirm text-sm text-slate-600 dark:text-slate-300" data-testid="remove-user-confirm-text">
+              Are you sure you want to remove <strong className="font-semibold text-slate-900 dark:text-slate-100">{removing.name}</strong> ({roleLabel(removing.role)} · {removing.scope})? Their
               upcoming shifts will be cancelled; past tickets and inspection records are kept for audit.
             </p>
             <ErrorBox error={error} />
-            <div className="confirm-actions">
-              <Button id="cancel-remove-user" onClick={() => setRemoving(null)}>
-                <X size={15} /> Cancel
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <Button type="button" variant="outline" id="cancel-remove-user" onClick={() => setRemoving(null)}>
+                Cancel
               </Button>
-              <Button variant="primary" className="danger-button" id="confirm-remove-user" disabled={busy} onClick={confirmRemove}>
-                <Trash2 size={15} /> {busy ? 'Removing…' : 'Remove Member'}
+              <Button variant="danger" id="confirm-remove-user" disabled={busy} onClick={confirmRemove}>
+                <Trash2 size={14} /> {busy ? 'Removing…' : 'Remove Member'}
               </Button>
             </div>
-          </>
+          </div>
         )}
       </Modal>
     </>
