@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Network, ClipboardCheck, Lock, KeyRound, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
@@ -27,18 +27,6 @@ export default function Login() {
       } else {
         await login({ email, password });
       }
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const demo = async (role: string) => {
-    setBusy(true);
-    setError('');
-    try {
-      await login({ role }, true);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -131,32 +119,6 @@ export default function Login() {
           >
             {recover ? '← Return to Sign In' : 'Forgot your password?'}
           </button>
-
-          <div className="demo-divider flex items-center justify-center my-6 gap-3 text-[11px] font-semibold text-slate-400 tracking-wider">
-            <span className="h-px bg-slate-700/60 flex-1" />
-            <span className="px-1 text-slate-400 uppercase">OR QUICK ACCESS BY ROLE</span>
-            <span className="h-px bg-slate-700/60 flex-1" />
-          </div>
-
-          <div className="demo-roles grid grid-cols-3 gap-2.5">
-            {[
-              ['admin', 'Administrator', ShieldCheck],
-              ['engineer', 'Network Engineer', Network],
-              ['assistant', 'IT Assistant', ClipboardCheck],
-            ].map(([role, label, Icon]: [string, string, LucideIcon]) => (
-              <button
-                type="button"
-                disabled={busy}
-                key={role}
-                data-testid={`demo-login-${role}`}
-                onClick={() => demo(role)}
-                className="flex flex-col items-center justify-center gap-2 border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800/80 hover:border-blue-500/50 transition-all rounded-lg p-3 text-xs text-slate-200 cursor-pointer disabled:opacity-50"
-              >
-                <Icon size={18} className="text-blue-400 shrink-0" />
-                <span className="font-semibold text-center leading-tight">{label}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </main>
 
