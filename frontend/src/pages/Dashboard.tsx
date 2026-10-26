@@ -19,6 +19,8 @@ import {
   Monitor,
   CalendarDays,
   AlertTriangle,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, useData } from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
@@ -31,6 +33,21 @@ import {
   getLabInspectionProgress,
   getSharedFleetAps,
 } from '../lib/workflow';
+
+function downloadCSV(name: string, rows: any[][]) {
+  const escape = (v: any) => '"' + String(v ?? '').replace(/^[=+@-]/, "'").replace(/"/g, '""') + '"';
+  const blob = new Blob(['\ufeff' + rows.map(r => r.map(escape).join(',')).join('\r\n')], {
+    type: 'text/csv;charset=utf-8;',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
   return (
@@ -287,16 +304,247 @@ export default function Dashboard() {
           },
         ];
 
-  const subtitleByRole =
-    user.role === 'assistant'
-      ? 'Student IT Assistant Workspace · Shift inspections, workstation checklists, and lab fault reporting.'
-      : user.role === 'engineer'
-      ? 'NOC Network Engineer Workspace · Campus AP telemetry, bandwidth load, and Tier 2 incident queue.'
-      : 'Administrator Oversight · Campus SLA compliance, shift operations, active incidents, and audit activity.';
+  const exportCSV = () => {
+    const rows = [
+      ['ATLAS NETCARE - CAMPUS DASHBOARD SUMMARY', 'APU University Main Campus'],
+      ['Generated Timestamp (MYT)', `${time(new Date().toISOString(), true)} MYT`],
+      [],
+      ['CAMPUS OPERATIONAL METRICS'],
+      ['Metric', 'Value', 'Details'],
+      ['Campus SLA Compliance', `${slaCompliance}%`, `${apStats.online} of ${apStats.total} APs meeting target SLA`],
+      ['Access Points Online', `${apStats.online} / ${apStats.total}`, `${apStats.congested} congested, ${apStats.offline} offline, ${apStats.stale} stale`],
+      ['Wireless Clients Connected', apStats.clients, `Peak Load: ${apStats.peakLoad}%`],
+      ['Shift Acknowledgement Rate', `${shiftAckRate}%`, `${ackedShiftsCount} of ${allShifts.length} shifts acknowledged`],
+      ['Active Faults & Incidents', openTickets.length, `${networkIncidents.length} Tier-2 Network, ${openTickets.length - networkIncidents.length} Tier-1 Hardware`],
+      [],
+      ['ACTIVE FAULTS & INCIDENTS QUEUE'],
+      ['Ticket #', 'Title', 'Asset Tag', 'Lab / Location', 'Tier / Category', 'Priority', 'Status', 'Created (MYT)'],
+      ...(openTickets.length > 0
+        ? openTickets.map((t: any) => [
+            t.number || t.id,
+            t.title,
+            t.asset_tag || '—',
+            t.lab_name || 'General Campus',
+            t.category === 'network' ? 'Tier 2 NOC' : 'Tier 1 Hardware',
+            t.priority || 'Normal',
+            t.status,
+            time(t.created_at, true),
+          ])
+        : [['No active incidents', '—', '—', '—', '—', '—', '—', '—']]),
+    ];
+    downloadCSV('atlas-netcare-dashboard.csv', rows);
+  };
+
+  const exportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to export the PDF dashboard snapshot.');
+      return;
+    }
+
+    const genTime = time(new Date().toISOString(), true);
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>atlas-netcare-dashboard</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    .header {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px 0;
+      letter-spacing: -0.02em;
+    }
+    .header .meta {
+      font-size: 12px;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      margin: 20px 0 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .kpi-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .kpi-card .value {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .kpi-card .subtext {
+      font-size: 11px;
+      color: #475569;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    td {
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Atlas NetCare — Campus Dashboard Snapshot</h1>
+    <div class="meta">
+      <span>APU University Main Campus · Executive Oversight</span>
+      <span>Generated: <strong>${genTime} MYT</strong></span>
+    </div>
+  </div>
+
+  <div class="section-title">1. Operational Summary</div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="label">SLA Compliance</div>
+      <div class="value">${slaCompliance}%</div>
+      <div class="subtext">${apStats.online} / ${apStats.total} APs operational</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Shifts Acknowledged</div>
+      <div class="value">${shiftAckRate}%</div>
+      <div class="subtext">${ackedShiftsCount} / ${allShifts.length} shifts active</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Active Faults</div>
+      <div class="value">${openTickets.length} Active</div>
+      <div class="subtext">${networkIncidents.length} Tier 2 · ${openTickets.length - networkIncidents.length} Tier 1</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Wireless Clients</div>
+      <div class="value">${apStats.clients}</div>
+      <div class="subtext">Peak Load: ${apStats.peakLoad}%</div>
+    </div>
+  </div>
+
+  <div class="section-title">2. Active Faults &amp; Incidents</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Ticket #</th>
+        <th>Title</th>
+        <th>Equipment</th>
+        <th>Location</th>
+        <th>Tier</th>
+        <th>Priority</th>
+        <th style="text-align: right;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${openTickets.length > 0 ? openTickets.map((t: any) => `
+        <tr>
+          <td><strong>${t.number || t.id}</strong></td>
+          <td>${t.title}</td>
+          <td>${t.asset_tag || '—'}</td>
+          <td>${t.lab_name || 'General Campus'}</td>
+          <td>${t.category === 'network' ? 'Tier 2 NOC' : 'Tier 1'}</td>
+          <td>${t.priority || 'Normal'}</td>
+          <td style="text-align: right;">${t.status}</td>
+        </tr>
+      `).join('') : `
+        <tr>
+          <td colspan="7" style="text-align: center; color: #64748b; font-style: italic;">
+            Zero active incidents. Campus network and equipment are nominal.
+          </td>
+        </tr>
+      `}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>Atlas NetCare Campus Management System</span>
+    <span>Confidential Executive Dashboard Snapshot</span>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 300);
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   return (
     <>
-      <PageTitle title="Campus Dashboard" subtitle={subtitleByRole}>
+      <PageTitle title="Campus Dashboard">
         <span className="date-label" data-testid="dashboard-date">
           {new Intl.DateTimeFormat('en-MY', {
             timeZone: 'Asia/Kuala_Lumpur',
@@ -310,6 +558,26 @@ export default function Dashboard() {
           <RefreshCw size={14} className={monitor.busy ? 'spin' : ''} />
           Refresh
         </Button>
+        <Button
+          id="export-dashboard-csv"
+          data-testid="export-dashboard-csv"
+          variant="outline"
+          onClick={exportCSV}
+          className="whitespace-nowrap flex items-center gap-1.5"
+        >
+          <Download size={14} />
+          Export CSV
+        </Button>
+        <Button
+          id="export-dashboard-pdf"
+          data-testid="export-dashboard-pdf"
+          variant="primary"
+          onClick={exportPDF}
+          className="whitespace-nowrap flex items-center gap-1.5"
+        >
+          <FileText size={14} />
+          Export PDF
+        </Button>
         {user.role === 'assistant' && currentShift && !currentShift.acknowledged_at && (
           <Button
             id="dashboard-ack-shift-btn"
@@ -321,33 +589,24 @@ export default function Dashboard() {
             Acknowledge Shift
           </Button>
         )}
-        <Button
-          id="dashboard-primary-action"
-          variant="primary"
-          onClick={() =>
-            navigate(
-              user.role === 'engineer'
-                ? '/monitoring'
-                : user.role === 'assistant'
-                ? `/checklists?lab=${currentShift?.lab_id || 'lab-1'}&new=1`
-                : '/shifts'
-            )
-          }
-        >
-          {user.role === 'engineer' ? (
-            <>
-              <Radio size={15} /> Open Device Monitor <ArrowRight size={14} />
-            </>
-          ) : user.role === 'assistant' ? (
-            <>
-              <Plus size={16} /> Run Lab Inspection
-            </>
-          ) : (
-            <>
-              <Plus size={16} /> Manage Shifts
-            </>
-          )}
-        </Button>
+        {user.role === 'engineer' && (
+          <Button
+            id="dashboard-primary-action"
+            variant="primary"
+            onClick={() => navigate('/monitoring')}
+          >
+            <Radio size={15} /> Open Device Monitor <ArrowRight size={14} />
+          </Button>
+        )}
+        {user.role === 'assistant' && (
+          <Button
+            id="dashboard-primary-action"
+            variant="primary"
+            onClick={() => navigate(`/checklists?lab=${currentShift?.lab_id || 'lab-1'}&new=1`)}
+          >
+            <Plus size={16} /> Run Lab Inspection
+          </Button>
+        )}
       </PageTitle>
 
       <ErrorBox error={monitor.error || overview.error} retry={refresh} />

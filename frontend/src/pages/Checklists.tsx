@@ -944,28 +944,97 @@ export default function Checklists() {
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
-        title={selected?.asset_tag || 'Inspection Record'}
+        title={
+          selected ? (
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
+                {selected.asset_tag || 'Workstation'}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  selected.result === 'passed'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    selected.result === 'passed' ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}
+                />
+                {selected.result === 'passed' ? 'Passed' : 'Fault Reported'}
+              </span>
+            </div>
+          ) : (
+            'Inspection Details'
+          )
+        }
         id="checklist-detail-dialog"
       >
         {selected && (
-          <>
-            <p data-testid="checklist-detail-author">
-              {selected.created_by_name} · {time(selected.created_at, true)} MYT
-            </p>
-            {categories.map(([key, label, , tierBadge]) => (
-              <div className="detail-line" data-testid={`saved-check-${key}`} key={key}>
-                <span>
-                  {label} <small className="muted">({tierBadge})</small>
-                </span>
-                <span className={`status ${selected.checks[key] === 'pass' ? 'online' : 'offline'}`}>
-                  {selected.checks[key] === 'pass' ? 'Passed' : 'Failed'}
-                </span>
+          <div className="flex flex-col">
+            {/* Clean, Compact Checklist Items List */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden">
+              {categories.map(([key, label, , tierBadge]) => {
+                const isPass = selected.checks?.[key] === 'pass';
+                return (
+                  <div
+                    className="flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                    data-testid={`saved-check-${key}`}
+                    key={key}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {label}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        ({tierBadge})
+                      </span>
+                    </div>
+                    <div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          isPass
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
+                            : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isPass ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        {isPass ? 'Passed' : 'Failed'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Highlighted Technician Audit Notes */}
+            {(selected.notes || selected.result === 'failed') && (
+              <div
+                className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3.5 text-sm text-amber-700 dark:text-amber-300 mt-4"
+                data-testid="saved-checklist-notes"
+              >
+                <div className="font-semibold mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                  <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+                  <span>Technician Remarks</span>
+                </div>
+                <p className="text-xs sm:text-sm text-amber-900 dark:text-amber-200">
+                  {selected.notes || 'Inspection failed: hardware fault logged and escalated.'}
+                </p>
               </div>
-            ))}
-            <p className="notes-block" data-testid="saved-checklist-notes">
-              {selected.notes || 'No additional notes provided.'}
-            </p>
-          </>
+            )}
+
+            {/* Standardized Footer */}
+            <div className="flex items-center justify-end pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 
