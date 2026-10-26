@@ -40,7 +40,7 @@ python3.12 -m venv .venv
 
 # 2. Frontend dependencies
 cd ../frontend
-npm install
+npm install --legacy-peer-deps
 
 # 3. Create backend/.env and frontend/.env (see "Environment variables")
 
@@ -61,7 +61,7 @@ The backend seeds the demo database on startup, so there is no separate seed com
 |---|---|---|
 | Python | 3.12 | `motor` 3.3.1 and `pymongo` 4.6.3 pin the async driver. 3.13 also passes the test suite. |
 | Node.js | 24.x | Any current LTS works. |
-| npm | ships with Node | `package-lock.json` is committed, so `npm install` (or `npm ci`) is the supported install path. |
+| npm | ships with Node | Install with `npm install --legacy-peer-deps` (or `npm ci --legacy-peer-deps`). Plain `npm install` stops with `ERESOLVE` because `react-day-picker` 8 expects `date-fns` 2 or 3 and `package.json` pins `date-fns` 4.1.0. |
 | MongoDB | 8.x | Must be reachable at `MONGO_URL` before the backend starts. The test suite does not need it. |
 
 Start MongoDB on macOS (Homebrew):
@@ -367,7 +367,7 @@ backend/.venv/bin/black --check backend tests
 - `tests/test_architecture.py` fails if a backend module imports one it should not, for example `inventory.py` importing `tickets.py`.
 - `tests/test_simulation.py` unit-tests telemetry profiles, simulation scenarios, inventory and DHCP assignment, locations, team management and profile updates.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs flake8, black and pytest on Python 3.12, and runs `npm ci` and a production build of the frontend, on every push and pull request.
+GitHub Actions (`.github/workflows/ci.yml`) runs flake8, black and pytest on Python 3.12, and runs `npm ci --legacy-peer-deps` and a production build of the frontend, on every push and pull request.
 
 ---
 

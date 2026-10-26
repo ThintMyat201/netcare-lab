@@ -34,7 +34,9 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      # react-day-picker 8 (used only by the unused ui/calendar.jsx) declares date-fns ^2 or ^3 as a peer,
+      # but package.json pins date-fns 4.1.0, so npm refuses a strict install until that is resolved.
+      - run: npm ci --legacy-peer-deps
       - name: Build
         # Create React App turns lint warnings into errors when CI=true; this job checks that the app compiles.
         run: CI=false npm run build
