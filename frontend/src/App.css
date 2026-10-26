@@ -411,6 +411,20 @@ button.password-eye-btn:hover {
   padding: 0;
 }
 
+.monitoring-page .page-title {
+  margin-bottom: 0;
+}
+
+.monitoring-page .monitor-status-strip {
+  margin-bottom: 0;
+}
+
+.monitoring-page .monitor-table {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .page-title {
   display: flex;
   align-items: center;
