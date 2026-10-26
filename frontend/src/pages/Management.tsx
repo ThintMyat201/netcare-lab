@@ -1257,19 +1257,25 @@ export function Team() {
                         </DropdownMenu.Trigger>
                         <DropdownMenu.Portal>
                           <DropdownMenu.Content
-                            className="member-menu z-50 bg-slate-900 border border-slate-700/80 shadow-2xl shadow-black/80 opacity-100"
+                            className="member-menu z-50 min-w-[220px] p-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xl rounded-xl opacity-100"
                             side={isNearBottom ? 'top' : 'bottom'}
                             align="end"
                             sideOffset={6}
                             collisionPadding={16}
                             avoidCollisions
                           >
-                            <DropdownMenu.Label className="member-menu-label">{u.name}</DropdownMenu.Label>
-                            <DropdownMenu.Item className="member-menu-item" data-testid={`menu-edit-${u.id}`} onSelect={() => openEdit(u)}>
+                            <DropdownMenu.Label className="member-menu-label px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              {u.name}
+                            </DropdownMenu.Label>
+                            <DropdownMenu.Item
+                              className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors"
+                              data-testid={`menu-edit-${u.id}`}
+                              onSelect={() => openEdit(u)}
+                            >
                               <Pencil size={14} /> Edit Member
                             </DropdownMenu.Item>
                             <DropdownMenu.Item
-                              className="member-menu-item"
+                              className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               data-testid={`menu-status-${u.id}`}
                               disabled={locked}
                               title={locked ? protectedReason(u) : undefined}
@@ -1278,14 +1284,14 @@ export function Team() {
                               {u.active ? <UserX size={14} /> : <UserCheck size={14} />}
                               {u.active ? 'Suspend Access' : 'Reactivate Access'}
                               {locked && (
-                                <span className="menu-protected">
+                                <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
                                   <Lock size={11} /> Protected
                                 </span>
                               )}
                             </DropdownMenu.Item>
-                            <DropdownMenu.Separator className="member-menu-sep" />
+                            <DropdownMenu.Separator className="member-menu-sep h-px my-1 bg-slate-100 dark:bg-slate-800" />
                             <DropdownMenu.Item
-                              className="member-menu-item danger"
+                              className="member-menu-item danger flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               data-testid={`menu-remove-${u.id}`}
                               disabled={locked}
                               title={locked ? protectedReason(u) : undefined}
@@ -1296,7 +1302,7 @@ export function Team() {
                             >
                               <Trash2 size={14} /> Remove Member
                               {locked && (
-                                <span className="menu-protected">
+                                <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
                                   <Lock size={11} /> Protected
                                 </span>
                               )}
@@ -1322,9 +1328,9 @@ export function Team() {
         title={mode === 'edit' ? 'Edit Team Member' : 'Add Team Member'}
         id="user-dialog"
       >
-        <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+        <form onSubmit={submit} noValidate className="flex flex-col gap-4 text-slate-900 dark:text-slate-100">
           {/* Header Profile Card */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
             <span className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800">
               {initialsOf(form.name)}
             </span>
@@ -1333,7 +1339,7 @@ export function Team() {
                 <strong className="block text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                   {form.name.trim() || 'New team member'}
                 </strong>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">
+                <span className="text-xs text-slate-600 dark:text-slate-400 truncate block">
                   {form.email.trim() || 'No email provided'}
                 </span>
               </div>
@@ -1357,6 +1363,7 @@ export function Team() {
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Aisyah Rahman"
+                className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
               />
             </Field>
 
@@ -1373,6 +1380,7 @@ export function Team() {
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
                   placeholder="name@campus.edu.my"
+                  className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </Field>
               {emailError && (
@@ -1384,9 +1392,15 @@ export function Team() {
 
             {/* Row 2: Assigned Role | Primary Assignment / Scope */}
             <Field label="Assigned Role" id="user-role">
-              <Select id="user-role" value={form.role} disabled={lockRole} onChange={(e: any) => changeRole(e.target.value)}>
+              <Select
+                id="user-role"
+                value={form.role}
+                disabled={lockRole}
+                onChange={(e: any) => changeRole(e.target.value)}
+                className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+              >
                 {['admin', 'engineer', 'assistant'].map(r => (
-                  <option key={r} value={r}>
+                  <option key={r} value={r} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                     {roleLabel(r)}
                   </option>
                 ))}
@@ -1394,9 +1408,14 @@ export function Team() {
             </Field>
 
             <Field label="Primary Assignment / Scope" id="user-scope">
-              <Select id="user-scope" value={form.scope} onChange={(e: any) => setForm({ ...form, scope: e.target.value })}>
+              <Select
+                id="user-scope"
+                value={form.scope}
+                onChange={(e: any) => setForm({ ...form, scope: e.target.value })}
+                className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+              >
                 {USER_SCOPES.map(s => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                     {s}
                   </option>
                 ))}
@@ -1410,9 +1429,10 @@ export function Team() {
                 value={String(form.active)}
                 disabled={lockStatus}
                 onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
+                className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
-                <option value="true">Active</option>
-                <option value="false">Inactive / Suspended</option>
+                <option value="true" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Active</option>
+                <option value="false" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Inactive / Suspended</option>
               </Select>
             </Field>
 
@@ -1427,19 +1447,20 @@ export function Team() {
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 placeholder={mode === 'edit' ? 'Leave blank to keep current' : 'Leave blank to auto-generate'}
+                className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
               />
             </Field>
           </div>
 
           {(lockRole || lockStatus) && (
-            <p className="protected-note flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" data-testid="user-protected-note">
+            <p className="protected-note flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20" data-testid="user-protected-note">
               <Lock size={13} className="flex-shrink-0" /> {protectedReason(selected)}. Name, email, and scope can still be edited.
             </p>
           )}
 
           {/* Security Notice Callout */}
-          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-            <ShieldCheck size={16} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
+          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
+            <ShieldCheck size={16} className="flex-shrink-0 text-slate-500 dark:text-slate-400" />
             <span>Suspending an account or resetting its password signs the member out immediately. All changes are logged.</span>
           </div>
 
