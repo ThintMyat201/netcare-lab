@@ -719,9 +719,6 @@ class RemediateInput(BaseModel):
     )
 
 
-RemediateAction = RemediateInput
-
-
 @router.post('/monitoring/{id}/diagnose')
 async def diagnose_ap(id: str, user=Depends(current)):
     await authorize(user, 'view')

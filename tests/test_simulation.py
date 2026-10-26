@@ -369,7 +369,7 @@ def test_live_diagnostics_and_remediation_endpoints(monkeypatch):
 
         # Remediate ap-07 and verify it restores to online
         rem = await monitoring.remediate_ap(
-            "ap-07", monitoring.RemediateAction(action="rebalance_channel"), user=ADMIN_USER
+            "ap-07", monitoring.RemediateInput(action="rebalance_channel"), user=ADMIN_USER
         )
         assert rem["status"] == "online"
         assert rem["asset"]["status"] == "online"
