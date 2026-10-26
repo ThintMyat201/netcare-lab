@@ -1,8 +1,8 @@
-# Atlas NetCare — Academic Demo
+# Atlas NetCare academic demo
 
-A campus network-operations demonstration: React + TypeScript on the front end, FastAPI on the back end, MongoDB for storage.
+A campus network-operations demonstration. React and TypeScript on the front end, FastAPI on the back end, MongoDB for storage.
 
-> **This is not a production monitoring service.** Telemetry and notifications are *simulated*; operational records are *persistent*. There is no live network access, no network configuration, no real email, no offline sync, and no closed-browser alarms.
+> **This is not a production monitoring service.** Telemetry and notifications are *simulated*. Operational records are *persistent*. There is no live network access, no network configuration, no real email, no offline sync, and no closed-browser alarms.
 
 ---
 
@@ -13,12 +13,15 @@ A campus network-operations demonstration: React + TypeScript on the front end, 
 - [Environment variables](#environment-variables)
 - [Running the app](#running-the-app)
 - [Demo accounts](#demo-accounts)
-- [Maintenance scheduler](#maintenance-scheduler)
+- [Background maintenance](#background-maintenance)
 - [Resetting the demo data](#resetting-the-demo-data)
 - [Project layout](#project-layout)
 - [API reference](#api-reference)
 - [Permission matrix](#permission-matrix)
+- [Known security gaps](#known-security-gaps)
+- [Client-side simulation layer](#client-side-simulation-layer)
 - [Behavioral invariants](#behavioral-invariants)
+- [Testing and CI](#testing-and-ci)
 - [Evaluator walkthrough](#evaluator-walkthrough)
 - [Troubleshooting](#troubleshooting)
 - [Scope and limits](#scope-and-limits)
@@ -39,16 +42,16 @@ python3.12 -m venv .venv
 cd ../frontend
 npm install
 
-# 3. Create backend/.env and frontend/.env  (see "Environment variables")
+# 3. Create backend/.env and frontend/.env (see "Environment variables")
 
 # 4. Run the two servers in separate terminals
 cd backend  && .venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 cd frontend && npm start
 ```
 
-Then open **http://localhost:3000** and sign in with `admin@atlas.demo` / `AtlasDemo2026!`.
+Then open **http://localhost:3000** and sign in with `admin@apu.edu.my` and the `DEMO_PASSWORD` value (`AtlasDemo2026!` by convention).
 
-The backend seeds the demo database automatically on startup — no separate seed command is needed.
+The backend seeds the demo database on startup, so there is no separate seed command.
 
 ---
 
@@ -56,10 +59,10 @@ The backend seeds the demo database automatically on startup — no separate see
 
 | Requirement | Version used | Notes |
 |---|---|---|
-| Python | 3.12 | `motor` 3.3.1 / `pymongo` 4.6.3 pin the async driver; 3.12 is what the checked-in venv targets. |
-| Node.js | 24.x | Any modern LTS works. |
-| npm | ships with Node | `package-lock.json` is committed, so `npm install` is the supported install path. |
-| MongoDB | 8.x | Must be reachable at `MONGO_URL` before the backend starts. |
+| Python | 3.12 | `motor` 3.3.1 and `pymongo` 4.6.3 pin the async driver. 3.13 also passes the test suite. |
+| Node.js | 24.x | Any current LTS works. |
+| npm | ships with Node | `package-lock.json` is committed, so `npm install` (or `npm ci`) is the supported install path. |
+| MongoDB | 8.x | Must be reachable at `MONGO_URL` before the backend starts. The test suite does not need it. |
 
 Start MongoDB on macOS (Homebrew):
 
@@ -80,18 +83,18 @@ Both `.env` files are git-ignored. **Generate your own secrets per installation 
 | Variable | Purpose | Example |
 |---|---|---|
 | `MONGO_URL` | MongoDB connection string | `mongodb://127.0.0.1:27017` |
-| `DB_NAME` | Base database name (a suffix is appended — see below) | `netcare` |
+| `DB_NAME` | Base database name. The backend appends a suffix, see below. | `netcare` |
 | `DEMO_MODE` | Must be `true` for the isolated academic demo | `true` |
-| `JWT_SECRET` | Signs access and refresh tokens | *generate a random string* |
+| `JWT_SECRET` | Signs access and refresh tokens. Use at least 32 random bytes. | *generate a random string* |
 | `WEBHOOK_CRON_SECRET` | Bearer secret for the maintenance endpoint | *generate a random string* |
 | `ADMIN_EMAIL` | Owner account's email (the one real identifier) | `you@example.com` |
 | `ADMIN_PASSWORD` | Owner account's private password | *generate* |
 | `DEMO_PASSWORD` | Shared password for the eight fictional accounts | `AtlasDemo2026!` |
 | `FRONTEND_URL` | Exact origin allowed by CORS | `http://localhost:3000` |
 | `CAMPUS_TIMEZONE` | Shift-entry timezone | `Asia/Kuala_Lumpur` |
-| `PREVIEW_PROXY_ORIGIN` | *Optional.* Extra allowed origin when a preview proxy rewrites `Origin`. | — |
+| `PREVIEW_PROXY_ORIGIN` | *Optional.* Extra allowed origin when a preview proxy rewrites `Origin`. | |
 
-**Database isolation:** the effective database name is `DB_NAME` + `_atlas_demo` when `DEMO_MODE=true` (so `netcare` → `netcare_atlas_demo`), and `DB_NAME` + `_atlas` otherwise. Demo data never shares collections with a non-demo installation.
+**Database isolation.** The effective database name is `DB_NAME` + `_atlas_demo` when `DEMO_MODE=true` (so `netcare` becomes `netcare_atlas_demo`), and `DB_NAME` + `_atlas` otherwise. Demo data never shares collections with a non-demo installation.
 
 ### `frontend/.env`
 
@@ -100,20 +103,20 @@ REACT_APP_BACKEND_URL=http://localhost:8001
 PORT=3000
 ```
 
-`FRONTEND_URL` in the backend and the port the frontend actually serves on must match exactly, or every mutating request is rejected with a 403 by the origin guard.
+`FRONTEND_URL` in the backend must match the frontend's origin exactly. Otherwise the origin guard rejects every mutating request with a 403.
 
 ---
 
 ## Running the app
 
-### Backend — FastAPI on port 8001
+### Backend: FastAPI on port 8001
 
 ```bash
 cd backend
 .venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-On startup the lifespan hook runs `seed()`, which idempotently creates 9 accounts, 3 labs, 12 access points, 30 PCs, and roughly 24 hours of synthetic history at 15-minute intervals. Restarting never wipes existing records.
+On startup the lifespan hook runs `seed()`. On an empty database it creates 9 accounts, 11 campus locations, 28 access points, 30 PCs, 3 open tickets, 3 shifts, and 24 hours of synthetic telemetry at 15-minute intervals. On later starts it only fills gaps, so restarting never wipes records. It then runs one maintenance tick (see [Background maintenance](#background-maintenance)).
 
 Confirm the service and its database connection:
 
@@ -124,60 +127,74 @@ curl -s http://localhost:8001/api/health
 
 Interactive API docs are at **http://localhost:8001/docs**.
 
-### Frontend — React dev server on port 3000
+### Frontend: React dev server on port 3000
 
 ```bash
 cd frontend
 npm start            # craco start; add BROWSER=none to suppress auto-open
 ```
 
-Wait for `Compiled successfully!`, then open **http://localhost:3000**. Both servers hot-reload on save; restart only after changing dependencies or `.env`.
+Wait for `Compiled successfully!`, then open **http://localhost:3000**. Both servers reload on save. Restart them only after changing dependencies or `.env`.
 
 ### Calling the API directly
 
-Mutating requests from a browser context are guarded. A raw `curl` login needs both headers:
+The backend guards mutating requests from browsers. A raw `curl` login needs both headers:
 
 ```bash
 curl -s -X POST http://localhost:8001/api/auth/login \
   -H 'Content-Type: application/json' \
   -H 'X-Atlas-Request: 1' \
   -H 'Origin: http://localhost:3000' \
-  -d '{"email":"admin@atlas.demo","password":"AtlasDemo2026!"}'
+  -d '{"email":"admin@apu.edu.my","password":"AtlasDemo2026!"}'
 ```
 
-The React API client sends `X-Atlas-Request: 1` automatically, so this only matters for manual testing.
+The React API client sends `X-Atlas-Request: 1` on every request, so this only matters for manual testing.
 
 ---
 
 ## Demo accounts
 
-Shared password for all fictional accounts: the value of `DEMO_PASSWORD` (`AtlasDemo2026!` by convention). The sign-in page also offers explicit role buttons.
+All fictional accounts share the `DEMO_PASSWORD` value. The sign-in page also has one-click role buttons.
 
 | Email | Name | Role |
 |---|---|---|
-| *your* `ADMIN_EMAIL` | Campus Owner | admin — password is `ADMIN_PASSWORD`, not the shared one |
-| `admin@atlas.demo` | Alex Morgan | admin |
-| `engineer@atlas.demo` | Daniel Reyes | engineer |
-| `sofia@atlas.demo` | Sofia Cruz | engineer |
-| `assistant@atlas.demo` | Jamie Santos | assistant |
-| `mika@atlas.demo` | Mika Flores | assistant |
-| `leo@atlas.demo` | Leo Garcia | assistant |
-| `nina@atlas.demo` | Nina Ramos | assistant |
-| `kai@atlas.demo` | Kai Mendoza | assistant |
+| *your* `ADMIN_EMAIL` | Campus Owner | admin. Its password is `ADMIN_PASSWORD`, not the shared one. |
+| `admin@apu.edu.my` | Alex Morgan | admin |
+| `engineer@apu.edu.my` | Daniel Reyes | engineer |
+| `sofia@apu.edu.my` | Sofia Cruz | engineer |
+| `assistant@apu.edu.my` | Jamie Santos | assistant |
+| `mika@apu.edu.my` | Mika Flores | assistant |
+| `leo@apu.edu.my` | Leo Garcia | assistant |
+| `nina@apu.edu.my` | Nina Ramos | assistant |
+| `kai@apu.edu.my` | Kai Mendoza | assistant |
 
-The first visit to the workspace creates an isolated public demo-admin session; signing out returns to sign-in. **Do not enter real student or campus operational data.**
+Older databases seeded with `@atlas.demo` addresses are renamed to `@apu.edu.my` on the next startup.
 
-**Password recovery is simulated.** `POST /api/auth/forgot-password` returns a generic acknowledgement — no email, no token, no password change. An admin resets passwords from *Team & access*. Deactivation and resets revoke sessions.
+The first visit to the workspace signs the browser in as the demo admin. Signing out returns to the sign-in page. **Do not enter real student or campus operational data.**
 
-### Session security
+**Password recovery is simulated.** `POST /api/auth/forgot-password` returns a generic acknowledgement. It sends no email, creates no token, and changes no password. An admin resets passwords from *Team & access*. Deactivating an account or resetting its password revokes its sessions.
 
-Access JWTs last 15 minutes, refresh JWTs 7 days; both ride in `Secure`/`httpOnly` cookies backed by persisted, revocable sessions. Role and active status are re-read server-side on every request. Sign-in is limited to 10 attempts per client/account per 15-minute bucket. Cookie-bearing mutations require `X-Atlas-Request: 1` and a valid `Origin`.
+### Sessions
+
+Access JWTs last 15 minutes and refresh JWTs 7 days. Both are `Secure`, `httpOnly` cookies backed by session records the server can revoke. The server re-reads role and active status on every request. Sign-in allows 10 attempts per client and account per 15-minute window. Cookie-bearing mutations need `X-Atlas-Request: 1` and an allowed `Origin`.
 
 ---
 
-## Maintenance scheduler
+## Background maintenance
 
-The 15-minute maintenance tick is **not** self-starting — nothing reconciles reminders or generates fresh telemetry until an external scheduler (cron, a systemd timer, or a hosted cron service) calls the endpoint:
+While the backend runs, it does one maintenance tick at startup and then one every 15 seconds:
+
+- write a synthetic telemetry sample for every active access point
+- open or close alerts to match each access point's current state
+- make sure every shift has exactly one reminder
+
+Every 60th tick (15 minutes) it also fills gaps in the 15-minute telemetry history and moves the three seeded demo shifts onto today's date. A failed tick is logged and retried on the next one.
+
+All background writes happen here. GET endpoints only read, and a test checks this.
+
+### External scheduler (optional)
+
+A deployment that runs the API without a long-lived process can trigger the same work from cron, a systemd timer or a hosted scheduler:
 
 ```bash
 curl -s -X POST http://localhost:8001/api/cron/maintain \
@@ -188,26 +205,20 @@ curl -s -X POST http://localhost:8001/api/cron/maintain \
 # {"accepted":true}
 ```
 
-The request body must carry `event: "schedule.triggered"` and a run ID (either the `X-Webhook-Id` header or a `run_id` field). The endpoint acknowledges with `202` immediately and does the work in the background. Run IDs are deduplicated, so a replayed tick returns `{"accepted":true,"duplicate":true}` and does nothing. Interrupted job state is recorded and the next tick reconciles it; full durable retries are out of scope for this demo.
-
-A local crontab entry for every 15 minutes:
-
-```cron
-*/15 * * * * curl -sS -X POST http://localhost:8001/api/cron/maintain -H "Authorization: Bearer YOUR_SECRET" -H 'Content-Type: application/json' -H "X-Webhook-Id: $(uuidgen)" -d '{"event":"schedule.triggered"}'
-```
+The body must carry `event: "schedule.triggered"` and a run ID, either in the `X-Webhook-Id` header or a `run_id` field. The endpoint returns `202` at once and does the work in the background. It records each run ID, so a replayed call returns `{"accepted":true,"duplicate":true}` and does nothing.
 
 ---
 
 ## Resetting the demo data
 
-**Destructive to demo records only.** Stop any evaluation in progress first, and never reset with requests in flight.
+**This deletes demo records.** Stop any evaluation in progress first, and never reset with requests in flight.
 
 ```bash
 cd backend
 .venv/bin/python reset_demo.py --confirm RESET-ATLAS-DEMO
 ```
 
-The script refuses to run unless `DEMO_MODE=true` *and* the database name ends in `_atlas_demo`. It drops the demo database, rebuilds indexes and fictional data, and invalidates all prior sessions. There is no public reset endpoint, and normal restarts never reset records.
+The script refuses to run unless `DEMO_MODE=true` *and* the database name ends in `_atlas_demo`. It drops the demo database, rebuilds indexes and fictional data, and so invalidates every session. There is no reset endpoint, and normal restarts never reset records.
 
 ---
 
@@ -216,22 +227,31 @@ The script refuses to run unless `DEMO_MODE=true` *and* the database name ends i
 ```
 netcare-lab/
 ├── backend/
-│   ├── server.py        # FastAPI app, CORS, origin guard, /api/health
-│   ├── core.py          # env loading, Mongo client, demo-suffixed db, shared models
-│   ├── auth.py          # sign-in, sessions, refresh, simulated recovery
-│   ├── operations.py    # labs, assets, users, shifts, checklists, incidents, tickets
-│   ├── monitoring.py    # telemetry, simulation controls, alerts
-│   ├── reporting.py     # overview, audit, reports, cron maintenance
-│   ├── seed.py          # idempotent fixture data
-│   └── reset_demo.py    # explicit demo-only reset
+│   ├── server.py           # FastAPI app, CORS, origin guard, background maintenance, /api/health
+│   ├── core.py             # env loading, Mongo client, demo-suffixed db, permissions, lease, indexes
+│   ├── auth.py             # sign-in, sessions, refresh, profile, simulated recovery
+│   ├── operations.py       # locations, assets, users, shifts, checklists, incidents, tickets
+│   ├── campus.py           # campus location catalogue, DHCP/VLAN addressing, MAC and serial helpers
+│   ├── monitoring.py       # synthetic telemetry, simulation controls, alerts, diagnostics
+│   ├── reporting.py        # overview, audit, reports, cron maintenance endpoint
+│   ├── seed.py             # idempotent demo data and startup migrations
+│   ├── reset_demo.py       # explicit demo-only reset
+│   ├── requirements.txt    # runtime dependencies
+│   └── requirements-dev.txt
 ├── frontend/src/
-│   ├── pages/           # Login, Dashboard, Monitoring, Checklists, Tickets,
-│   │                    #   Shifts, Management, Insights
-│   ├── components/      # Layout, Telemetry, shared, ui/ (shadcn + Radix)
-│   ├── context.tsx      # auth/session context
-│   ├── hooks/ lib/ constants/
-│   └── App.tsx
-├── tests/               # package scaffold; pytest.ini configures xdist (-n 2, loadscope)
+│   ├── pages/              # Login, Dashboard, Monitoring, Checklists, Tickets,
+│   │                       #   Shifts, Management, Locations, Insights
+│   ├── components/         # Layout, Telemetry, UserProfileModal, shared, ui/
+│   ├── lib/workflow.ts     # client-side simulation layer (see below)
+│   ├── context.tsx         # auth and session context
+│   └── App.tsx             # role-based routes
+├── tests/
+│   ├── conftest.py         # in-memory MongoDB fixtures
+│   ├── test_api.py         # HTTP tests through the real FastAPI app
+│   └── test_simulation.py  # unit tests for telemetry, inventory and profile logic
+├── .github/workflows/ci.yml
+├── pyproject.toml          # black and pytest settings
+├── .flake8                 # flake8 settings
 └── design_guidelines.json
 ```
 
@@ -239,70 +259,124 @@ netcare-lab/
 
 ## API reference
 
-All routes are prefixed with `/api`.
+All routes start with `/api`.
 
-**Auth** — `POST /auth/login` · `POST /auth/demo` · `GET /auth/me` · `POST /auth/logout` · `POST /auth/refresh` · `POST /auth/forgot-password`
+**Auth.** `POST /auth/login` · `POST /auth/demo` · `GET /auth/me` · `PATCH /auth/profile` · `POST /auth/logout` · `POST /auth/refresh` · `POST /auth/forgot-password`
 
-**Assets and labs** — `GET /labs` · `GET /assets` · `POST /assets` · `PATCH /assets/{id}/archive`
+**Locations and assets.** `GET /labs` · `GET /locations` · `POST /locations` · `PATCH /locations/{id}` · `DELETE /locations/{id}` · `GET /assets` · `POST /assets` · `PATCH /assets/{id}` · `PATCH /assets/{id}/archive` · `DELETE /assets/{id}`
 
-**Users** — `GET /users` · `POST /users` · `PATCH /users/{id}`
+**Users.** `GET /users` · `POST /users` · `PATCH /users/{id}` · `DELETE /users/{id}`
 
-**Shifts** — `GET /shifts` · `POST /shifts` · `POST /shifts/{id}/acknowledge` · `POST /shifts/{id}/cancel`
+**Shifts.** `GET /shifts` · `POST /shifts` · `POST /shifts/{id}/acknowledge` · `POST /shifts/{id}/complete` · `POST /shifts/{id}/cancel`
 
-**Checklists and tickets** — `POST /checklists` · `GET /checklists` · `GET /checklists/{id}` · `POST /incidents` · `GET /tickets` · `GET /tickets/{id}` · `PATCH /tickets/{id}`
+**Checklists and tickets.** `POST /checklists` · `POST /checklists/batch` · `GET /checklists` · `GET /checklists/{id}` · `POST /incidents` · `GET /tickets` · `GET /tickets/{id}` · `PATCH /tickets/{id}` · `POST /tickets/{id}/comment`
 
-**Monitoring** — `GET /monitoring` · `GET /monitoring/{id}/history` · `POST /monitoring/sample` · `POST /simulation` · `GET /alerts`
+**Monitoring.** `GET /monitoring` · `GET /monitoring/{id}/history` · `POST /monitoring/sample` · `POST /monitoring/{id}/diagnose` · `POST /monitoring/{id}/remediate` · `POST /simulation` · `GET /alerts`
 
-**Reporting and ops** — `GET /overview` · `GET /audit` · `GET /reports` · `POST /cron/maintain` · `GET /health`
+**Reporting and operations.** `GET /overview` · `GET /audit` · `GET /reports` · `POST /cron/maintain` · `GET /health`
 
-Only `GET`, `POST`, and `PATCH` are allowed by CORS. There is no deletion endpoint for users or assets — archival and deactivation preserve history.
+CORS allows `GET`, `POST`, `PATCH` and `DELETE`. Deleting is permanent. Archiving an asset or deactivating an account keeps it and its history. A location can only be deleted once no active equipment or shift refers to it, and the owner account and your own account cannot be deleted.
 
 ---
 
 ## Permission matrix
 
+This table shows what the API enforces today. Rows marked "gap" are listed under [Known security gaps](#known-security-gaps).
+
 | Action | Assistant | Engineer | Admin |
 |---|---|---|---|
-| AP status and synthetic alerts | Yes | Yes | Yes |
-| Submit checklist | Yes | No | Yes |
+| AP status and synthetic alerts (API) | Yes | Yes | Yes |
+| Monitoring page (UI) | No, dashboard only | Yes | Yes |
+| Submit checklist | Yes | No | No |
 | Report incident | Yes | Yes | Yes |
-| Read tickets | Own/linked only | All | All |
-| Progress and resolve | No | Yes | Yes |
-| View shifts | Own only | Own (normally none) | All |
-| Acknowledge shift | Own only | No | Own only |
-| Manage assets/accounts/rosters | No | No | Yes |
-| Simulate telemetry | No | Yes | Yes |
-| Audit/report/export | No | No | Yes |
+| Read tickets and checklists | All (gap) | All | All |
+| Progress and resolve tickets | No | Yes | Yes |
+| List shifts | All (gap) | All (gap) | All |
+| Acknowledge or complete a shift | Any shift (gap) | No | Any shift |
+| Manage locations, assets, accounts and rosters | No | No | Yes |
+| Simulate telemetry, diagnose, remediate | No | Yes | Yes |
+| Audit log and reports | No | No | Yes |
 
-Foreign assistant records return `404`; forbidden role actions return `403`. Admins cannot demote or deactivate their own account.
+Forbidden role actions return `403`. Admins cannot demote, deactivate or delete their own account or the owner account.
+
+---
+
+## Known security gaps
+
+These are known and deferred to a later security pass. Do not deploy the demo anywhere public until they are fixed.
+
+1. **Automatic admin sign-in.** On the first visit, `frontend/src/context.tsx` calls `POST /api/auth/demo` with `role: "admin"`, and the backend issues an admin session to any caller while `DEMO_MODE=true`.
+2. **Password-change bypass.** In demo mode, `PATCH /api/auth/profile` accepts several fixed strings (including `demo`) as the current password.
+3. **No record ownership checks.** `ticket_scope` and `checklist_scope` in `operations.py` return no filter, so every role reads every ticket and checklist. `GET /shifts` returns every shift.
+4. **Shift actions are not owner-checked.** Any assistant can acknowledge or complete another assistant's shift.
+5. **Ticket comments.** Any signed-in role can comment on any ticket, including resolved ones, and set its assignee name to any text.
+6. **Owner protection is partial.** Any admin can reset the owner account's password or change its email.
+7. **Refresh tokens are not rotated** when they are used.
+
+---
+
+## Client-side simulation layer
+
+The frontend deliberately keeps a second, browser-only data layer in `frontend/src/lib/workflow.ts` so the demo always has realistic content:
+
+- A fixed fleet of access points drives the dashboard and monitoring tiles, with per-browser overrides in `sessionStorage`.
+- Simulated tickets (`SIMULATION_LINKED_TICKETS`) are merged with server tickets.
+- Tickets, checklists and shift states the browser saved locally are kept in `localStorage` and merged with server data. A local copy wins over the server copy with the same ticket number or id.
+- Some writes fall back to the browser and still show as done:
+  - A checklist submission that fails with a network error or a 5xx is saved locally, together with a local ticket for a failed check. Their ids start with `chk-local-` and `inc-local-`, and they never reach the server.
+  - A ticket status change that fails for any reason is applied to the local copy.
+  - Shift acknowledgement and cancellation are saved locally before the request is sent, and server errors are ignored.
+
+So two browsers can show different data, and the server's reports and audit log only cover what reached the server. This is a known design choice for the demo, not a bug in the server.
 
 ---
 
 ## Behavioral invariants
 
-**Checklists.** Unique on `(created_by, request_id)`, backed by a Mongo lease and a payload fingerprint. A same-key retry returns the same saved record. Uncertain transport errors retain and lock the original payload for retry. Drafts live in tab memory across navigation — not on disk, and there is no offline sync.
+**Checklists.** Unique on `(created_by, request_id)`, backed by a Mongo lease and a payload fingerprint. Retrying with the same key returns the saved record, and reusing a key with a different payload returns `409`. Every one of the five checks is required, and only workstations take checklists. Each failed check opens or joins a ticket.
 
-**Tickets.** A partial unique index on `active_key = asset_id:category` makes concurrent fault reports link to a single open ticket; reporter access is added atomically. Lifecycle is open → in_progress → resolved. Resolution requires at least 10 characters of notes and clears the active key so a future recurrence opens a fresh ticket. Resolved tickets are read-only.
+**Tickets.** A partial unique index on `active_key = asset_id:category` makes concurrent fault reports link to a single open ticket, and the reporter is added in the same update. Network faults and AP faults route to Tier 2, and a medium priority on them becomes high. The lifecycle is open, then in_progress, then resolved. A status change only applies if the ticket still has the status the request read, so two engineers cannot overwrite each other. Resolving needs at least 10 characters of notes and clears the active key, so a recurrence opens a fresh ticket. Resolved tickets cannot change status.
 
-**Shifts.** Entered in Asia/Kuala Lumpur (MYT, UTC+8) and stored as ISO strings. End must follow start, with a 24-hour maximum. A per-assistant Mongo lease protects the cross-midnight overlap check. Adjacent shifts are allowed; cancelled records are retained.
+**Shifts.** Entered in Asia/Kuala Lumpur time (MYT, UTC+8) and stored as ISO strings. End must follow start, with a 24-hour maximum. A per-assistant Mongo lease protects the overlap check, which includes shifts that cross midnight. Adjacent shifts are allowed. Acknowledging keeps the first time. Completing twice keeps the first completion and handover notes. Completed shifts cannot be cancelled, and cancelled shifts stay in history.
 
-**Reminders.** Exactly one per shift, due 15 minutes before start. An unacknowledged shift shows *Missed* once its start time passes. These are states, not duplicate alert rows, and acknowledgement preserves its first saved time. In-app only.
+**Reminders.** Exactly one per shift, due 15 minutes before start. An unacknowledged shift shows *Missed* once its start time passes. These are states, not repeated alert rows, and they appear in the app only.
 
-**Telemetry.** Deterministic states: normal, congestion (85%+ utilization), explicit outage, feed interruption, and recovery. Samples that are interrupted or older than 20 minutes display **Stale / unknown** — never an inferred outage. Interrupted feeds preserve their last-seen value; recovery closes prior active alerts and resumes sampling. Retention is bounded by 7 days and 20,000 rows via TTL plus prune. Initial history is 24 hours at 15-minute intervals; AP detail shows the latest 200 samples. Manual controls create server-confirmed samples.
+**Telemetry.** Deterministic states: normal, congestion (85% or more utilization), explicit outage, feed interruption, flapping, gradual degradation, and recovery. Samples that are interrupted or older than 20 minutes show **Stale / unknown**, never an inferred outage. Interrupted feeds keep their last-seen value. Recovery closes active alerts and resumes sampling. A TTL index and a prune step keep at most 7 days and 20,000 rows. AP detail shows the latest 200 samples.
+
+**Reports.** Mean resolution time is the average over resolved tickets, from opening to resolution. It is `null` until at least one ticket is resolved.
+
+---
+
+## Testing and CI
+
+The tests run against an in-memory MongoDB (`mongomock-motor`), so they need no database server and no `.env` file.
+
+```bash
+python3.12 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements-dev.txt
+backend/.venv/bin/pytest          # from the repository root, about 30 seconds
+backend/.venv/bin/flake8 backend tests
+backend/.venv/bin/black --check backend tests
+```
+
+- `tests/test_api.py` signs in through the real FastAPI routes and covers sign-in, role denials, checklist replay, ticket linking and lifecycle, roster overlap rules, shift acknowledgement and completion, unique asset tags, account removal, the DELETE preflight, simulated outages, report averages, read-only GET endpoints, and the maintenance tick.
+- `tests/test_simulation.py` unit-tests telemetry profiles, simulation scenarios, inventory and DHCP assignment, locations, team management and profile updates.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs flake8, black and pytest on Python 3.12, and runs `npm ci` and a production build of the frontend, on every push and pull request.
 
 ---
 
 ## Evaluator walkthrough
 
-1. Open **Overview** as the demo admin; inspect AP statuses, timestamps, and simulation badges.
-2. Provision an assistant and add a PC. Duplicate email or tag should be rejected.
-3. Assign a shift, attempt overlapping and cross-midnight assignments (both rejected), then sign in as that assistant and acknowledge it.
+1. Open **Overview** as the demo admin. Inspect AP statuses, timestamps and simulation badges.
+2. Provision an assistant and add a PC. A duplicate email or tag is rejected.
+3. Assign a shift, then try an overlapping assignment and one that crosses midnight into it. Both are rejected. Sign in as that assistant and acknowledge the shift.
 4. Submit a PC checklist: mark all passed, fail *Network*, add notes, submit. Follow the ticket link. A second fault in the same category links to the existing open ticket.
-5. As an engineer, start the investigation, enter the required resolution notes, and resolve. Empty notes cannot resolve.
-6. As an admin, confirm report and audit outcomes and export CSV. Archive a PC and deactivate an assistant; history remains and the existing assistant session fails.
-7. Run congestion → outage → feed interruption → recovery on an AP. Interruption must read as unknown while preserving last-seen; recovery restores data and closes alerts.
-8. Block backend requests in the browser. There must be no false checklist success, and the draft must survive. Unblock and retry with the original key.
-9. Restart the backend; saved records must remain. Test permission denials through the real API, not UI visibility alone.
+5. As an engineer, start the investigation, enter resolution notes, and resolve. Notes shorter than 10 characters cannot resolve.
+6. As an admin, check the report and audit log and export CSV. Archive a PC and deactivate an assistant. History remains, and that assistant's existing session stops working.
+7. Run congestion, then outage, then feed interruption, then recovery on an AP. Interruption reads as unknown while keeping last-seen, and recovery restores data and closes alerts.
+8. Block backend requests in the browser and submit a checklist. The page saves it in this browser only (its id starts with `chk-local-`), as described under [Client-side simulation layer](#client-side-simulation-layer). Unblock and submit again to save it on the server.
+9. Restart the backend. Saved records remain. Test permission denials through the API, not only through what the UI hides.
 
 ---
 
@@ -310,22 +384,20 @@ Foreign assistant records return `404`; forbidden role actions return `403`. Adm
 
 | Symptom | Cause and fix |
 |---|---|
-| Backend exits with `KeyError` on startup | A required variable is missing from `backend/.env`. Every name in the table above except `PREVIEW_PROXY_ORIGIN` is mandatory. |
-| `ServerSelectionTimeoutError` after ~4s | MongoDB is not running or `MONGO_URL` is wrong. Start it and re-check port 27017. |
-| Every write returns `403 Untrusted request origin` | The browser's origin does not match `FRONTEND_URL`. They must be byte-identical, scheme and port included. |
+| Backend exits with `KeyError` on startup | A required variable is missing from `backend/.env`. Every name in the table above except `PREVIEW_PROXY_ORIGIN` and `CAMPUS_TIMEZONE` is required. |
+| `ServerSelectionTimeoutError` after about 4 seconds | MongoDB is not running or `MONGO_URL` is wrong. Start it and check port 27017. |
+| Every write returns `403 Untrusted request origin` | The browser's origin does not match `FRONTEND_URL`. They must be identical, including scheme and port. |
 | `403 Browser request safeguard is required` | A cookie-bearing or cross-origin mutation arrived without `X-Atlas-Request: 1`. Add the header for manual API calls. |
-| Frontend loads but all data calls fail | `REACT_APP_BACKEND_URL` is wrong, or it changed without restarting `npm start` — CRA inlines env vars at build time. |
+| Frontend loads but every data call fails | `REACT_APP_BACKEND_URL` is wrong, or it changed without restarting `npm start`. Create React App inlines env vars at build time. |
 | `401 Invalid scheduler credentials` on the cron call | The bearer token does not match `WEBHOOK_CRON_SECRET`. |
-| Reminders and telemetry never advance | Expected: nothing calls `/api/cron/maintain` on its own. See [Maintenance scheduler](#maintenance-scheduler). |
+| Reminders and telemetry stop advancing | The backend process stopped, or its log shows `Maintenance tick ... failed`. Restart it, or check MongoDB. |
 | `reset_demo.py` prints `REFUSED` | `DEMO_MODE` is not `true`, or the database name does not end in `_atlas_demo`. This guard is intentional. |
-| Port 3000 or 8001 already in use | `lsof -ti:8001 \| xargs kill` (or change `PORT` / `--port`, updating `FRONTEND_URL` and `REACT_APP_BACKEND_URL` to match). |
+| Port 3000 or 8001 already in use | `lsof -ti:8001 \| xargs kill`, or change `PORT` or `--port` and update `FRONTEND_URL` and `REACT_APP_BACKEND_URL` to match. |
 
 ---
 
 ## Scope and limits
 
-Core interactions target **under 7 seconds** with the confirmed **10 concurrent users** and the documented dataset. That is a measured demo target, not an annual uptime commitment.
+Core interactions target **under 7 seconds** with **10 concurrent users** and the seeded dataset. That is a demo target, not an uptime commitment.
 
-Deliberately out of scope: live network access, network configuration, real email delivery, offline sync, closed-browser alarms, durable job retries, and production availability engineering. Hosting is unspecified. Future direction: authorized read-only telemetry, real notifications, offline sync.
-
-The `tests/` directory is a package scaffold — `backend/pytest.ini` fixes the xdist configuration (`-n 2 --dist loadscope`) for suites added later. Run them with `cd backend && .venv/bin/pytest`.
+Out of scope on purpose: live network access, network configuration, real email delivery, offline sync, closed-browser alarms, durable job retries, and production availability engineering. Hosting is not decided. Next steps after the security pass: authorized read-only telemetry, real notifications and offline sync.
