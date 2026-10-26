@@ -715,7 +715,7 @@ export default function Monitoring() {
 
   if (!data && !liveAps) {
     return (
-      <div className="monitoring-page pt-20 sm:pt-24 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-6 flex-1 min-w-0">
+      <div className="monitoring-page pt-4 sm:pt-6 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-4 flex-1 min-w-0">
         <PageTitle title="Network Monitoring" />
         <ErrorBox error={error} retry={load} />
         {busy && <Loading />}
@@ -747,7 +747,7 @@ export default function Monitoring() {
   const isFeedActive = sampling || pulseActive || sampleInterval > 0;
 
   return (
-    <div className="monitoring-page pt-20 sm:pt-24 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-6 flex-1 min-w-0">
+    <div className="monitoring-page pt-4 sm:pt-6 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-4 flex-1 min-w-0">
       <PageTitle
         title="Network Monitoring"
       />
@@ -770,7 +770,7 @@ export default function Monitoring() {
         </div>
       )}
 
-      <div className={`monitor-status-strip monitor-unified-bar ${pulseActive ? 'is-sampling' : ''}`}>
+      <div className={`monitor-status-strip monitor-unified-bar ${pulseActive ? 'is-sampling' : ''} !mb-0`}>
         <div className="telemetry-bar-info">
           <span className="feed-label" data-testid="telemetry-feed-badge">
             <RadioIcon pulsing={sampling || pulseActive} active={isFeedActive} />
@@ -881,7 +881,7 @@ export default function Monitoring() {
         <TrafficChart history={chartHistory} height={250} />
       </div>
 
-      <section className="monitor-table">
+      <section className="monitor-table !mt-0 !pt-0 !border-t-0">
         <SectionHead title="Access Points">
           <div className="section-actions ap-filter-controls">
             <div className="search-field ap-search-field">
