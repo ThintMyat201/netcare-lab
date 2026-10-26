@@ -2,3 +2,6 @@
 line-length = 120
 skip-string-normalization = true
 extend-exclude = '\.venv'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
