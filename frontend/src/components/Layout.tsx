@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,30 +10,26 @@ import {
   Users,
   ScrollText,
   ChartNoAxesCombined,
-  ChevronDown,
   ChevronRight,
-  LogOut,
   Bell,
   Menu,
   FlaskConical,
   Sun,
   Moon,
   ArrowUpRight,
-  ShieldCheck,
   X,
   Search,
   Activity,
   Power,
   CheckCircle2,
-  AlertTriangle,
   RotateCcw,
   MapPin,
   UserCog,
 } from 'lucide-react';
-import { Logo, Button, Modal, ErrorBox } from './shared';
+import { Logo, Modal } from './shared';
 import { UserProfileModal } from './UserProfileModal';
 import { useAuth } from '../context';
-import { roleLabel, errorText } from '../lib/api';
+import { roleLabel } from '../lib/api';
 import logoNewApu from '../assets/logo_new_apu.jpg';
 import {
   isMonitoringSimActive,
@@ -104,14 +100,13 @@ const getNavigation = (role: string) => {
 };
 
 export const Layout = ({ children }: any) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobile, setMobile] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
-  const [error, setError] = useState('');
   const [light, setLight] = useState(false);
   const [simAnomalyActive, setSimAnomalyActive] = useState(() => isMonitoringSimActive());
   const [bellOpen, setBellOpen] = useState(false);
@@ -196,13 +191,6 @@ export const Layout = ({ children }: any) => {
     links.flatMap(g => g.items).find(x => x[0] === location.pathname)?.[1] ||
       (location.pathname === '/alerts' ? 'System Alerts' : 'Dashboard')
   );
-  const signout = async () => {
-    try {
-      await logout();
-    } catch (e) {
-      setError(errorText(e));
-    }
-  };
 
   const quickItems = QUICK_JUMP_ITEMS.filter(
     item => item.roles.includes(user.role) && (item.label + ' ' + item.type).toLowerCase().includes(cmdQuery.toLowerCase())

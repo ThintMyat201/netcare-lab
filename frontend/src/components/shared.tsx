@@ -1,11 +1,11 @@
-import React,{useEffect,useState} from 'react';
-import {LoaderCircle,AlertCircle,Inbox,Radio,ChevronDown,ArrowUpRight} from 'lucide-react';
-import {Button as ShadButton} from './ui/button';
-import {Dialog,DialogContent as BaseContent,DialogTitle as BaseTitle,DialogDescription as BaseDescription} from './ui/dialog';
+import React, { useEffect, useState } from 'react';
+import { LoaderCircle, AlertCircle, Inbox, Radio, ChevronDown } from 'lucide-react';
+import { Button as ShadButton } from './ui/button';
+import { Dialog, DialogContent as BaseContent, DialogTitle as BaseTitle, DialogDescription as BaseDescription } from './ui/dialog';
 const DialogContent=BaseContent as React.ComponentType<any>;
 const DialogTitle=BaseTitle as React.ComponentType<any>;
 const DialogDescription=BaseDescription as React.ComponentType<any>;
-import {api,errorText} from '../lib/api';
+import { api, errorText } from '../lib/api';
 
 export const Button=({children,id,variant='secondary',className='',...props}:any)=><ShadButton data-testid={id} variant={variant==='primary'?'default':'outline'} className={`btn ${variant} ${className}`} {...props}>{children}</ShadButton>;
 export const Status=({value,id}:any)=><span data-testid={id} className={`status ${value}`}><i/>{({online:'Online',congested:'Congested',offline:'Offline',stale:'Feed Interrupted',open:'Open',in_progress:'In Progress',on_duty:'On Duty / In Progress',completed:'Shift Completed',pending_ack:'Pending Acknowledgement',resolved:'Resolved',active:'Active',inactive:'Deactivated',archived:'Archived',acknowledged:'On Duty / In Progress',missed:'Pending Acknowledgement',pending:'Pending Acknowledgement',upcoming:'Upcoming',high:'High Priority',medium:'Medium Priority',low:'Low Priority'} as any)[value]||value}</span>;

@@ -1,10 +1,9 @@
-import React,{useState} from 'react';
-import {AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer} from 'recharts';
-import {ArrowUpRight,Radio,Wifi,ArrowRight,ArrowDownToLine,Activity,Users,Ellipsis,FlaskConical,RefreshCw,Check,Plus,ChevronRight,MapPin} from 'lucide-react';
-import {Link} from 'react-router-dom';
-import {Button,Status,Modal,Field,Select,ErrorBox,SectionHead} from './shared';
-import {api,errorText,time} from '../lib/api';
-import {formatLocationWithCode, formatLocationBadge} from '../lib/workflow';
+import React, { useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ArrowUpRight, Radio, ArrowDownToLine, Activity, Users, FlaskConical, Check } from 'lucide-react';
+import { Button, Status, Modal, Field, Select, ErrorBox } from './shared';
+import { api, errorText, time } from '../lib/api';
+import { formatLocationBadge } from '../lib/workflow';
 export const Metrics=({stats,openTickets}:any)=><div className="metric-grid">{[{title:'Active Access Points',value:stats.online,suffix:`/ ${stats.total}`,icon:Radio,foot:`${stats.congested} congested · ${stats.offline} offline · ${stats.stale} unmonitored`,tone:'green'},{title:'Connected Devices',value:stats.clients,suffix:'',icon:Users,foot:stats.stale?'Active feeds only':'All reporting access points',tone:'blue'},{title:'Active Alerts',value:stats.congested+stats.offline+stats.stale,suffix:'',icon:Activity,foot:`${stats.offline} critical failures · ${stats.congested+stats.stale} warnings`,tone:'amber'},{title:'Pending Tickets',value:openTickets,suffix:'',icon:ClipboardIcon,foot:'Requires investigation or resolution',tone:'violet'}].map((m,i)=><div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}><div className="metric-top"><span>{m.title}</span><m.icon size={17}/></div><div className="metric-value">{m.value}<span>{m.suffix}</span><div className={`spark-bars spark-${i}`}>{[18,26,22,34,25,39,32,43,37,48,44,52].map((h,j)=><i key={j} style={{height:Math.max(8,h-(i*7+j%3*4))}}/>)}</div></div><p><span className="tiny-dot"/>{m.foot}</p></div>)}</div>;
 const ClipboardIcon=({size}:any)=><ArrowDownToLine size={size}/>;
 export const TrafficChart=({history,title='Network Traffic & Load',height=315}:any)=>{
@@ -221,8 +220,6 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {displayedAps.map((a: any) => {
-                const linkedTicket = a.linked_ticket || ticketsByAsset[a.id];
-                const isNonHealthy = a.status === 'congested' || a.status === 'stale' || a.status === 'offline';
                 const locInfo = formatLocationBadge(a.lab_name || a.lab_id);
                 const locCode = locInfo.code;
                 const locName = locInfo.name;

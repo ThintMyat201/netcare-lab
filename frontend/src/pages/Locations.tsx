@@ -1,45 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  MapPin,
   Plus,
   Search,
   Pencil,
   Trash2,
   CheckCheck,
   X,
-  Cpu,
-  GraduationCap,
-  UtensilsCrossed,
-  Bus,
   Save,
   Sparkles,
-  ChevronRight,
   ArrowUpRight,
 } from 'lucide-react';
 import { api, errorText } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { CampusLocation, CAMPUS_LOCATIONS, computeAutoRoomCode } from '../lib/workflow';
 
-const CATEGORY_ICONS: Record<string, any> = {
-  'Computing Lab': Cpu,
-  'Specialty Lab': Cpu,
-  Classroom: GraduationCap,
-  Auditorium: GraduationCap,
-  'Common Area': UtensilsCrossed,
-  'Outdoor / Transit': Bus,
-  Outdoor: Bus,
-};
 
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  'Computing Lab': 'zone-labs',
-  'Specialty Lab': 'zone-labs',
-  Classroom: 'zone-academic',
-  Auditorium: 'zone-academic',
-  'Common Area': 'zone-common',
-  'Outdoor / Transit': 'zone-outdoor',
-  Outdoor: 'zone-outdoor',
-};
 
 const ZONE_PILLS = [
   { key: 'all', label: 'All Zones' },
@@ -81,7 +56,6 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function Locations() {
-  const navigate = useNavigate();
   const list = useData('/locations');
   const assetsList = useData('/assets');
   const [openAdd, setOpenAdd] = useState(false);
@@ -211,10 +185,6 @@ export default function Locations() {
     setIsEditing(true);
   };
 
-  const handleOpenEdit = (loc: CampusLocation) => {
-    setSelectedRoom(loc);
-    startEdit(loc);
-  };
 
   const handleEditBlockChange = (block: string) => {
     const code = computeAutoRoomCode(block, editForm.level, editForm.room);

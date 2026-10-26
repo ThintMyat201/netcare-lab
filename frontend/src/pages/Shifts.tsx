@@ -1,32 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  CalendarDays,
   Plus,
   CheckCheck,
   Clock3,
   UserRound,
-  Bell,
-  Check,
   ClipboardCheck,
   ArrowRight,
   FileCheck2,
-  Lock,
   ArrowUpRight,
   Monitor,
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context';
-import { api, errorText, time } from '../lib/api';
+import { api, errorText } from '../lib/api';
 import {
-  CAMPUS_SHIFT_BLOCKS,
   getTodayMytDateString,
   normalizeCampusShifts,
   saveShiftOverride,
   getLabInspectionProgress,
   findLocation,
 } from '../lib/workflow';
-import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 export default function Shifts() {
   const { user } = useAuth();

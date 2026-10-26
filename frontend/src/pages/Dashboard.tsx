@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowUpRight,
   ArrowRight,
-  FlaskConical,
   RefreshCw,
   Plus,
   Radio,
-  ChevronRight,
-  Building2,
   CheckCheck,
-  Clock3,
   ClipboardCheck,
   Ticket,
   ShieldCheck,
@@ -26,6 +22,7 @@ import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, useD
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
 import { useAuth } from '../context';
 import { time } from '../lib/api';
+import { downloadCSV } from '../lib/csv';
 import {
   normalizeCampusShifts,
   mergeTickets,
@@ -33,21 +30,6 @@ import {
   getLabInspectionProgress,
   getSharedFleetAps,
 } from '../lib/workflow';
-
-function downloadCSV(name: string, rows: any[][]) {
-  const escape = (v: any) => '"' + String(v ?? '').replace(/^[=+@-]/, "'").replace(/"/g, '""') + '"';
-  const blob = new Blob(['\ufeff' + rows.map(r => r.map(escape).join(',')).join('\r\n')], {
-    type: 'text/csv;charset=utf-8;',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
   return (

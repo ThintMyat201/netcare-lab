@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -6,13 +6,10 @@ import {
   ArrowUpRight,
   ArrowRight,
   CheckCircle2,
-  CheckCheck,
-  Play,
   Send,
-  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context';
-import { api, errorText, time } from '../lib/api';
+import { api, errorText } from '../lib/api';
 import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice, formatLocationWithCode, formatLocationBadge } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 

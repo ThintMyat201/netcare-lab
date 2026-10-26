@@ -1,5 +1,5 @@
-import React,{createContext,useContext,useEffect,useState} from 'react';
-import {api,User} from './lib/api';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { api, User } from './lib/api';
 const Context=createContext<any>(null);
 export const useAuth=()=>useContext(Context);
 export const AuthProvider=({children}:any)=>{

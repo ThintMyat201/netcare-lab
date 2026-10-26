@@ -242,10 +242,12 @@ netcare-lab/
 │   ├── requirements.txt    # runtime dependencies
 │   └── requirements-dev.txt
 ├── frontend/src/
-│   ├── pages/              # Login, Dashboard, Monitoring, Checklists, Tickets,
-│   │                       #   Shifts, Management, Locations, Insights
-│   ├── components/         # Layout, Telemetry, UserProfileModal, shared, ui/
+│   ├── pages/              # one file per page: Login, Dashboard, Monitoring, Checklists,
+│   │                       #   Tickets, Shifts, Assets, Team, Locations, Reports, Audit, Alerts
+│   ├── components/         # Layout, Telemetry, UserProfileModal, shared, ui/ (button, dialog, toaster)
 │   ├── lib/workflow.ts     # client-side simulation layer (see below)
+│   ├── lib/fleetSimulation.ts # access point metrics for the simulated fleet
+│   ├── lib/csv.ts          # CSV export shared by Dashboard, Reports and Audit
 │   ├── context.tsx         # auth and session context
 │   └── App.tsx             # role-based routes
 ├── tests/

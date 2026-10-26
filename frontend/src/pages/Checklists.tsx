@@ -1,16 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   Check,
   CheckCheck,
-  X,
-  Monitor,
-  ClipboardCheck,
   ArrowUpRight,
-  Send,
   Sparkles,
-  LayoutGrid,
   AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../context';
@@ -24,7 +19,7 @@ import {
   formatLocationWithCode,
   findLocation,
 } from '../lib/workflow';
-import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, SectionHead, useData } from '../components/shared';
+import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 const categories: [string, string, string, string][] = [
   ['power', 'Power & Boot Sequence', 'Powers on smoothly and boots OS without errors', 'Hardware / Peripheral (Tier 1)'],
@@ -143,7 +138,6 @@ export default function Checklists() {
     setOpen(nextOpen);
   };
 
-  const hasFailedCheck = inspectionStatus === 'failed';
 
   const submit = async (e: any) => {
     e.preventDefault();
