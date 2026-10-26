@@ -4,6 +4,7 @@ IP addressing is a network (DHCP/VLAN) function: administrators register physica
 location, placement landmark, and MAC address / serial tag, and the system leases the address
 from the VLAN subnet that matches the device type and campus zone.
 """
+
 import hashlib
 import re
 import secrets
@@ -201,22 +202,150 @@ SERIAL_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9\-_/]{3,39}$')
 # Additional demo fleet. Lab APs align with the frontend Device Monitoring fleet; campus APs extend
 # Wi-Fi coverage to classrooms, library, canteen, lounge, and the outdoor bus stop.
 FLEET_APS = [
-    ('ap-13', 'AP-CL-A-05', 'lab-1', 'Computing Lab A · AP 05', '10.20.1.15', 'Aruba AP-515', 'Lab A · Rear Ceiling Grid R2'),
-    ('ap-14', 'AP-CL-A-06', 'lab-1', 'Computing Lab A · AP 06', '10.20.1.16', 'Aruba AP-515', 'Lab A · Instructor Podium Ceiling'),
-    ('ap-15', 'AP-CL-B-05', 'lab-2', 'Computing Lab B · AP 05', '10.20.2.19', 'Aruba AP-515', 'Lab B · Server Rack Corner Wall Mount'),
-    ('ap-16', 'AP-CL-C-01', 'lab-4', 'Computing Lab C · AP 01', '10.20.4.11', 'Aruba AP-515', 'Lab C · Entrance Ceiling Grid A1'),
-    ('ap-17', 'AP-CL-C-02', 'lab-4', 'Computing Lab C · AP 02', '10.20.4.12', 'Aruba AP-515', 'Lab C · Centre Ceiling Grid B3'),
-    ('ap-18', 'AP-CL-C-03', 'lab-4', 'Computing Lab C · AP 03', '10.20.4.13', 'Aruba AP-515', 'Lab C · Window Side Ceiling Grid C2'),
-    ('ap-19', 'AP-CL-C-04', 'lab-4', 'Computing Lab C · AP 04', '10.20.4.14', 'Aruba AP-515', 'Lab C · Rear Ceiling Grid D4'),
-    ('ap-20', 'AP-CL-C-05', 'lab-4', 'Computing Lab C · AP 05', '10.20.4.15', 'Aruba AP-515', 'Lab C · Project Room Wall Mount'),
-    ('ap-21', 'AP-IL-05', 'lab-3', 'Innovation Lab · AP 05', '10.20.3.23', 'Aruba AP-515', 'Innovation Lab · Maker Bench Ceiling'),
-    ('ap-22', 'AP-CLASS-B2', 'zone-classroom-a', 'Lecture Classroom A-04-05 · AP B2', '10.20.11.11', 'Aruba AP-515', 'Classroom A-04-05 · Front Wall Mount above Whiteboard'),
-    ('ap-23', 'AP-LT1-01', 'zone-lt1', 'Auditorium 7 @ Block A Level 3 · AP 01', '10.20.12.11', 'Aruba AP-535', 'Auditorium 7 · Rear Projection Booth'),
-    ('ap-24', 'AP-LIB-01', 'zone-library', 'Campus Library L1 · AP 01', '10.20.13.11', 'Aruba AP-515', 'Library L1 · Quiet Study Zone Ceiling Grid D5'),
-    ('ap-25', 'AP-CANTEEN-01', 'zone-canteen', 'Main Campus Canteen · AP 01', '10.20.21.11', 'Aruba AP-535', 'Main Canteen · Ceiling Pillar C3 near Cashier'),
-    ('ap-26', 'AP-CANTEEN-02', 'zone-canteen', 'Main Campus Canteen · AP 02', '10.20.21.12', 'Aruba AP-535', 'Food Court Seating · East Wall near Drinks Stall'),
-    ('ap-27', 'AP-LOUNGE-01', 'zone-lounge', 'Student Lounge & Atrium · AP 01', '10.20.22.11', 'Aruba AP-515', 'Student Lounge · Atrium Mezzanine Railing'),
-    ('ap-28', 'AP-BUS-01', 'zone-busstop', 'Campus Transit & Bus Stop · Outdoor AP 01', '10.20.31.11', 'Aruba AP-575 (Outdoor IP67)', 'Bus Stop · Covered Waiting Bay North (Pole Mount)'),
+    (
+        'ap-13',
+        'AP-CL-A-05',
+        'lab-1',
+        'Computing Lab A · AP 05',
+        '10.20.1.15',
+        'Aruba AP-515',
+        'Lab A · Rear Ceiling Grid R2',
+    ),
+    (
+        'ap-14',
+        'AP-CL-A-06',
+        'lab-1',
+        'Computing Lab A · AP 06',
+        '10.20.1.16',
+        'Aruba AP-515',
+        'Lab A · Instructor Podium Ceiling',
+    ),
+    (
+        'ap-15',
+        'AP-CL-B-05',
+        'lab-2',
+        'Computing Lab B · AP 05',
+        '10.20.2.19',
+        'Aruba AP-515',
+        'Lab B · Server Rack Corner Wall Mount',
+    ),
+    (
+        'ap-16',
+        'AP-CL-C-01',
+        'lab-4',
+        'Computing Lab C · AP 01',
+        '10.20.4.11',
+        'Aruba AP-515',
+        'Lab C · Entrance Ceiling Grid A1',
+    ),
+    (
+        'ap-17',
+        'AP-CL-C-02',
+        'lab-4',
+        'Computing Lab C · AP 02',
+        '10.20.4.12',
+        'Aruba AP-515',
+        'Lab C · Centre Ceiling Grid B3',
+    ),
+    (
+        'ap-18',
+        'AP-CL-C-03',
+        'lab-4',
+        'Computing Lab C · AP 03',
+        '10.20.4.13',
+        'Aruba AP-515',
+        'Lab C · Window Side Ceiling Grid C2',
+    ),
+    (
+        'ap-19',
+        'AP-CL-C-04',
+        'lab-4',
+        'Computing Lab C · AP 04',
+        '10.20.4.14',
+        'Aruba AP-515',
+        'Lab C · Rear Ceiling Grid D4',
+    ),
+    (
+        'ap-20',
+        'AP-CL-C-05',
+        'lab-4',
+        'Computing Lab C · AP 05',
+        '10.20.4.15',
+        'Aruba AP-515',
+        'Lab C · Project Room Wall Mount',
+    ),
+    (
+        'ap-21',
+        'AP-IL-05',
+        'lab-3',
+        'Innovation Lab · AP 05',
+        '10.20.3.23',
+        'Aruba AP-515',
+        'Innovation Lab · Maker Bench Ceiling',
+    ),
+    (
+        'ap-22',
+        'AP-CLASS-B2',
+        'zone-classroom-a',
+        'Lecture Classroom A-04-05 · AP B2',
+        '10.20.11.11',
+        'Aruba AP-515',
+        'Classroom A-04-05 · Front Wall Mount above Whiteboard',
+    ),
+    (
+        'ap-23',
+        'AP-LT1-01',
+        'zone-lt1',
+        'Auditorium 7 @ Block A Level 3 · AP 01',
+        '10.20.12.11',
+        'Aruba AP-535',
+        'Auditorium 7 · Rear Projection Booth',
+    ),
+    (
+        'ap-24',
+        'AP-LIB-01',
+        'zone-library',
+        'Campus Library L1 · AP 01',
+        '10.20.13.11',
+        'Aruba AP-515',
+        'Library L1 · Quiet Study Zone Ceiling Grid D5',
+    ),
+    (
+        'ap-25',
+        'AP-CANTEEN-01',
+        'zone-canteen',
+        'Main Campus Canteen · AP 01',
+        '10.20.21.11',
+        'Aruba AP-535',
+        'Main Canteen · Ceiling Pillar C3 near Cashier',
+    ),
+    (
+        'ap-26',
+        'AP-CANTEEN-02',
+        'zone-canteen',
+        'Main Campus Canteen · AP 02',
+        '10.20.21.12',
+        'Aruba AP-535',
+        'Food Court Seating · East Wall near Drinks Stall',
+    ),
+    (
+        'ap-27',
+        'AP-LOUNGE-01',
+        'zone-lounge',
+        'Student Lounge & Atrium · AP 01',
+        '10.20.22.11',
+        'Aruba AP-515',
+        'Student Lounge · Atrium Mezzanine Railing',
+    ),
+    (
+        'ap-28',
+        'AP-BUS-01',
+        'zone-busstop',
+        'Campus Transit & Bus Stop · Outdoor AP 01',
+        '10.20.31.11',
+        'Aruba AP-575 (Outdoor IP67)',
+        'Bus Stop · Covered Waiting Bay North (Pole Mount)',
+    ),
 ]
 
 
@@ -264,10 +393,12 @@ def normalize_hw_id(value: str) -> str:
         return ''
     if MAC_RE.match(raw):
         hexes = re.sub(r'[^0-9A-Fa-f]', '', raw).upper()
-        return ':'.join(hexes[i:i + 2] for i in range(0, 12, 2))
+        return ':'.join(hexes[i : i + 2] for i in range(0, 12, 2))
     if SERIAL_RE.match(raw):
         return raw.upper()
-    raise HTTPException(422, 'Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /).')
+    raise HTTPException(
+        422, 'Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /).'
+    )
 
 
 def generate_mac(kind: str, seed: str | None = None) -> str:
@@ -318,7 +449,7 @@ async def backfill_itam_fields():
         ip = str(asset.get('ip') or '')
         # Legacy workstation subnet 10.30.x.x migrates onto the VLAN 10 workstation scope.
         if kind == 'PC' and ip.startswith('10.30.'):
-            updates['ip'] = '10.10.' + ip[len('10.30.'):]
+            updates['ip'] = '10.10.' + ip[len('10.30.') :]
         elif not ip and loc:
             _, updates['ip'] = await assign_dhcp_ip(kind, loc)
         if asset.get('vlan') != vlan:
@@ -337,13 +468,23 @@ async def backfill_itam_fields():
 
 async def _seed_ap_history(asset: dict):
     from monitoring import metrics  # local import avoids a circular dependency
+
     base = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0)
     for step in range(96, -1, -1):
         slot = base - timedelta(minutes=15 * step)
         m = metrics({**asset, 'scenario': 'normal', 'last_seen': slot.isoformat()}, slot)
-        row = {'id': uid(), 'asset_id': asset['id'], 'lab_id': asset['lab_id'], 'timestamp': slot.isoformat(), **m,
-               'expires_at': slot + timedelta(days=7), 'synthetic': True}
-        await db.telemetry.update_one({'asset_id': asset['id'], 'timestamp': slot.isoformat()}, {'$setOnInsert': row}, upsert=True)
+        row = {
+            'id': uid(),
+            'asset_id': asset['id'],
+            'lab_id': asset['lab_id'],
+            'timestamp': slot.isoformat(),
+            **m,
+            'expires_at': slot + timedelta(days=7),
+            'synthetic': True,
+        }
+        await db.telemetry.update_one(
+            {'asset_id': asset['id'], 'timestamp': slot.isoformat()}, {'$setOnInsert': row}, upsert=True
+        )
 
 
 async def ensure_campus_fleet():
@@ -357,10 +498,26 @@ async def ensure_campus_fleet():
         loc = LOCATIONS_BY_ID[loc_id]
         if await db.assets.find_one({'ip': ip}, {'_id': 0}):
             _, ip = await assign_dhcp_ip('AP', loc)
-        row = {'id': ap_id, 'tag': tag, 'name': name, 'kind': 'AP', 'lab_id': loc_id, 'lab_name': loc['name'],
-               'zone_group': loc['zone_group'], 'ip': ip, 'vlan': VLAN_BY_KIND['AP'], 'ip_assignment': 'dhcp',
-               'mac': generate_mac('AP', seed=ap_id), 'placement': placement, 'model': model, 'archived': False,
-               'scenario': 'normal', 'scenario_at': ts, 'last_seen': ts, 'created_at': ts}
+        row = {
+            'id': ap_id,
+            'tag': tag,
+            'name': name,
+            'kind': 'AP',
+            'lab_id': loc_id,
+            'lab_name': loc['name'],
+            'zone_group': loc['zone_group'],
+            'ip': ip,
+            'vlan': VLAN_BY_KIND['AP'],
+            'ip_assignment': 'dhcp',
+            'mac': generate_mac('AP', seed=ap_id),
+            'placement': placement,
+            'model': model,
+            'archived': False,
+            'scenario': 'normal',
+            'scenario_at': ts,
+            'last_seen': ts,
+            'created_at': ts,
+        }
         await db.assets.update_one({'id': ap_id}, {'$setOnInsert': row}, upsert=True)
         await _seed_ap_history(row)
 
@@ -369,4 +526,3 @@ async def ensure_campus_inventory():
     await ensure_locations()
     await ensure_campus_fleet()
     await backfill_itam_fields()
-

@@ -14,7 +14,6 @@ from monitoring import (  # noqa: E402
     metrics,
     monitoring as get_monitoring,
     simulation,
-    sync_alerts,
 )
 
 
@@ -378,12 +377,6 @@ def test_live_diagnostics_and_remediation_endpoints(monkeypatch):
     asyncio.run(_run())
 
 
-
-
-
-
-
-
 def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
     import core
     import operations
@@ -392,9 +385,30 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
     fake_db = FakeDB()
     fake_db.users = FakeCollection(
         [
-            {"id": "owner", "name": "Campus Owner", "email": "owner@campus.edu.my", "role": "admin", "active": True, "created_at": "1"},
-            {"id": "admin", "name": "Alex Morgan", "email": "admin@atlas.demo", "role": "admin", "active": True, "created_at": "2"},
-            {"id": "assistant", "name": "Jamie Santos", "email": "assistant@atlas.demo", "role": "assistant", "active": True, "created_at": "3"},
+            {
+                "id": "owner",
+                "name": "Campus Owner",
+                "email": "owner@campus.edu.my",
+                "role": "admin",
+                "active": True,
+                "created_at": "1",
+            },
+            {
+                "id": "admin",
+                "name": "Alex Morgan",
+                "email": "admin@atlas.demo",
+                "role": "admin",
+                "active": True,
+                "created_at": "2",
+            },
+            {
+                "id": "assistant",
+                "name": "Jamie Santos",
+                "email": "assistant@atlas.demo",
+                "role": "assistant",
+                "active": True,
+                "created_at": "3",
+            },
         ]
     )
     fake_db.sessions = FakeCollection()
@@ -415,7 +429,13 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
         assert all("password_hash" not in u for u in listed)
 
         created = await operations.add_user(
-            operations.UserInput(name="Aisyah Rahman", email="Aisyah@campus.edu.my", role="assistant", scope="Innovation Lab", active=True),
+            operations.UserInput(
+                name="Aisyah Rahman",
+                email="Aisyah@campus.edu.my",
+                role="assistant",
+                scope="Innovation Lab",
+                active=True,
+            ),
             user=ADMIN_USER,
         )
         assert created["email"] == "aisyah@campus.edu.my" and created["scope"] == "Innovation Lab"
@@ -424,7 +444,9 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
 
         # Duplicate email is rejected
         await expect_conflict(
-            operations.add_user(operations.UserInput(name="Dup", email="aisyah@campus.edu.my", role="engineer"), user=ADMIN_USER)
+            operations.add_user(
+                operations.UserInput(name="Dup", email="aisyah@campus.edu.my", role="engineer"), user=ADMIN_USER
+            )
         )
 
         # Edit name/email/role/scope and suspend
@@ -449,7 +471,6 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
         assert fake_db.audit.docs[-1]["action"] == "Team member removed"
 
     asyncio.run(_run())
-
 
 
 def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
@@ -482,8 +503,13 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
 
         # Canteen AP: VLAN 20 lease in the canteen subnet, auto-generated Aruba MAC, landmark kept.
         ap = await operations.add_asset(
-            operations.AssetInput(tag="ap-canteen-09", name="Canteen AP 09", kind="AP", lab_id="zone-canteen",
-                                  placement="Main Canteen · Ceiling Pillar C3 near Cashier"),
+            operations.AssetInput(
+                tag="ap-canteen-09",
+                name="Canteen AP 09",
+                kind="AP",
+                lab_id="zone-canteen",
+                placement="Main Canteen · Ceiling Pillar C3 near Cashier",
+            ),
             user=ADMIN_USER,
         )
         assert ap["tag"] == "AP-CANTEEN-09"
@@ -494,25 +520,62 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
 
         # Next AP in the same zone leases the next free host address.
         ap2 = await operations.add_asset(
-            operations.AssetInput(tag="AP-CANTEEN-10", name="Canteen AP 10", kind="AP", lab_id="zone-canteen", mac="aa-bb-cc-11-22-33"),
+            operations.AssetInput(
+                tag="AP-CANTEEN-10", name="Canteen AP 10", kind="AP", lab_id="zone-canteen", mac="aa-bb-cc-11-22-33"
+            ),
             user=ADMIN_USER,
         )
         assert ap2["ip"] == "10.20.21.12" and ap2["mac"] == "AA:BB:CC:11:22:33"
 
         # Workstation in Computing Lab C: VLAN 10 lease and a default desk placement.
         pc = await operations.add_asset(
-            operations.AssetInput(tag="PC-CL-C-01", name="Workstation 01", kind="PC", lab_id="lab-4", mac="SN-DELL-7090-001"),
+            operations.AssetInput(
+                tag="PC-CL-C-01", name="Workstation 01", kind="PC", lab_id="lab-4", mac="SN-DELL-7090-001"
+            ),
             user=ADMIN_USER,
         )
         assert pc["vlan"] == 10 and pc["ip"] == "10.10.4.11" and pc["mac"] == "SN-DELL-7090-001"
         assert pc["placement"] == "Lab C · Row 1, Desk 1"
 
         # Workstations are restricted to computing labs; identifiers must be valid and unique.
-        await expect_status(operations.add_asset(operations.AssetInput(tag="PC-BUS-01", name="Kiosk", kind="PC", lab_id="zone-busstop"), user=ADMIN_USER), 422)
-        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-LIB-09", name="Library AP", kind="AP", lab_id="zone-library", mac="not a mac!"), user=ADMIN_USER), 422)
-        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-LIB-10", name="Library AP", kind="AP", lab_id="zone-library", mac="AA:BB:CC:11:22:33"), user=ADMIN_USER), 409)
-        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-CANTEEN-09", name="Dup AP", kind="AP", lab_id="zone-canteen"), user=ADMIN_USER), 409)
-        await expect_status(operations.add_asset(operations.AssetInput(tag="AP-NOWHERE-1", name="Nowhere AP", kind="AP", lab_id="zone-mars"), user=ADMIN_USER), 404)
+        await expect_status(
+            operations.add_asset(
+                operations.AssetInput(tag="PC-BUS-01", name="Kiosk", kind="PC", lab_id="zone-busstop"), user=ADMIN_USER
+            ),
+            422,
+        )
+        await expect_status(
+            operations.add_asset(
+                operations.AssetInput(
+                    tag="AP-LIB-09", name="Library AP", kind="AP", lab_id="zone-library", mac="not a mac!"
+                ),
+                user=ADMIN_USER,
+            ),
+            422,
+        )
+        await expect_status(
+            operations.add_asset(
+                operations.AssetInput(
+                    tag="AP-LIB-10", name="Library AP", kind="AP", lab_id="zone-library", mac="AA:BB:CC:11:22:33"
+                ),
+                user=ADMIN_USER,
+            ),
+            409,
+        )
+        await expect_status(
+            operations.add_asset(
+                operations.AssetInput(tag="AP-CANTEEN-09", name="Dup AP", kind="AP", lab_id="zone-canteen"),
+                user=ADMIN_USER,
+            ),
+            409,
+        )
+        await expect_status(
+            operations.add_asset(
+                operations.AssetInput(tag="AP-NOWHERE-1", name="Nowhere AP", kind="AP", lab_id="zone-mars"),
+                user=ADMIN_USER,
+            ),
+            404,
+        )
 
     asyncio.run(_run())
 
@@ -523,8 +586,16 @@ def test_campus_inventory_seed_and_legacy_backfill(monkeypatch):
     fake_db = FakeDB()
     fake_db.labs = FakeCollection([{"id": "lab-1", "name": "Computing Lab A", "code": "CL-A"}])
     fake_db.assets.docs.append(
-        {"id": "pc-01", "tag": "PC-CL-A-01", "name": "Workstation 01", "kind": "PC", "lab_id": "lab-1",
-         "lab_name": "Computing Lab A", "ip": "10.30.1.10", "archived": False}
+        {
+            "id": "pc-01",
+            "tag": "PC-CL-A-01",
+            "name": "Workstation 01",
+            "kind": "PC",
+            "lab_id": "lab-1",
+            "lab_name": "Computing Lab A",
+            "ip": "10.30.1.10",
+            "archived": False,
+        }
     )
     monkeypatch.setattr(campus, "db", fake_db)
     monkeypatch.setattr(monitoring, "db", fake_db)
@@ -534,7 +605,7 @@ def test_campus_inventory_seed_and_legacy_backfill(monkeypatch):
         await campus.ensure_campus_inventory()
         await campus.ensure_campus_inventory()  # idempotent
 
-        labs = {l["id"]: l for l in fake_db.labs.docs}
+        labs = {lab["id"]: lab for lab in fake_db.labs.docs}
         assert labs["lab-1"]["zone_group"] == "labs" and labs["lab-4"]["name"] == "Computing Lab C"
         assert labs["zone-busstop"]["zone_group"] == "outdoor" and labs["zone-canteen"]["vlan_octet"] == 21
 
@@ -582,24 +653,37 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         await campus.ensure_locations()
 
         # Add an asset to lab-1
-        fake_db.assets.docs.append({
-            "id": "pc-test-1", "tag": "PC-TEST-01", "name": "Test PC", "kind": "PC",
-            "lab_id": "lab-1", "lab_name": "Computing Lab A", "ip": "10.10.1.11",
-            "vlan": 10, "archived": False
-        })
+        fake_db.assets.docs.append(
+            {
+                "id": "pc-test-1",
+                "tag": "PC-TEST-01",
+                "name": "Test PC",
+                "kind": "PC",
+                "lab_id": "lab-1",
+                "lab_name": "Computing Lab A",
+                "ip": "10.10.1.11",
+                "vlan": 10,
+                "archived": False,
+            }
+        )
 
         # 1. GET /locations returns enriched counts
         locs = await operations.get_locations(user=ADMIN_USER)
-        lab1 = next(l for l in locs if l["id"] == "lab-1")
+        lab1 = next(loc for loc in locs if loc["id"] == "lab-1")
         assert lab1["code"] == "B-04-03"
         assert lab1["workstation_count"] == 1 and lab1["equipment_count"] == 1
 
         # 2. POST /locations creates a new campus room
         created = await operations.create_location(
             operations.LocationInput(
-                code="A-06-03", name="Design Studio A", block="Block A", level="Level 6", room="03", category="Specialty Lab"
+                code="A-06-03",
+                name="Design Studio A",
+                block="Block A",
+                level="Level 6",
+                room="03",
+                category="Specialty Lab",
             ),
-            user=ADMIN_USER
+            user=ADMIN_USER,
         )
         assert created["code"] == "A-06-03"
         assert created["zone_group"] == "labs"
@@ -608,18 +692,21 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         await expect_status(
             operations.create_location(
                 operations.LocationInput(
-                    code="A-06-03", name="Another Studio", block="Block A", level="Level 6", room="03", category="Specialty Lab"
+                    code="A-06-03",
+                    name="Another Studio",
+                    block="Block A",
+                    level="Level 6",
+                    room="03",
+                    category="Specialty Lab",
                 ),
-                user=ADMIN_USER
+                user=ADMIN_USER,
             ),
-            409
+            409,
         )
 
         # 3. PATCH /locations updates details
         updated = await operations.update_location(
-            created["id"],
-            operations.LocationPatch(name="Advanced Design Studio A"),
-            user=ADMIN_USER
+            created["id"], operations.LocationPatch(name="Advanced Design Studio A"), user=ADMIN_USER
         )
         assert updated["name"] == "Advanced Design Studio A"
 
@@ -634,7 +721,7 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         asset_updated = await operations.update_asset(
             "pc-test-1",
             operations.AssetPatch(name="Updated Test PC", placement="Lab A · Row 3, Desk 2"),
-            user=ADMIN_USER
+            user=ADMIN_USER,
         )
         assert asset_updated["name"] == "Updated Test PC"
         assert asset_updated["placement"] == "Lab A · Row 3, Desk 2"
@@ -656,7 +743,14 @@ def test_profile_update_and_audit(monkeypatch):
     user_hash = hash_password("OldPassword123!")
     fake_db.users = FakeCollection(
         [
-            {"id": "u1", "name": "Alex Morgan", "email": "alex@atlas.demo", "role": "admin", "active": True, "password_hash": user_hash},
+            {
+                "id": "u1",
+                "name": "Alex Morgan",
+                "email": "alex@atlas.demo",
+                "role": "admin",
+                "active": True,
+                "password_hash": user_hash,
+            },
             {"id": "u2", "name": "Other User", "email": "other@atlas.demo", "role": "engineer", "active": True},
         ]
     )
@@ -684,7 +778,7 @@ def test_profile_update_and_audit(monkeypatch):
         assert aud1 is not None
 
         # 2. Update password with valid current password
-        res2 = await auth.update_profile(
+        await auth.update_profile(
             ProfilePatch(current_password="OldPassword123!", new_password="NewSecurePass456!"),
             request=dummy_request,
             user=current_user,
