@@ -8,7 +8,10 @@ from starlette.middleware.cors import CORSMiddleware
 from core import db, client
 from seed import seed
 from auth import router as auth_router
-from operations import router as operations_router, make_reminders, normalize_campus_shifts
+from inventory import router as inventory_router
+from team import router as team_router
+from roster import router as roster_router, make_reminders, normalize_campus_shifts
+from tickets import router as tickets_router
 from monitoring import router as monitoring_router, generate_sample, sync_alerts, ensure_telemetry_history
 from reporting import router as reporting_router
 
@@ -80,7 +83,15 @@ async def guard_origin(request: Request, call_next):
     return await call_next(request)
 
 
-for router in [auth_router, operations_router, monitoring_router, reporting_router]:
+for router in [
+    auth_router,
+    inventory_router,
+    team_router,
+    roster_router,
+    tickets_router,
+    monitoring_router,
+    reporting_router,
+]:
     app.include_router(router)
 
 

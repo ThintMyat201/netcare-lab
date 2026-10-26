@@ -26,7 +26,19 @@ for key, value in TEST_ENV.items():
     os.environ.setdefault(key, value)
 
 DEMO_PASSWORD = os.environ["DEMO_PASSWORD"]
-BACKEND_MODULES = ["core", "auth", "campus", "operations", "monitoring", "reporting", "seed", "server"]
+BACKEND_MODULES = [
+    "core",
+    "auth",
+    "campus",
+    "inventory",
+    "team",
+    "roster",
+    "tickets",
+    "monitoring",
+    "reporting",
+    "seed",
+    "server",
+]
 
 
 def _patch_mongomock_find_and_modify():

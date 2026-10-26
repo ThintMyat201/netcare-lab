@@ -379,7 +379,7 @@ def test_live_diagnostics_and_remediation_endpoints(monkeypatch):
 
 def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
     import core
-    import operations
+    import team
     from fastapi import HTTPException
 
     fake_db = FakeDB()
@@ -414,7 +414,7 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
     fake_db.sessions = FakeCollection()
     fake_db.shifts = FakeCollection()
     monkeypatch.setattr(core, "db", fake_db)
-    monkeypatch.setattr(operations, "db", fake_db)
+    monkeypatch.setattr(team, "db", fake_db)
 
     async def expect_conflict(coro):
         try:
@@ -424,12 +424,12 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
             assert exc.status_code == 409
 
     async def _run():
-        listed = await operations.users(user=ADMIN_USER)
+        listed = await team.users(user=ADMIN_USER)
         assert {u["id"]: u["scope"] for u in listed}["assistant"] == "Computing Lab A"
         assert all("password_hash" not in u for u in listed)
 
-        created = await operations.add_user(
-            operations.UserInput(
+        created = await team.add_user(
+            team.UserInput(
                 name="Aisyah Rahman",
                 email="Aisyah@campus.edu.my",
                 role="assistant",
@@ -444,28 +444,26 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
 
         # Duplicate email is rejected
         await expect_conflict(
-            operations.add_user(
-                operations.UserInput(name="Dup", email="aisyah@campus.edu.my", role="engineer"), user=ADMIN_USER
-            )
+            team.add_user(team.UserInput(name="Dup", email="aisyah@campus.edu.my", role="engineer"), user=ADMIN_USER)
         )
 
         # Edit name/email/role/scope and suspend
-        updated = await operations.update_user(
+        updated = await team.update_user(
             created["id"],
-            operations.UserPatch(name="Aisyah R.", role="engineer", scope="Campus Core Network", active=False),
+            team.UserPatch(name="Aisyah R.", role="engineer", scope="Campus Core Network", active=False),
             user=ADMIN_USER,
         )
         assert updated["name"] == "Aisyah R." and updated["role"] == "engineer" and updated["active"] is False
         assert fake_db.audit.docs[-1]["action"] == "Team member suspended"
 
         # Owner and self are protected from suspend / demote / delete
-        await expect_conflict(operations.update_user("owner", operations.UserPatch(active=False), user=ADMIN_USER))
-        await expect_conflict(operations.update_user("admin", operations.UserPatch(role="engineer"), user=ADMIN_USER))
-        await expect_conflict(operations.remove_user("owner", user=ADMIN_USER))
-        await expect_conflict(operations.remove_user("admin", user=ADMIN_USER))
+        await expect_conflict(team.update_user("owner", team.UserPatch(active=False), user=ADMIN_USER))
+        await expect_conflict(team.update_user("admin", team.UserPatch(role="engineer"), user=ADMIN_USER))
+        await expect_conflict(team.remove_user("owner", user=ADMIN_USER))
+        await expect_conflict(team.remove_user("admin", user=ADMIN_USER))
 
         # Remove a standard member
-        removed = await operations.remove_user(created["id"], user=ADMIN_USER)
+        removed = await team.remove_user(created["id"], user=ADMIN_USER)
         assert removed["ok"] is True
         assert await fake_db.users.find_one({"id": created["id"]}) is None
         assert fake_db.audit.docs[-1]["action"] == "Team member removed"
@@ -475,7 +473,7 @@ def test_team_member_crud_with_owner_and_self_protection(monkeypatch):
 
 def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
     import core
-    import operations
+    import inventory
     import campus
     from fastapi import HTTPException
     from pydantic import ValidationError
@@ -483,7 +481,7 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
     fake_db = FakeDB()
     fake_db.labs = FakeCollection()
     monkeypatch.setattr(core, "db", fake_db)
-    monkeypatch.setattr(operations, "db", fake_db)
+    monkeypatch.setattr(inventory, "db", fake_db)
     monkeypatch.setattr(campus, "db", fake_db)
 
     async def expect_status(coro, code):
@@ -496,14 +494,14 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
     async def _run():
         # Manual IP entry is no longer part of the registration contract.
         try:
-            operations.AssetInput(tag="AP-X-01", name="Test AP", kind="AP", lab_id="lab-1", ip="10.10.1.45")
+            inventory.AssetInput(tag="AP-X-01", name="Test AP", kind="AP", lab_id="lab-1", ip="10.10.1.45")
             assert False, "ip should be rejected"
         except ValidationError:
             pass
 
         # Canteen AP: VLAN 20 lease in the canteen subnet, auto-generated Aruba MAC, landmark kept.
-        ap = await operations.add_asset(
-            operations.AssetInput(
+        ap = await inventory.add_asset(
+            inventory.AssetInput(
                 tag="ap-canteen-09",
                 name="Canteen AP 09",
                 kind="AP",
@@ -519,8 +517,8 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
         assert ap["placement"] == "Main Canteen · Ceiling Pillar C3 near Cashier"
 
         # Next AP in the same zone leases the next free host address.
-        ap2 = await operations.add_asset(
-            operations.AssetInput(
+        ap2 = await inventory.add_asset(
+            inventory.AssetInput(
                 tag="AP-CANTEEN-10", name="Canteen AP 10", kind="AP", lab_id="zone-canteen", mac="aa-bb-cc-11-22-33"
             ),
             user=ADMIN_USER,
@@ -528,8 +526,8 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
         assert ap2["ip"] == "10.20.21.12" and ap2["mac"] == "AA:BB:CC:11:22:33"
 
         # Workstation in Computing Lab C: VLAN 10 lease and a default desk placement.
-        pc = await operations.add_asset(
-            operations.AssetInput(
+        pc = await inventory.add_asset(
+            inventory.AssetInput(
                 tag="PC-CL-C-01", name="Workstation 01", kind="PC", lab_id="lab-4", mac="SN-DELL-7090-001"
             ),
             user=ADMIN_USER,
@@ -539,14 +537,14 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
 
         # Workstations are restricted to computing labs; identifiers must be valid and unique.
         await expect_status(
-            operations.add_asset(
-                operations.AssetInput(tag="PC-BUS-01", name="Kiosk", kind="PC", lab_id="zone-busstop"), user=ADMIN_USER
+            inventory.add_asset(
+                inventory.AssetInput(tag="PC-BUS-01", name="Kiosk", kind="PC", lab_id="zone-busstop"), user=ADMIN_USER
             ),
             422,
         )
         await expect_status(
-            operations.add_asset(
-                operations.AssetInput(
+            inventory.add_asset(
+                inventory.AssetInput(
                     tag="AP-LIB-09", name="Library AP", kind="AP", lab_id="zone-library", mac="not a mac!"
                 ),
                 user=ADMIN_USER,
@@ -554,8 +552,8 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
             422,
         )
         await expect_status(
-            operations.add_asset(
-                operations.AssetInput(
+            inventory.add_asset(
+                inventory.AssetInput(
                     tag="AP-LIB-10", name="Library AP", kind="AP", lab_id="zone-library", mac="AA:BB:CC:11:22:33"
                 ),
                 user=ADMIN_USER,
@@ -563,15 +561,15 @@ def test_itam_registration_dhcp_vlan_assignment_and_zone_rules(monkeypatch):
             409,
         )
         await expect_status(
-            operations.add_asset(
-                operations.AssetInput(tag="AP-CANTEEN-09", name="Dup AP", kind="AP", lab_id="zone-canteen"),
+            inventory.add_asset(
+                inventory.AssetInput(tag="AP-CANTEEN-09", name="Dup AP", kind="AP", lab_id="zone-canteen"),
                 user=ADMIN_USER,
             ),
             409,
         )
         await expect_status(
-            operations.add_asset(
-                operations.AssetInput(tag="AP-NOWHERE-1", name="Nowhere AP", kind="AP", lab_id="zone-mars"),
+            inventory.add_asset(
+                inventory.AssetInput(tag="AP-NOWHERE-1", name="Nowhere AP", kind="AP", lab_id="zone-mars"),
                 user=ADMIN_USER,
             ),
             404,
@@ -629,7 +627,7 @@ def test_campus_inventory_seed_and_legacy_backfill(monkeypatch):
 
 def test_locations_crud_and_asset_patch_delete(monkeypatch):
     import core
-    import operations
+    import inventory
     import campus
     from fastapi import HTTPException
 
@@ -639,7 +637,7 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
     fake_db.shifts = FakeCollection()
     fake_db.alerts = FakeCollection()
     monkeypatch.setattr(core, "db", fake_db)
-    monkeypatch.setattr(operations, "db", fake_db)
+    monkeypatch.setattr(inventory, "db", fake_db)
     monkeypatch.setattr(campus, "db", fake_db)
 
     async def expect_status(coro, code):
@@ -668,14 +666,14 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         )
 
         # 1. GET /locations returns enriched counts
-        locs = await operations.get_locations(user=ADMIN_USER)
+        locs = await inventory.get_locations(user=ADMIN_USER)
         lab1 = next(loc for loc in locs if loc["id"] == "lab-1")
         assert lab1["code"] == "B-04-03"
         assert lab1["workstation_count"] == 1 and lab1["equipment_count"] == 1
 
         # 2. POST /locations creates a new campus room
-        created = await operations.create_location(
-            operations.LocationInput(
+        created = await inventory.create_location(
+            inventory.LocationInput(
                 code="A-06-03",
                 name="Design Studio A",
                 block="Block A",
@@ -690,8 +688,8 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
 
         # Duplicate code is rejected
         await expect_status(
-            operations.create_location(
-                operations.LocationInput(
+            inventory.create_location(
+                inventory.LocationInput(
                     code="A-06-03",
                     name="Another Studio",
                     block="Block A",
@@ -705,29 +703,29 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         )
 
         # 3. PATCH /locations updates details
-        updated = await operations.update_location(
-            created["id"], operations.LocationPatch(name="Advanced Design Studio A"), user=ADMIN_USER
+        updated = await inventory.update_location(
+            created["id"], inventory.LocationPatch(name="Advanced Design Studio A"), user=ADMIN_USER
         )
         assert updated["name"] == "Advanced Design Studio A"
 
         # 4. DELETE /locations with equipment assigned is rejected with 409
-        await expect_status(operations.remove_location("lab-1", user=ADMIN_USER), 409)
+        await expect_status(inventory.remove_location("lab-1", user=ADMIN_USER), 409)
 
         # Deleting empty location succeeds
-        del_res = await operations.remove_location(created["id"], user=ADMIN_USER)
+        del_res = await inventory.remove_location(created["id"], user=ADMIN_USER)
         assert del_res["ok"] is True
 
         # 5. PATCH /assets/{id} updates metadata
-        asset_updated = await operations.update_asset(
+        asset_updated = await inventory.update_asset(
             "pc-test-1",
-            operations.AssetPatch(name="Updated Test PC", placement="Lab A · Row 3, Desk 2"),
+            inventory.AssetPatch(name="Updated Test PC", placement="Lab A · Row 3, Desk 2"),
             user=ADMIN_USER,
         )
         assert asset_updated["name"] == "Updated Test PC"
         assert asset_updated["placement"] == "Lab A · Row 3, Desk 2"
 
         # 6. DELETE /assets/{id} deletes the asset
-        asset_deleted = await operations.delete_asset("pc-test-1", user=ADMIN_USER)
+        asset_deleted = await inventory.delete_asset("pc-test-1", user=ADMIN_USER)
         assert asset_deleted["ok"] is True
         assert await fake_db.assets.find_one({"id": "pc-test-1"}) is None
 

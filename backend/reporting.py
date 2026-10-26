@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from pymongo.errors import DuplicateKeyError
 from core import db, stamp, authorize, Document
 from auth import current
-from operations import ticket_scope, checklist_scope, make_reminders, shift_status
+from roster import make_reminders, shift_status
+from tickets import ticket_scope, checklist_scope
 from monitoring import generate_sample, sync_alerts
 
 router = APIRouter(prefix='/api')

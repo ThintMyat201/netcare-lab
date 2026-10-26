@@ -42,6 +42,12 @@ class Message(BaseModel):
     message: str
 
 
+class Input(BaseModel):
+    """Base for request bodies: unknown fields are rejected and strings are trimmed."""
+
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+
+
 async def audit(user, action, detail, resource_id=None):
     await db.audit.insert_one(
         {

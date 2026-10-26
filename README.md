@@ -228,9 +228,12 @@ The script refuses to run unless `DEMO_MODE=true` *and* the database name ends i
 netcare-lab/
 ├── backend/
 │   ├── server.py           # FastAPI app, CORS, origin guard, background maintenance, /api/health
-│   ├── core.py             # env loading, Mongo client, demo-suffixed db, permissions, lease, indexes
+│   ├── core.py             # env loading, Mongo client, demo-suffixed db, permissions, lease, indexes, base models
 │   ├── auth.py             # sign-in, sessions, refresh, profile, simulated recovery
-│   ├── operations.py       # locations, assets, users, shifts, checklists, incidents, tickets
+│   ├── inventory.py        # campus locations, lab PCs and access points
+│   ├── team.py             # team accounts, roles and scopes
+│   ├── roster.py           # shifts, reminders, acknowledgement and handover
+│   ├── tickets.py          # checklists, incidents and tickets
 │   ├── campus.py           # campus location catalogue, DHCP/VLAN addressing, MAC and serial helpers
 │   ├── monitoring.py       # synthetic telemetry, simulation controls, alerts, diagnostics
 │   ├── reporting.py        # overview, audit, reports, cron maintenance endpoint
@@ -248,6 +251,7 @@ netcare-lab/
 ├── tests/
 │   ├── conftest.py         # in-memory MongoDB fixtures
 │   ├── test_api*.py        # HTTP tests through the real FastAPI app
+│   ├── test_architecture.py # allowed import direction between backend modules
 │   └── test_simulation.py  # unit tests for telemetry, inventory and profile logic
 ├── .github/workflows/ci.yml
 ├── pyproject.toml          # black and pytest settings
@@ -307,7 +311,7 @@ These are known and deferred to a later security pass. Do not deploy the demo an
 
 1. **Automatic admin sign-in.** On the first visit, `frontend/src/context.tsx` calls `POST /api/auth/demo` with `role: "admin"`, and the backend issues an admin session to any caller while `DEMO_MODE=true`.
 2. **Password-change bypass.** In demo mode, `PATCH /api/auth/profile` accepts several fixed strings (including `demo`) as the current password.
-3. **No record ownership checks.** `ticket_scope` and `checklist_scope` in `operations.py` return no filter, so every role reads every ticket and checklist. `GET /shifts` returns every shift.
+3. **No record ownership checks.** `ticket_scope` and `checklist_scope` in `tickets.py` return no filter, so every role reads every ticket and checklist. `GET /shifts` returns every shift.
 4. **Shift actions are not owner-checked.** Any assistant can acknowledge or complete another assistant's shift.
 5. **Ticket comments.** Any signed-in role can comment on any ticket, including resolved ones, and set its assignee name to any text.
 6. **Owner protection is partial.** Any admin can reset the owner account's password or change its email.
@@ -360,6 +364,7 @@ backend/.venv/bin/black --check backend tests
 ```
 
 - `tests/test_api.py`, `test_api_admin.py` and `test_api_ops.py` sign in through the real FastAPI routes, the same way the React pages call them. They cover sign-in, refresh and profile changes, role denials, checklists and batch inspections, ticket linking, lifecycle and notes, roster rules, assets, locations and team accounts, the DELETE preflight, simulated outages with diagnosis and remediation, report averages, read-only GET endpoints, the cron endpoint, startup, and the reset script's safety check. Together they cover 90% of the backend.
+- `tests/test_architecture.py` fails if a backend module imports one it should not, for example `inventory.py` importing `tickets.py`.
 - `tests/test_simulation.py` unit-tests telemetry profiles, simulation scenarios, inventory and DHCP assignment, locations, team management and profile updates.
 
 GitHub Actions (`.github/workflows/ci.yml`) runs flake8, black and pytest on Python 3.12, and runs `npm ci` and a production build of the frontend, on every push and pull request.
