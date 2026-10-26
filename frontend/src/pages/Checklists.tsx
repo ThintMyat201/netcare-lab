@@ -716,7 +716,6 @@ export default function Checklists() {
               </div>
             )
           }
-          description="Equipment Inspection · Workstation Physical & Network Audit"
           id="checklist-dialog"
         >
           {success ? (
@@ -946,7 +945,6 @@ export default function Checklists() {
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.asset_tag || 'Inspection Record'}
-        description="Verified workstation inspection log"
         id="checklist-detail-dialog"
       >
         {selected && (
@@ -975,7 +973,6 @@ export default function Checklists() {
         open={!!viewTicket}
         onClose={() => setViewTicket(null)}
         title={`Incident ${viewTicket?.number || 'Ticket'} (Read-Only)`}
-        description={`${viewTicket?.assetTag || ''} · ${viewTicket?.labName || ''} · Physical Lab Inspection Fault`}
         id="read-only-ticket-dialog"
       >
         {viewTicket && (

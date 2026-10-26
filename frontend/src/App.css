@@ -1410,6 +1410,18 @@
   color: var(--muted);
 }
 
+.atlas-modal [data-testid$="-description"] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}
+
 .atlas-modal form {
   display: flex;
   flex-direction: column;
@@ -7122,6 +7134,7 @@ input[aria-invalid="true"] {
 .clean-shifts-table,
 .clean-inventory-table,
 .clean-locations-table,
+.clean-reports-table,
 .clean-ap-table,
 .team-table,
 .dashboard-shifts-table,
@@ -7144,6 +7157,7 @@ input[aria-invalid="true"] {
 .clean-shifts-table th,
 .clean-inventory-table th,
 .clean-locations-table th,
+.clean-reports-table th,
 .clean-ap-table th,
 .team-table th,
 .dashboard-shifts-table th,
@@ -7163,6 +7177,7 @@ input[aria-invalid="true"] {
 .clean-shifts-table td,
 .clean-inventory-table td,
 .clean-locations-table td,
+.clean-reports-table td,
 .clean-ap-table td,
 .team-table td,
 .dashboard-shifts-table td,
@@ -7178,6 +7193,7 @@ input[aria-invalid="true"] {
 .clean-shifts-table tbody tr:last-child td,
 .clean-inventory-table tbody tr:last-child td,
 .clean-locations-table tbody tr:last-child td,
+.clean-reports-table tbody tr:last-child td,
 .clean-ap-table tbody tr:last-child td,
 .team-table tbody tr:last-child td,
 .dashboard-shifts-table tbody tr:last-child td,
@@ -7190,6 +7206,7 @@ input[aria-invalid="true"] {
 .clean-shifts-table tbody tr:hover,
 .clean-inventory-table tbody tr:hover,
 .clean-locations-table tbody tr:hover,
+.clean-reports-table tbody tr:hover,
 .clean-ap-table tbody tr:hover,
 .team-table tbody tr:hover,
 .dashboard-shifts-table tbody tr:hover,
@@ -7219,6 +7236,7 @@ input[aria-invalid="true"] {
 .light-theme .shifts-table-card-wrapper,
 .light-theme .inventory-card-wrapper,
 .light-theme .locations-table-wrapper,
+.light-theme .reports-table-card-wrapper,
 .light-theme .ap-table-scroll-wrap,
 .light-theme .ap-desktop-table-wrap,
 .light-theme .table-wrap {
@@ -7268,6 +7286,7 @@ input[aria-invalid="true"] {
 .light-theme .clean-shifts-table th,
 .light-theme .clean-inventory-table th,
 .light-theme .clean-locations-table th,
+.light-theme .clean-reports-table th,
 .light-theme .clean-ap-table th,
 .light-theme .team-table th,
 .light-theme .dashboard-shifts-table th,
@@ -7286,6 +7305,7 @@ input[aria-invalid="true"] {
 .light-theme .clean-shifts-table td,
 .light-theme .clean-inventory-table td,
 .light-theme .clean-locations-table td,
+.light-theme .clean-reports-table td,
 .light-theme .clean-ap-table td,
 .light-theme .team-table td,
 .light-theme .dashboard-shifts-table td,
@@ -7299,6 +7319,7 @@ input[aria-invalid="true"] {
 .light-theme .clean-shifts-table tbody tr:hover,
 .light-theme .clean-inventory-table tbody tr:hover,
 .light-theme .clean-locations-table tbody tr:hover,
+.light-theme .clean-reports-table tbody tr:hover,
 .light-theme .clean-ap-table tbody tr:hover,
 .light-theme .team-table tbody tr:hover,
 .light-theme .dashboard-shifts-table tbody tr:hover,

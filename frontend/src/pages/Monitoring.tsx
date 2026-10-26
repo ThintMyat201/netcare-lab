@@ -959,12 +959,6 @@ export default function Monitoring() {
             <Status value={detail?.asset?.status || selected?.status} id="detail-ap-status" />
           </div>
         }
-        description={(() => {
-          const ap = detail?.asset || selected;
-          if (!ap) return 'Real-time device telemetry';
-          const loc = formatLocationBadge(ap.lab_name || ap.lab_id);
-          return `${loc.code ? `${loc.code} · ` : ''}${loc.name || ap.lab_name || 'Campus'} · ${ap.ip || '10.20.0.1'} · ${ap.model || 'Aruba AP-515'}`;
-        })()}
         id="ap-detail-dialog"
       >
         <ErrorBox error={localError} />

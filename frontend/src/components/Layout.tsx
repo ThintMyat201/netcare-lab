@@ -558,7 +558,7 @@ export const Layout = ({ children }: any) => {
         </footer>
       </div>
 
-      <Modal open={cmdOpen} onClose={setCmdOpen} title="Quick Jump & Asset Search" description="Jump to any access point, lab floor map, or operations view (⌘K)" id="command-palette-dialog">
+      <Modal open={cmdOpen} onClose={setCmdOpen} title="Quick Jump & Asset Search" id="command-palette-dialog">
         <div className="search-field" style={{ marginBottom: 12 }}>
           <Search size={16} />
           <input

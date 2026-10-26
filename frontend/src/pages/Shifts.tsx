@@ -445,7 +445,6 @@ export default function Shifts() {
             );
           })()
         }
-        description="Campus Lab Shift & Workstation Inspection"
         id="shift-detail-dialog"
       >
         {selectedShift && (() => {
@@ -648,7 +647,6 @@ export default function Shifts() {
         open={!!handoverShift}
         onClose={() => setHandoverShift(null)}
         title="Complete Shift & Submit Handover Note"
-        description={`${handoverShift?.lab_name || ''} · ${handoverShift?.shift_window || ''}`}
         id="shift-handover-dialog"
       >
         <form onSubmit={submitHandover}>

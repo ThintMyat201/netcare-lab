@@ -327,7 +327,6 @@ export default function Tickets() {
         open={open}
         onClose={setOpen}
         title="Report an Issue"
-        description="Manually report campus hardware or network incidents for triage."
         id="incident-dialog"
       >
         <form onSubmit={report} className="flex flex-col gap-4">

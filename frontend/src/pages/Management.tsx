@@ -475,7 +475,6 @@ export function Assets() {
         open={open}
         onClose={setOpen}
         title="Register Equipment"
-        description="Register new campus hardware assets. Network IP is provisioned automatically via DHCP."
         id="asset-dialog"
       >
         <form onSubmit={submit} className="flex flex-col gap-4">
@@ -1169,7 +1168,7 @@ export function Team() {
 
   return (
     <>
-      <PageTitle title="Team & Access" subtitle="Manage team member accounts, operational roles, campus assignments, and access status.">
+      <PageTitle title="Team & Access">
         <Button id="provision-user" variant="primary" onClick={openCreate}>
           <Plus size={16} />
           Add Team Member
@@ -1356,9 +1355,6 @@ export function Team() {
         open={!!mode}
         onClose={(open: boolean) => !open && closeForm()}
         title={mode === 'edit' ? 'Edit Team Member' : 'Add Team Member'}
-        description={
-          mode === 'edit' ? `${selected?.email || ''} · update profile, role, assignment, and access` : 'Create a campus operations account and assign its role and scope'
-        }
         id="user-dialog"
       >
         <form onSubmit={submit} noValidate className="flex flex-col gap-4">
@@ -1509,7 +1505,6 @@ export function Team() {
         open={!!removing}
         onClose={(open: boolean) => !open && setRemoving(null)}
         title="Remove Team Member"
-        description="This permanently deletes the account and signs the member out."
         id="remove-user-dialog"
       >
         {removing && (

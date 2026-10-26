@@ -630,7 +630,6 @@ export default function Locations() {
         open={openAdd}
         onClose={setOpenAdd}
         title="Add Campus Location"
-        description="Register a new room code, computing lab, or coverage zone with APSpace-standard code generator."
         id="add-location-dialog"
       >
         <form onSubmit={handleAddSubmit} className="flex flex-col gap-4">
@@ -751,7 +750,6 @@ export default function Locations() {
         open={Boolean(editingLoc)}
         onClose={() => setEditingLoc(null)}
         title="Edit Campus Location"
-        description="Update physical room code, block, floor, or category. Changes sync automatically across hardware inventory."
         id="edit-location-dialog"
       >
         <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
