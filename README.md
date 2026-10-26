@@ -247,7 +247,7 @@ netcare-lab/
 │   └── App.tsx             # role-based routes
 ├── tests/
 │   ├── conftest.py         # in-memory MongoDB fixtures
-│   ├── test_api.py         # HTTP tests through the real FastAPI app
+│   ├── test_api*.py        # HTTP tests through the real FastAPI app
 │   └── test_simulation.py  # unit tests for telemetry, inventory and profile logic
 ├── .github/workflows/ci.yml
 ├── pyproject.toml          # black and pytest settings
@@ -354,12 +354,12 @@ The tests run against an in-memory MongoDB (`mongomock-motor`), so they need no 
 ```bash
 python3.12 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements-dev.txt
-backend/.venv/bin/pytest          # from the repository root, about 30 seconds
+backend/.venv/bin/pytest          # from the repository root, about 35 seconds
 backend/.venv/bin/flake8 backend tests
 backend/.venv/bin/black --check backend tests
 ```
 
-- `tests/test_api.py` signs in through the real FastAPI routes and covers sign-in, role denials, checklist replay, ticket linking and lifecycle, roster overlap rules, shift acknowledgement and completion, unique asset tags, account removal, the DELETE preflight, simulated outages, report averages, read-only GET endpoints, and the maintenance tick.
+- `tests/test_api.py`, `test_api_admin.py` and `test_api_ops.py` sign in through the real FastAPI routes, the same way the React pages call them. They cover sign-in, refresh and profile changes, role denials, checklists and batch inspections, ticket linking, lifecycle and notes, roster rules, assets, locations and team accounts, the DELETE preflight, simulated outages with diagnosis and remediation, report averages, read-only GET endpoints, the cron endpoint, startup, and the reset script's safety check. Together they cover 90% of the backend.
 - `tests/test_simulation.py` unit-tests telemetry profiles, simulation scenarios, inventory and DHCP assignment, locations, team management and profile updates.
 
 GitHub Actions (`.github/workflows/ci.yml`) runs flake8, black and pytest on Python 3.12, and runs `npm ci` and a production build of the frontend, on every push and pull request.
