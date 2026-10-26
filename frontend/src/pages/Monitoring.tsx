@@ -715,11 +715,11 @@ export default function Monitoring() {
 
   if (!data && !liveAps) {
     return (
-      <>
+      <div className="monitoring-page pt-20 sm:pt-24 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-6 flex-1 min-w-0">
         <PageTitle title="Network Monitoring" />
         <ErrorBox error={error} retry={load} />
         {busy && <Loading />}
-      </>
+      </div>
     );
   }
 
@@ -747,7 +747,7 @@ export default function Monitoring() {
   const isFeedActive = sampling || pulseActive || sampleInterval > 0;
 
   return (
-    <>
+    <div className="monitoring-page pt-20 sm:pt-24 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-6 flex-1 min-w-0">
       <PageTitle
         title="Network Monitoring"
       />
@@ -877,7 +877,9 @@ export default function Monitoring() {
         ))}
       </div>
 
-      <TrafficChart history={chartHistory} height={250} />
+      <div className="overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+        <TrafficChart history={chartHistory} height={250} />
+      </div>
 
       <section className="monitor-table">
         <SectionHead title="Access Points">
@@ -1152,7 +1154,7 @@ export default function Monitoring() {
           !localError && <Loading />
         )}
       </Modal>
-    </>
+    </div>
   );
 }
 

@@ -761,86 +761,98 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="dashboard-mid grid grid-cols-1 xl:grid-cols-12 gap-6 items-start mb-6 w-full max-w-full">
-            {/* Left Card: Network Traffic & Load (xl:col-span-8) */}
-            <div className="xl:col-span-8 lg:col-span-8 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <TrafficChart history={m.history} />
+          <div className="dashboard-mid grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6 w-full max-w-full">
+            {/* Left Card: Network Traffic & Load (lg:col-span-8) */}
+            <div className="lg:col-span-8 col-span-1 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
+              <TrafficChart history={m.history} height={315} />
             </div>
 
-            {/* Right Card: Lab Operational Health (xl:col-span-4) */}
-            <section className="lab-health xl:col-span-4 lg:col-span-4 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <SectionHead title="Lab Operational Health">
-                <Link
-                  to="/monitoring"
-                  data-testid="view-labs-link"
-                  className="icon-button"
-                  title="View device monitoring"
-                >
-                  <ArrowUpRight size={17} />
-                </Link>
-              </SectionHead>
-
-              <div className="flex flex-col gap-3.5 mb-4">
-                <div className="health-summary flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 !m-0">
-                  <div
-                    className="health-ring shrink-0"
-                    style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
+            {/* Right Card: Lab Operational Health (lg:col-span-4) */}
+            <section className="lab-health lg:col-span-4 col-span-1 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
+              <div className="w-full flex-1 flex flex-col">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h2
+                    className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
+                    data-testid="section-lab-operational-health"
                   >
-                    <span>
-                      {Math.round((apStats.online / apStats.total) * 100)}
-                      <small>%</small>
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <strong className="block text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="network-health-label">
-                      Network Health
-                    </strong>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                      {apStats.online} of {apStats.total} access points operational
-                    </span>
-                    <small className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Real-time telemetry snapshot</small>
-                  </div>
+                    Lab Operational Health
+                  </h2>
+                  <Link
+                    to="/monitoring"
+                    data-testid="view-labs-link"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all"
+                    title="View device monitoring"
+                  >
+                    <ArrowUpRight size={16} />
+                  </Link>
                 </div>
 
-                <div className="lab-list flex flex-col gap-2">
-                  {[
-                    { id: 'lab-1', name: 'Computing Lab A' },
-                    { id: 'lab-2', name: 'Computing Lab B' },
-                    { id: 'lab-4', name: 'Computing Lab C' },
-                    { id: 'lab-3', name: 'Innovation Lab' },
-                  ].map((l, i) => {
-                    const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
-                    const issues = rows.filter((a: any) => a.status !== 'online').length;
-                    return (
-                      <Link
-                        key={l.id}
-                        to={`/monitoring?lab=${l.id}`}
-                        className="lab-row flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors"
-                        data-testid={`lab-health-${i}`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="lab-icon shrink-0 p-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0">
-                            <Building2 size={15} />
-                          </span>
-                          <div className="min-w-0">
-                            <strong className="block text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{l.name}</strong>
-                            <small className="block text-[10px] text-slate-400">{rows.length} access points</small>
+                <div className="flex flex-col gap-3.5 mb-4">
+                  <div className="health-summary flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 !m-0">
+                    <div
+                      className="health-ring shrink-0"
+                      style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
+                    >
+                      <span>
+                        {Math.round((apStats.online / apStats.total) * 100)}
+                        <small>%</small>
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <strong className="block text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="network-health-label">
+                        Network Health
+                      </strong>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        {apStats.online} of {apStats.total} access points operational
+                      </span>
+                      <small className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Real-time telemetry snapshot</small>
+                    </div>
+                  </div>
+
+                  <div className="lab-list flex flex-col gap-2">
+                    {[
+                      { id: 'lab-1', name: 'Computing Lab A' },
+                      { id: 'lab-2', name: 'Computing Lab B' },
+                      { id: 'lab-4', name: 'Computing Lab C' },
+                      { id: 'lab-3', name: 'Innovation Lab' },
+                    ].map((l, i) => {
+                      const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
+                      const issues = rows.filter((a: any) => a.status !== 'online').length;
+                      return (
+                        <Link
+                          key={l.id}
+                          to={`/monitoring?lab=${l.id}`}
+                          className="lab-row flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors"
+                          data-testid={`lab-health-${i}`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="lab-icon shrink-0 p-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0">
+                              <Building2 size={15} />
+                            </span>
+                            <div className="min-w-0">
+                              <strong className="block text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{l.name}</strong>
+                              <small className="block text-[10px] text-slate-400">{rows.length} access points</small>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-                          <span className={`lab-state text-[11px] font-semibold px-2 py-0.5 rounded-full ${issues ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                            {issues ? `${issues} alert(s)` : 'Operational'}
-                          </span>
-                          <ChevronRight size={13} className="text-slate-400" />
-                        </div>
-                      </Link>
-                    );
-                  })}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                            <span className={`lab-state text-[11px] font-semibold px-2 py-0.5 rounded-full ${issues ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                              {issues ? `${issues} alert(s)` : 'Operational'}
+                            </span>
+                            <ChevronRight size={13} className="text-slate-400" />
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              <div className="lab-foot pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center gap-2">
-                <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
+              <div className="lab-foot pt-3.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center justify-between mt-auto">
+                <span className="flex items-center gap-2">
+                  <span className="tiny-dot w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-slate-400 font-medium">Telemetry Feed Active</span>
+                </span>
+                <span className="text-[11px] text-slate-500 font-mono">Last sample {time(m.last_updated, false, true)} MYT</span>
               </div>
             </section>
           </div>

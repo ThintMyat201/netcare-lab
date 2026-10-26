@@ -407,6 +407,10 @@ button.password-eye-btn:hover {
   margin: 0 auto;
 }
 
+.main-content:has(.monitoring-page) {
+  padding: 0;
+}
+
 .page-title {
   display: flex;
   align-items: center;
@@ -666,7 +670,7 @@ button.password-eye-btn:hover {
 }
 
 .dashboard-mid {
-  margin-bottom: 0;
+  margin-bottom: 1.5rem;
 }
 
 .section-head {
@@ -900,8 +904,6 @@ button.password-eye-btn:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 0;
-  border-top: 2px solid var(--line);
 }
 
 .lab-row:hover strong {
@@ -3447,9 +3449,6 @@ button.password-eye-btn:hover {
   .metric-top {
     font-size: 12px;
   }
-  .lab-row {
-    padding: 12px 0;
-  }
   .lab-row strong {
     font-size: 13px;
   }
@@ -3599,9 +3598,6 @@ button.password-eye-btn:hover {
   }
   .lab-state {
     font-size: 10px;
-  }
-  .lab-list .lab-row:first-child {
-    border-top: 0;
   }
   .activity-list {
     display: grid;
@@ -5402,7 +5398,7 @@ input[aria-invalid="true"] {
 
 .traffic-chart {
   width: 100%;
-  min-height: 280px;
+  min-height: 0;
 }
 
 @media (max-width: 768px) {

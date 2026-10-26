@@ -7,7 +7,7 @@ import {api,errorText,time} from '../lib/api';
 import {formatLocationWithCode, formatLocationBadge} from '../lib/workflow';
 export const Metrics=({stats,openTickets}:any)=><div className="metric-grid">{[{title:'Active Access Points',value:stats.online,suffix:`/ ${stats.total}`,icon:Radio,foot:`${stats.congested} congested · ${stats.offline} offline · ${stats.stale} unmonitored`,tone:'green'},{title:'Connected Devices',value:stats.clients,suffix:'',icon:Users,foot:stats.stale?'Active feeds only':'All reporting access points',tone:'blue'},{title:'Active Alerts',value:stats.congested+stats.offline+stats.stale,suffix:'',icon:Activity,foot:`${stats.offline} critical failures · ${stats.congested+stats.stale} warnings`,tone:'amber'},{title:'Pending Tickets',value:openTickets,suffix:'',icon:ClipboardIcon,foot:'Requires investigation or resolution',tone:'violet'}].map((m,i)=><div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}><div className="metric-top"><span>{m.title}</span><m.icon size={17}/></div><div className="metric-value">{m.value}<span>{m.suffix}</span><div className={`spark-bars spark-${i}`}>{[18,26,22,34,25,39,32,43,37,48,44,52].map((h,j)=><i key={j} style={{height:Math.max(8,h-(i*7+j%3*4))}}/>)}</div></div><p><span className="tiny-dot"/>{m.foot}</p></div>)}</div>;
 const ClipboardIcon=({size}:any)=><ArrowDownToLine size={size}/>;
-export const TrafficChart=({history,title='Network Traffic & Load',height=260}:any)=>{
+export const TrafficChart=({history,title='Network Traffic & Load',height=315}:any)=>{
  const [period,setPeriod]=useState('24h'),[showDevices,setShowDevices]=useState(true),[showBandwidth,setShowBandwidth]=useState(true),chartId=React.useId().replace(/:/g,'');
  const hours=period==='24h'?24:period==='6h'?6:1;
  const sorted=Array.isArray(history)?[...history].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime()):[];
@@ -37,157 +37,167 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=260}:a
  const sampledHist=bucketed.length<=histCap?bucketed:bucketed.filter((_,idx)=>idx===0||idx===bucketed.length-1||idx%Math.ceil(bucketed.length/histCap)===0).slice(-histCap);
  const filtered=[...sampledHist,...livePoints];
  return (
-  <section className="chart-section w-full">
-    <div className="flex items-center justify-between gap-3 mb-4">
-      <div>
-        <h2
-          className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
-          data-testid={`section-${title.toLowerCase().replace(/\s+/g, '-')}`}
-        >
-          {title}
-        </h2>
-      </div>
-      <div className="segmented inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200 dark:border-slate-700/80">
-        {['1h', '6h', '24h'].map(p => (
-          <button
-            type="button"
-            aria-pressed={period === p}
-            data-testid={`chart-range-${p}`}
-            onClick={() => setPeriod(p)}
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-              period === p
-                ? 'selected bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
-            key={p}
+  <section className="chart-section w-full flex-1 flex flex-col justify-between">
+    <div className="w-full flex-1 flex flex-col">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2
+            className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
+            data-testid={`section-${title.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            {p}
-          </button>
-        ))}
+            {title}
+          </h2>
+        </div>
+        <div className="segmented inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200 dark:border-slate-700/80">
+          {['1h', '6h', '24h'].map(p => (
+            <button
+              type="button"
+              aria-pressed={period === p}
+              data-testid={`chart-range-${p}`}
+              onClick={() => setPeriod(p)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                period === p
+                  ? 'selected bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              key={p}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-    <div className="chart-legend flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
-      <button
-        type="button"
-        aria-pressed={showBandwidth}
-        data-testid="toggle-series-bandwidth"
-        className={`legend-toggle ${showBandwidth ? 'active' : 'inactive'}`}
-        onClick={() => setShowBandwidth(v => !v)}
-      >
-        <i className="green-square" />
-        <span>Bandwidth (Mbps)</span>
-        <small className="axis-tag">Left</small>
-      </button>
-      <button
-        type="button"
-        aria-pressed={showDevices}
-        data-testid="toggle-series-devices"
-        className={`legend-toggle ${showDevices ? 'active' : 'inactive'}`}
-        onClick={() => setShowDevices(v => !v)}
-      >
-        <i className="blue-square" />
-        <span>Connected Devices</span>
-        <small className="axis-tag">Right</small>
-      </button>
-      <span className="chart-unit ml-auto">TELEMETRY FEED</span>
-    </div>
-    <div className="w-full overflow-hidden">
-      <div
-        data-testid="network-activity-chart"
-        className="traffic-chart w-full min-w-0"
-        style={{ height }}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart key={period} data={filtered} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={`clientsFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#5293ff" stopOpacity={0.26} />
-                <stop offset="100%" stopColor="#5293ff" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id={`trafficFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3cd4a0" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#3cd4a0" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="var(--line-strong, #38465d)" strokeWidth={1.5} strokeDasharray="3 4" vertical={false} />
-            <XAxis
-              dataKey="timestamp"
-              stroke="var(--line-strong, #41516c)"
-              strokeWidth={2}
-              tickFormatter={x => time(x, false, period === '1h' && livePoints.length > 0)}
-              minTickGap={period === '1h' ? 24 : period === '6h' ? 45 : 65}
-              tick={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600 }}
-              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-              dy={7}
-            />
-            <YAxis
-              yAxisId="left"
-              orientation="left"
-              width={44}
-              hide={!showBandwidth && showDevices}
-              domain={[0, 'auto']}
-              stroke="var(--line-strong, #41516c)"
-              strokeWidth={2}
-              tick={{ fill: '#3cd4a0', fontSize: 10, fontWeight: 600 }}
-              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              width={42}
-              allowDecimals={false}
-              hide={!showDevices && showBandwidth}
-              domain={[0, 'auto']}
-              stroke="var(--line-strong, #41516c)"
-              strokeWidth={2}
-              tick={{ fill: '#649cfb', fontSize: 10, fontWeight: 600 }}
-              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
-            />
-            <Tooltip
-              contentStyle={{
-                background: 'var(--panel)',
-                border: '2px solid var(--line-strong, #41516c)',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text)',
-              }}
-              labelFormatter={x => `${time(String(x), true, true)} MYT`}
-            />
-            {showBandwidth && (
-              <Area
+      <div className="chart-legend flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+        <button
+          type="button"
+          aria-pressed={showBandwidth}
+          data-testid="toggle-series-bandwidth"
+          className={`legend-toggle ${showBandwidth ? 'active' : 'inactive'}`}
+          onClick={() => setShowBandwidth(v => !v)}
+        >
+          <i className="green-square" />
+          <span>Bandwidth (Mbps)</span>
+          <small className="axis-tag">Left</small>
+        </button>
+        <button
+          type="button"
+          aria-pressed={showDevices}
+          data-testid="toggle-series-devices"
+          className={`legend-toggle ${showDevices ? 'active' : 'inactive'}`}
+          onClick={() => setShowDevices(v => !v)}
+        >
+          <i className="blue-square" />
+          <span>Connected Devices</span>
+          <small className="axis-tag">Right</small>
+        </button>
+        <span className="chart-unit ml-auto">TELEMETRY FEED</span>
+      </div>
+      <div className="w-full overflow-hidden flex-1 flex flex-col justify-center min-h-0">
+        <div
+          data-testid="network-activity-chart"
+          className="traffic-chart w-full min-w-0"
+          style={{ height }}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart key={period} data={filtered} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`clientsFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#5293ff" stopOpacity={0.26} />
+                  <stop offset="100%" stopColor="#5293ff" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id={`trafficFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3cd4a0" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#3cd4a0" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="var(--line-strong, #38465d)" strokeWidth={1.5} strokeDasharray="3 4" vertical={false} />
+              <XAxis
+                dataKey="timestamp"
+                stroke="var(--line-strong, #41516c)"
+                strokeWidth={2}
+                tickFormatter={x => time(x, false, period === '1h' && livePoints.length > 0)}
+                minTickGap={period === '1h' ? 24 : period === '6h' ? 45 : 65}
+                tick={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600 }}
+                axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+                tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+                dy={7}
+              />
+              <YAxis
                 yAxisId="left"
-                type="monotone"
-                name="Bandwidth (Mbps)"
-                dataKey="throughput"
-                stroke="#3cd4a0"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#3cd4a0' }}
-                fill={`url(#trafficFill-${chartId})`}
-                animationDuration={350}
+                orientation="left"
+                width={44}
+                hide={!showBandwidth && showDevices}
+                domain={[0, 'auto']}
+                stroke="var(--line-strong, #41516c)"
+                strokeWidth={2}
+                tick={{ fill: '#3cd4a0', fontSize: 10, fontWeight: 600 }}
+                axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+                tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
               />
-            )}
-            {showDevices && (
-              <Area
+              <YAxis
                 yAxisId="right"
-                type="monotone"
-                name="Connected Devices"
-                dataKey="clients"
-                stroke="#5293ff"
-                strokeWidth={2.75}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#5293ff' }}
-                fill={`url(#clientsFill-${chartId})`}
-                animationDuration={350}
+                orientation="right"
+                width={42}
+                allowDecimals={false}
+                hide={!showDevices && showBandwidth}
+                domain={[0, 'auto']}
+                stroke="var(--line-strong, #41516c)"
+                strokeWidth={2}
+                tick={{ fill: '#649cfb', fontSize: 10, fontWeight: 600 }}
+                axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+                tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
               />
-            )}
-          </AreaChart>
-        </ResponsiveContainer>
+              <Tooltip
+                contentStyle={{
+                  background: 'var(--panel)',
+                  border: '2px solid var(--line-strong, #41516c)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--text)',
+                }}
+                labelFormatter={x => `${time(String(x), true, true)} MYT`}
+              />
+              {showBandwidth && (
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  name="Bandwidth (Mbps)"
+                  dataKey="throughput"
+                  stroke="#3cd4a0"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#3cd4a0' }}
+                  fill={`url(#trafficFill-${chartId})`}
+                  animationDuration={350}
+                />
+              )}
+              {showDevices && (
+                <Area
+                  yAxisId="right"
+                  type="monotone"
+                  name="Connected Devices"
+                  dataKey="clients"
+                  stroke="#5293ff"
+                  strokeWidth={2.75}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#5293ff' }}
+                  fill={`url(#clientsFill-${chartId})`}
+                  animationDuration={350}
+                />
+              )}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
+    </div>
+
+    <div className="chart-foot pt-3.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center justify-between mt-auto">
+      <span className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span className="text-slate-400 font-medium">Dual-Band 2.4 / 5 GHz Active Telemetry</span>
+      </span>
+      <span className="text-[11px] text-slate-500 font-mono">15m rolling sampling</span>
     </div>
   </section>
  );
