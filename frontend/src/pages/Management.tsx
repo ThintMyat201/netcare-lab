@@ -16,7 +16,6 @@ import {
   CheckCheck,
   X,
   MapPin,
-  Network,
   Cpu,
   GraduationCap,
   UtensilsCrossed,
@@ -24,7 +23,6 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Sparkles,
-  Eye,
   ArrowUpRight,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -70,7 +68,9 @@ export function Assets() {
   const list = useData('/assets');
   const [open, setOpen] = useState(false);
   const [detailsAsset, setDetailsAsset] = useState<any | null>(null);
-  const [isDrawerEditing, setIsDrawerEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const isDrawerEditing = isEditing;
+  const setIsDrawerEditing = setIsEditing;
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState('all');
   const [locFilter, setLocFilter] = useState('all');
@@ -178,10 +178,10 @@ export function Assets() {
 
   const handleOpenDetails = (a: any, editMode: boolean = false) => {
     setDetailsAsset(a);
-    setIsDrawerEditing(editMode);
+    setIsEditing(editMode);
     setEditForm({
       tag: a.tag || '',
-      name: a.name || '',
+      name: a.name || a.tag || '',
       kind: a.kind || 'PC',
       model: a.model || '',
       lab_id: a.lab_id || 'lab-1',
@@ -191,7 +191,23 @@ export function Assets() {
     setError('');
   };
 
-  const submitEdit = async (e: any) => {
+  const startEdit = (assetToEdit?: any) => {
+    const a = assetToEdit || detailsAsset;
+    if (!a) return;
+    setEditForm({
+      tag: a.tag || '',
+      name: a.name || a.tag || '',
+      kind: a.kind || 'PC',
+      model: a.model || '',
+      lab_id: a.lab_id || 'lab-1',
+      placement: a.placement || '',
+      mac: a.mac || '',
+    });
+    setError('');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detailsAsset) return;
     const hwId = editForm.mac.trim();
@@ -204,7 +220,7 @@ export function Assets() {
     try {
       const res = await api.patch(`/assets/${detailsAsset.id}`, {
         tag: editForm.tag.trim().toUpperCase(),
-        name: editForm.name.trim(),
+        name: editForm.name?.trim() || editForm.tag.trim().toUpperCase(),
         kind: editForm.kind,
         model: editForm.model.trim(),
         lab_id: editForm.lab_id,
@@ -213,7 +229,7 @@ export function Assets() {
       });
       const updated = res.data || {};
       setDetailsAsset(updated);
-      setIsDrawerEditing(false);
+      setIsEditing(false);
       setNotice(`Equipment ${updated.tag || editForm.tag} updated successfully.`);
       list.load();
     } catch (e) {
@@ -222,6 +238,8 @@ export function Assets() {
       setBusy(false);
     }
   };
+
+  const submitEdit = handleSaveEdit;
 
   const archive = async (a: any) => {
     if (!window.confirm(`Archive equipment ${a.tag}? Existing inspection logs and tickets will be retained.`)) return;
@@ -604,66 +622,42 @@ export function Assets() {
         </form>
       </Modal>
 
-      {/* SLIDE-OVER EQUIPMENT INSPECTOR DRAWER */}
-      {detailsAsset && (
-        <>
-          <div
-            className="slide-over-scrim"
-            onClick={() => {
-              setDetailsAsset(null);
-              setIsDrawerEditing(false);
-            }}
-          />
-          <aside
-            className="slide-over-drawer bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800"
-            aria-label="Equipment Inspector"
-            data-testid="asset-inspector-drawer"
-          >
-            <div className="drawer-header border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="drawer-header-info">
-                <div className={`device-icon-wrap ${detailsAsset.kind === 'PC' ? 'pc-icon' : 'ap-icon'}`}>
-                  {detailsAsset.kind === 'PC' ? <Monitor size={16} /> : <Wifi size={16} />}
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="drawer-title-tag text-slate-900 dark:text-slate-100">{detailsAsset.tag}</span>
-                    <span className={`drawer-status-pill ${detailsAsset.archived ? 'archived' : 'active'}`}>
-                      {detailsAsset.archived ? 'Archived' : 'Active'}
-                    </span>
-                  </div>
-                  <small className="text-slate-500 dark:text-slate-400 text-xs">{detailsAsset.name}</small>
-                </div>
-              </div>
-              <button
-                className="icon-btn-subtle"
-                onClick={() => {
-                  setDetailsAsset(null);
-                  setIsDrawerEditing(false);
-                }}
-                aria-label="Close inspector"
+      {/* EQUIPMENT DETAIL & EDIT MODAL */}
+      <Modal
+        open={Boolean(detailsAsset)}
+        onClose={() => {
+          setDetailsAsset(null);
+          setIsEditing(false);
+        }}
+        title={
+          detailsAsset ? (
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
+                {detailsAsset.tag}
+              </span>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  detailsAsset.archived
+                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900'
+                    : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
+                }`}
               >
-                <X size={18} />
-              </button>
+                {detailsAsset.archived ? 'Archived' : 'Active'}
+              </span>
             </div>
-
-            <div className="drawer-body">
-              {/* Mode Toggle Button */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {isDrawerEditing ? 'Editing Equipment Record' : 'Asset Specifications'}
-                </span>
-                <button
-                  type="button"
-                  className="btn-inspect"
-                  onClick={() => setIsDrawerEditing(!isDrawerEditing)}
-                >
-                  {isDrawerEditing ? <Eye size={13} /> : <Pencil size={13} />}
-                  {isDrawerEditing ? 'View Mode' : 'Edit Details'}
-                </button>
-              </div>
-
-              {isDrawerEditing ? (
-                <form id="drawer-edit-form" onSubmit={submitEdit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          ) : (
+            'Equipment Details'
+          )
+        }
+        id="asset-detail-dialog"
+      >
+        {detailsAsset && (
+          <div data-testid="asset-inspector-drawer" className="relative z-10 pointer-events-auto">
+            {isEditing ? (
+              /* Edit Mode: Form with 2-Column Grid & Footer */
+              <form onSubmit={handleSaveEdit} className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Row 1: Equipment Tag | Equipment Type */}
                   <Field label="Equipment Tag" id="edit-asset-tag">
                     <input
                       required
@@ -673,40 +667,19 @@ export function Assets() {
                       data-testid="edit-asset-tag"
                       value={editForm.tag}
                       onChange={e => setEditForm({ ...editForm, tag: e.target.value })}
+                      className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-mono uppercase"
                     />
                   </Field>
 
-                  <div className="form-grid">
-                    <Field label="Equipment Type" id="edit-asset-kind">
-                      <Select id="edit-asset-kind" value={editForm.kind} onChange={(e: any) => changeEditKind(e.target.value)}>
-                        <option value="PC">Workstation</option>
-                        <option value="AP">Access Point</option>
-                      </Select>
-                    </Field>
-                    <Field label="Hardware Model" id="edit-asset-model">
-                      <input
-                        maxLength={80}
-                        id="edit-asset-model"
-                        data-testid="edit-asset-model"
-                        value={editForm.model}
-                        onChange={e => setEditForm({ ...editForm, model: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-
-                  <Field label="Device Name" id="edit-asset-name">
-                    <input
-                      required
-                      minLength={2}
-                      maxLength={80}
-                      id="edit-asset-name"
-                      data-testid="edit-asset-name"
-                      value={editForm.name}
-                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    />
+                  <Field label="Equipment Type" id="edit-asset-kind">
+                    <Select id="edit-asset-kind" value={editForm.kind} onChange={(e: any) => changeEditKind(e.target.value)}>
+                      <option value="AP">Access Point</option>
+                      <option value="PC">Workstation</option>
+                    </Select>
                   </Field>
 
-                  <Field label="Assigned Campus Location" id="edit-asset-lab">
+                  {/* Row 2: Assigned Room | Hardware Model */}
+                  <Field label="Assigned Room" id="edit-asset-lab">
                     <Select
                       id="edit-asset-lab"
                       value={editForm.lab_id}
@@ -719,20 +692,33 @@ export function Assets() {
                                 .filter(l => group.zones.includes(l.zone_group))
                                 .map(l => (
                                   <option key={l.id} value={l.id}>
-                                    [{l.code}] {l.name} ({l.block}, {l.level})
+                                    [{l.code}] {l.name}
                                   </option>
                                 ))}
                             </optgroup>
                           ))
                         : editLocationChoices.map(l => (
                             <option key={l.id} value={l.id}>
-                              [{l.code}] {l.name} ({l.block}, {l.level})
+                              [{l.code}] {l.name}
                             </option>
                           ))}
                     </Select>
                   </Field>
 
-                  <Field label="Physical Placement / Desk Note" id="edit-asset-placement">
+                  <Field label="Hardware Model" id="edit-asset-model">
+                    <input
+                      maxLength={80}
+                      id="edit-asset-model"
+                      data-testid="edit-asset-model"
+                      value={editForm.model}
+                      onChange={e => setEditForm({ ...editForm, model: e.target.value })}
+                      placeholder={editForm.kind === 'PC' ? 'e.g. Dell OptiPlex 7090' : 'e.g. Aruba AP-575'}
+                      className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+                    />
+                  </Field>
+
+                  {/* Row 3: Placement Landmark | MAC / Serial Tag */}
+                  <Field label="Placement Landmark" id="edit-asset-placement">
                     <input
                       required
                       minLength={3}
@@ -741,11 +727,12 @@ export function Assets() {
                       data-testid="edit-asset-placement"
                       value={editForm.placement}
                       onChange={e => setEditForm({ ...editForm, placement: e.target.value })}
-                      placeholder="e.g. Lab A · Row 1, Desk 3"
+                      placeholder="e.g. Bus Stop · Waiting Bay"
+                      className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </Field>
 
-                  <Field label="MAC Address / Serial Tag" id="edit-asset-mac">
+                  <Field label="MAC / Serial Tag" id="edit-asset-mac">
                     <input
                       maxLength={40}
                       id="edit-asset-mac"
@@ -755,196 +742,174 @@ export function Assets() {
                       placeholder="AA:BB:CC:11:22:33"
                       spellCheck={false}
                       autoCapitalize="characters"
+                      className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-mono"
                     />
                   </Field>
+                </div>
 
-                  <ErrorBox error={error} />
-                </form>
-              ) : (
-                <>
-                  {/* Card 1: Exact Location Card */}
-                  {(() => {
-                    const loc = findLocation(detailsAsset.lab_id) || findLocation(detailsAsset.lab_name);
-                    const locCode = loc?.code || 'CAMPUS';
-                    return (
-                      <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          <MapPin size={14} />
-                          <span>Exact Campus Location</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="room-code-badge font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" data-testid={`asset-room-code-${detailsAsset.id}`}>[{locCode}]</span>
-                          <strong className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {detailsAsset.lab_name || loc?.name || 'Unassigned'}
-                          </strong>
-                        </div>
-                        <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
-                          <div className="spec-item flex flex-col gap-0.5">
-                            <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Building &amp; Floor</span>
-                            <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
-                              {loc ? `${loc.block} · ${loc.level}` : 'Main Campus'}
-                            </span>
-                          </div>
-                          <div className="spec-item flex flex-col gap-0.5">
-                            <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Room / Zone</span>
-                            <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{loc?.room || 'General Area'}</span>
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
-                          <span className="spec-label block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">Placement Landmark</span>
-                          <span className="spec-value text-[13px] font-medium text-blue-600 dark:text-blue-400" data-testid={`asset-placement-${detailsAsset.id}`}>
-                            {detailsAsset.placement || 'Placement landmark not recorded'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                <ErrorBox error={error} />
 
-                  {/* Card 2: Technical Specifications */}
-                  <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <Cpu size={14} />
-                      <span>Technical Specifications</span>
-                    </div>
-                    <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Equipment Type</span>
-                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
-                          {detailsAsset.kind === 'PC' ? 'Desktop Workstation' : 'Wireless Access Point'}
-                        </span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Hardware Model</span>
-                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
-                          {detailsAsset.model || (detailsAsset.kind === 'PC' ? 'Dell OptiPlex 7010' : 'Aruba AP-515')}
-                        </span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">MAC / Serial Tag</span>
-                        <span className="spec-value text-xs font-mono font-medium text-slate-800 dark:text-slate-200">
-                          {detailsAsset.mac || 'Provisioned by DHCP'}
-                        </span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Registration Date</span>
-                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
-                          {detailsAsset.created_at ? new Date(detailsAsset.created_at).toLocaleDateString() : 'Baseline Fleet'}
-                        </span>
-                      </div>
-                    </div>
+                {/* Edit Mode Footer */}
+                <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div>
+                    {!detailsAsset.archived ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        data-testid={`archive-asset-${detailsAsset.id}`}
+                        onClick={() => archive(detailsAsset)}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                      >
+                        <Archive size={14} />
+                        Archive
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => restoreAsset(detailsAsset)}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                      >
+                        <CheckCheck size={14} />
+                        Restore
+                      </button>
+                    )}
                   </div>
 
-                  {/* Card 3: Network & DHCP Lease */}
-                  <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <Network size={14} />
-                      <span>Network &amp; DHCP Lease</span>
-                    </div>
-                    <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">IP Address</span>
-                        <span className="spec-value text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">
-                          {detailsAsset.ip || 'DHCP Pending'}
-                        </span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">VLAN Assignment</span>
-                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">
-                          VLAN {detailsAsset.vlan || vlanFor(detailsAsset.kind)} ({detailsAsset.kind === 'PC' ? 'Workstation VLAN' : 'AP VLAN'})
-                        </span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Addressing Protocol</span>
-                        <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">Dynamic Host Configuration (DHCP)</span>
-                      </div>
-                      <div className="spec-item flex flex-col gap-0.5">
-                        <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Operational State</span>
-                        <span className={`spec-value text-xs font-medium ${detailsAsset.archived ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}`}>
-                          {detailsAsset.archived ? 'Archived / Decommissioned' : 'Active & Leased'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="drawer-footer flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div>
-                {!detailsAsset.archived ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={busy}
-                    data-testid={`archive-asset-${detailsAsset.id}`}
-                    onClick={() => archive(detailsAsset)}
-                  >
-                    <Archive size={14} />
-                    Archive
-                  </Button>
-                ) : (
                   <div className="flex items-center gap-2">
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => restoreAsset(detailsAsset)}
-                    >
-                      <CheckCheck size={14} />
-                      Restore
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      disabled={busy}
-                      data-testid={`delete-asset-${detailsAsset.id}`}
-                      onClick={() => handleDelete(detailsAsset)}
-                    >
-                      <Trash2 size={14} />
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isDrawerEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDrawerEditing(false)}
+                      onClick={() => setIsEditing(false)}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                     >
                       Cancel
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                       id="save-edit-asset"
-                      variant="primary"
-                      form="drawer-edit-form"
+                      data-testid="save-edit-asset"
                       type="submit"
                       disabled={busy}
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
                     >
                       <Save size={14} />
                       {busy ? 'Saving…' : 'Save Changes'}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setDetailsAsset(null);
-                      setIsDrawerEditing(false);
-                    }}
-                  >
-                    Close
-                  </Button>
-                )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              /* View Mode: 2x2 Summary Card & View Footer (Not inside a form) */
+              <div className="flex flex-col gap-4">
+                {(() => {
+                  const loc = findLocation(detailsAsset.lab_id) || findLocation(detailsAsset.lab_name);
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Location
+                        </span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100" data-testid={`asset-room-code-${detailsAsset.id}`}>
+                          {loc ? `${loc.code} · ${detailsAsset.lab_name || loc.name}` : detailsAsset.lab_name || 'Unassigned'}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Placement Landmark
+                        </span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100" data-testid={`asset-placement-${detailsAsset.id}`}>
+                          {detailsAsset.placement || 'Placement landmark not recorded'}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Network IP &amp; VLAN
+                        </span>
+                        <span className="text-sm font-medium font-mono text-slate-900 dark:text-slate-100">
+                          {detailsAsset.ip || 'DHCP Pending'} · VLAN {detailsAsset.vlan || vlanFor(detailsAsset.kind)}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          MAC / Serial Tag
+                        </span>
+                        <span className="text-sm font-medium font-mono text-slate-900 dark:text-slate-100">
+                          {detailsAsset.mac || 'Provisioned by DHCP'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* View Mode Footer */}
+                <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div>
+                    {!detailsAsset.archived ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        data-testid={`archive-asset-${detailsAsset.id}`}
+                        onClick={() => archive(detailsAsset)}
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                      >
+                        <Archive size={14} />
+                        Archive
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => restoreAsset(detailsAsset)}
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        >
+                          <CheckCheck size={14} />
+                          Restore
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          data-testid={`delete-asset-${detailsAsset.id}`}
+                          onClick={() => handleDelete(detailsAsset)}
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-300 dark:border-rose-800 bg-rose-600 text-white hover:bg-rose-700 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailsAsset(null);
+                        setIsEditing(false);
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      id="edit-asset-button"
+                      data-testid="edit-asset-button"
+                      onClick={() => startEdit(detailsAsset)}
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                    >
+                      <Pencil size={13} />
+                      Edit
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </aside>
-        </>
-      )}
+            )}
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

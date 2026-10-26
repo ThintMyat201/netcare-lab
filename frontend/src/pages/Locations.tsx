@@ -13,15 +13,8 @@ import {
   UtensilsCrossed,
   Bus,
   Save,
-  Building2,
-  Layers,
-  DoorOpen,
-  Monitor,
-  Wifi,
   Sparkles,
   ChevronRight,
-  Eye,
-  Network,
   ArrowUpRight,
 } from 'lucide-react';
 import { api, errorText } from '../lib/api';
@@ -92,8 +85,8 @@ export default function Locations() {
   const list = useData('/locations');
   const assetsList = useData('/assets');
   const [openAdd, setOpenAdd] = useState(false);
-  const [editingLoc, setEditingLoc] = useState<CampusLocation | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<CampusLocation | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [search, setSearch] = useState('');
   const [zonePill, setZonePill] = useState('all');
   const [error, setError] = useState('');
@@ -203,8 +196,9 @@ export default function Locations() {
     }
   };
 
-  const handleOpenEdit = (loc: CampusLocation) => {
-    setEditingLoc(loc);
+  const startEdit = (locToEdit?: CampusLocation | null) => {
+    const loc = locToEdit || selectedRoom;
+    if (!loc) return;
     setEditForm({
       code: loc.code,
       name: loc.name,
@@ -214,15 +208,37 @@ export default function Locations() {
       category: loc.category || 'Computing Lab',
     });
     setError('');
+    setIsEditing(true);
+  };
+
+  const handleOpenEdit = (loc: CampusLocation) => {
+    setSelectedRoom(loc);
+    startEdit(loc);
+  };
+
+  const handleEditBlockChange = (block: string) => {
+    const code = computeAutoRoomCode(block, editForm.level, editForm.room);
+    setEditForm(prev => ({ ...prev, block, code: code || prev.code }));
+  };
+
+  const handleEditLevelChange = (level: string) => {
+    const code = computeAutoRoomCode(editForm.block, level, editForm.room);
+    setEditForm(prev => ({ ...prev, level, code: code || prev.code }));
+  };
+
+  const handleEditRoomChange = (room: string) => {
+    const code = computeAutoRoomCode(editForm.block, editForm.level, room);
+    setEditForm(prev => ({ ...prev, room, code: code || prev.code }));
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingLoc) return;
+    const loc = selectedRoom;
+    if (!loc) return;
     setBusy(true);
     setError('');
     try {
-      const res = await api.patch(`/locations/${editingLoc.id}`, {
+      const res = await api.patch(`/locations/${loc.id}`, {
         code: editForm.code.trim().toUpperCase(),
         name: editForm.name.trim(),
         block: editForm.block.trim(),
@@ -231,10 +247,8 @@ export default function Locations() {
         category: editForm.category,
       });
       const updated = res.data;
-      setEditingLoc(null);
-      if (selectedRoom?.id === editingLoc.id) {
-        setSelectedRoom({ ...selectedRoom, ...updated });
-      }
+      setIsEditing(false);
+      setSelectedRoom(prev => (prev?.id === loc.id ? { ...prev, ...updated } : prev));
       setNotice(`Location [${updated.code}] ${updated.name} updated successfully.`);
       list.load();
     } catch (err) {
@@ -261,7 +275,10 @@ export default function Locations() {
     setError('');
     try {
       await api.delete(`/locations/${loc.id}`);
-      if (selectedRoom?.id === loc.id) setSelectedRoom(null);
+      if (selectedRoom?.id === loc.id) {
+        setSelectedRoom(null);
+        setIsEditing(false);
+      }
       setNotice(`Location [${loc.code}] ${loc.name} deleted successfully.`);
       list.load();
     } catch (err) {
@@ -341,7 +358,7 @@ export default function Locations() {
         </Button>
       </PageTitle>
 
-      <ErrorBox error={list.error || (!openAdd && !editingLoc && error)} retry={list.load} />
+      <ErrorBox error={list.error || (!openAdd && !selectedRoom && error)} retry={list.load} />
 
       {notice && (
         <div className="success-box" data-testid="location-notice">
@@ -468,162 +485,264 @@ export default function Locations() {
         <Empty text="No campus locations match your filter or search query." />
       )}
 
-      {/* ROOM INSPECTOR DRAWER / MODAL */}
-      {selectedRoom && (
-        <>
-          <div className="slide-over-scrim" onClick={() => setSelectedRoom(null)} />
-          <aside className="slide-over-drawer bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800" aria-label="Room Inspector" data-testid="room-inspector-drawer">
-            <div className="drawer-header border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="drawer-header-info flex items-center gap-2.5">
-                <span className="apspace-code-pill font-mono text-xs font-bold px-2.5 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  {selectedRoom.code}
-                </span>
-                <div>
-                  <h3 className="m-0 text-[15px] font-bold text-slate-900 dark:text-slate-100">
-                    {selectedRoom.name}
-                  </h3>
-                  <small className="text-slate-500 dark:text-slate-400 text-xs">
-                    {selectedRoom.block} · {selectedRoom.level}
-                  </small>
-                </div>
-              </div>
-              <button className="icon-btn-subtle" onClick={() => setSelectedRoom(null)} aria-label="Close inspector">
-                <X size={18} />
-              </button>
+      {/* LOCATION DETAIL & INLINE EDIT MODAL */}
+      <Modal
+        open={Boolean(selectedRoom)}
+        onClose={() => {
+          setSelectedRoom(null);
+          setIsEditing(false);
+        }}
+        title={
+          selectedRoom ? (
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                {selectedRoom.code}
+              </span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {selectedRoom.name}
+              </span>
             </div>
-
-            <div className="drawer-body">
-              {/* Room Details Card */}
-              <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <Building2 size={13} />
-                  <span>Physical Room Specifications</span>
-                </div>
-                <div className="spec-grid grid grid-cols-2 gap-3 mt-1">
-                  <div className="spec-item flex flex-col gap-0.5">
-                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Category</span>
-                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.category}</span>
+          ) : (
+            'Location Details'
+          )
+        }
+        id="room-detail-dialog"
+      >
+        {selectedRoom && (
+          <div data-testid="room-inspector-drawer" className="relative z-10 pointer-events-auto">
+            {isEditing ? (
+              /* Edit Mode: Form with 2-Column Grid & Footer */
+              <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+                {/* APSpace Live Auto-Code Preview Banner */}
+                <div className="auto-code-preview-bar">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={16} style={{ color: '#60a5fa' }} />
+                    <span className="auto-code-preview-label">APSpace Room Code:</span>
                   </div>
-                  <div className="spec-item flex flex-col gap-0.5">
-                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Building Block</span>
-                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.block}</span>
-                  </div>
-                  <div className="spec-item flex flex-col gap-0.5">
-                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Floor / Level</span>
-                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.level}</span>
-                  </div>
-                  <div className="spec-item flex flex-col gap-0.5">
-                    <span className="spec-label text-xs text-slate-500 dark:text-slate-400">Room Identifier</span>
-                    <span className="spec-value text-xs font-medium text-slate-800 dark:text-slate-200">{selectedRoom.room || 'General Area'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Installed Equipment Fleet */}
-              <div className="drawer-card bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    <Cpu size={13} />
-                    <span>Installed Hardware Fleet</span>
-                  </div>
-                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                    {selectedRoomDevices.length} Device{selectedRoomDevices.length === 1 ? '' : 's'}
+                  <span className="auto-code-preview-val font-mono font-bold">
+                    {editForm.code || selectedRoom.code}
                   </span>
                 </div>
 
-                {selectedRoomDevices.length > 0 ? (
-                  <div className="max-h-64 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg p-2 space-y-2">
-                    {selectedRoomDevices.map((dev: any) => {
-                      const isPC = dev.kind === 'PC';
-                      return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Row 1: Building Block | Floor / Level */}
+                  <Field label="Building Block" id="loc-edit-block">
+                    <Select
+                      id="loc-edit-block"
+                      data-testid="loc-edit-select-block"
+                      value={editForm.block}
+                      onChange={(e: any) => handleEditBlockChange(e.target.value)}
+                    >
+                      {BLOCK_OPTIONS.map(b => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  <Field label="Floor / Level" id="loc-edit-level">
+                    <Select
+                      id="loc-edit-level"
+                      data-testid="loc-edit-select-level"
+                      value={editForm.level}
+                      onChange={(e: any) => handleEditLevelChange(e.target.value)}
+                    >
+                      {LEVEL_OPTIONS.map(lvl => (
+                        <option key={lvl} value={lvl}>
+                          {lvl}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  {/* Row 2: Room Identifier | Location Category */}
+                  <Field label="Room Identifier" id="loc-edit-room">
+                    <input
+                      required
+                      minLength={1}
+                      maxLength={40}
+                      id="loc-edit-room"
+                      data-testid="loc-edit-input-room"
+                      value={editForm.room}
+                      onChange={e => handleEditRoomChange(e.target.value)}
+                      placeholder="e.g. 03 or Gate 1"
+                      className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+                    />
+                  </Field>
+
+                  <Field label="Location Category" id="loc-edit-cat">
+                    <Select
+                      id="loc-edit-cat"
+                      data-testid="loc-edit-select-cat"
+                      value={editForm.category}
+                      onChange={(e: any) => setEditForm({ ...editForm, category: e.target.value })}
+                    >
+                      {CATEGORY_OPTIONS.map(c => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  {/* Row 3 (Full Width): Location / Lab Name */}
+                  <div className="sm:col-span-2">
+                    <Field label="Location / Lab Name" id="loc-edit-name">
+                      <input
+                        required
+                        minLength={2}
+                        maxLength={80}
+                        id="loc-edit-name"
+                        data-testid="loc-edit-input-name"
+                        value={editForm.name}
+                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                        placeholder="e.g. Computing Lab A"
+                        className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <ErrorBox error={error} />
+
+                {/* Edit Mode Footer */}
+                <div className="flex items-center justify-end gap-2.5 pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    id="save-edit-location-btn"
+                    data-testid="save-edit-location-btn"
+                    type="submit"
+                    disabled={busy}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                  >
+                    <Save size={14} />
+                    {busy ? 'Saving Changes…' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* View Mode: 3-Column Info Strip + Compact Device List + View Footer (Not inside a form) */
+              <div className="flex flex-col gap-4">
+                {/* 3-Column Info Strip */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Category
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                      {selectedRoom.category}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Zone / Floor
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                      {selectedRoom.block} · {selectedRoom.level}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Assigned Devices
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {(() => {
+                        const wsCount = selectedRoomDevices.filter((d: any) => d.kind === 'PC').length || selectedRoom.workstation_count || 0;
+                        const apCount = selectedRoomDevices.filter((d: any) => d.kind === 'AP').length || selectedRoom.ap_count || 0;
+                        const devParts: string[] = [];
+                        if (wsCount > 0) devParts.push(`${wsCount} PC`);
+                        if (apCount > 0) devParts.push(`${apCount} AP`);
+                        return devParts.length > 0 ? devParts.join(' · ') : `${selectedRoomDevices.length || selectedRoom.equipment_count || 0} Total`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Compact Scrollable Device List */}
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Assigned Hardware ({selectedRoomDevices.length})
+                  </span>
+
+                  {selectedRoomDevices.length > 0 ? (
+                    <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-100 dark:divide-slate-800/60">
+                      <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 backdrop-blur-sm">
+                        <span>Device Tag</span>
+                        <span>Type</span>
+                      </div>
+                      {selectedRoomDevices.map((dev: any) => (
                         <div
                           key={dev.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60"
+                          className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className={`device-icon-wrap ${isPC ? 'pc-icon' : 'ap-icon'}`} style={{ width: '26px', height: '26px' }}>
-                              {isPC ? <Monitor size={14} /> : <Wifi size={14} />}
-                            </div>
-                            <div>
-                              <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100">{dev.tag}</strong>
-                              <small className="block text-[11px] text-slate-500 dark:text-slate-400">
-                                {dev.model || (isPC ? 'OptiPlex 7010' : 'AP-515')}
-                              </small>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 block">
-                              {dev.ip || 'DHCP'}
-                            </span>
-                            <small className={`block text-[10px] font-medium ${dev.archived ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                              {dev.archived ? 'Archived' : 'Active'}
-                            </small>
-                          </div>
+                          <span className="font-mono text-xs font-semibold text-slate-900 dark:text-slate-100">
+                            {dev.tag}
+                          </span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400">
+                            {dev.kind === 'PC' ? 'Workstation' : 'Access Point'}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-slate-400 dark:text-slate-500 text-xs italic">
-                    No hardware devices currently registered in this room.
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-slate-400 dark:text-slate-500 text-xs italic border border-slate-200 dark:border-slate-800 rounded-lg">
+                      No hardware currently assigned to this location.
+                    </div>
+                  )}
+                </div>
 
-              {/* Shortcut to Add Equipment */}
-              <Button
-                variant="primary"
-                onClick={() => navigate('/assets')}
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                <Plus size={15} />
-                Manage Hardware in Inventory
-              </Button>
-            </div>
+                {/* View Mode Footer */}
+                <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      data-testid={`delete-loc-${selectedRoom.id}`}
+                      onClick={() => handleDelete(selectedRoom)}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                      Delete
+                    </button>
+                  </div>
 
-            <div className="drawer-footer flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                data-testid={`delete-loc-${selectedRoom.id}`}
-                disabled={busy}
-                onClick={() => {
-                  const loc = selectedRoom;
-                  setSelectedRoom(null);
-                  handleDelete(loc);
-                }}
-              >
-                <Trash2 size={13} />
-                Delete Location
-              </Button>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const loc = selectedRoom;
-                    setSelectedRoom(null);
-                    handleOpenEdit(loc);
-                  }}
-                >
-                  <Pencil size={13} />
-                  Edit Room
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedRoom(null)}
-                >
-                  Close
-                </Button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoom(null);
+                        setIsEditing(false);
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      id="edit-room-button"
+                      data-testid="edit-room-button"
+                      onClick={() => startEdit(selectedRoom)}
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                    >
+                      <Pencil size={13} />
+                      Edit Room
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </aside>
-        </>
-      )}
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* SMART AUTO-CODE CREATE LOCATION MODAL */}
       <Modal
@@ -740,122 +859,6 @@ export default function Locations() {
             >
               <Save size={14} />
               {busy ? 'Saving…' : 'Create Location'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* EDIT LOCATION MODAL */}
-      <Modal
-        open={Boolean(editingLoc)}
-        onClose={() => setEditingLoc(null)}
-        title="Edit Campus Location"
-        id="edit-location-dialog"
-      >
-        <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Room / Location Code" id="loc-edit-code">
-              <input
-                required
-                minLength={2}
-                maxLength={40}
-                id="loc-edit-code"
-                data-testid="loc-edit-input-code"
-                value={editForm.code}
-                onChange={e => setEditForm({ ...editForm, code: e.target.value })}
-                placeholder="e.g. B-04-03"
-                spellCheck={false}
-              />
-            </Field>
-            <Field label="Location Category" id="loc-edit-cat">
-              <Select
-                id="loc-edit-cat"
-                data-testid="loc-edit-select-cat"
-                value={editForm.category}
-                onChange={(e: any) => setEditForm({ ...editForm, category: e.target.value })}
-              >
-                {CATEGORY_OPTIONS.map(c => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <div className="sm:col-span-2">
-              <Field label="Location / Lab Name" id="loc-edit-name">
-                <input
-                  required
-                  minLength={2}
-                  maxLength={80}
-                  id="loc-edit-name"
-                  data-testid="loc-edit-input-name"
-                  value={editForm.name}
-                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                  placeholder="e.g. Computing Lab A"
-                />
-              </Field>
-            </div>
-
-            <Field label="Building Block" id="loc-edit-block">
-              <Select
-                id="loc-edit-block"
-                data-testid="loc-edit-select-block"
-                value={editForm.block}
-                onChange={(e: any) => setEditForm({ ...editForm, block: e.target.value })}
-              >
-                {BLOCK_OPTIONS.map(b => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <Field label="Floor / Level" id="loc-edit-level">
-              <Select
-                id="loc-edit-level"
-                data-testid="loc-edit-select-level"
-                value={editForm.level}
-                onChange={(e: any) => setEditForm({ ...editForm, level: e.target.value })}
-              >
-                {LEVEL_OPTIONS.map(lvl => (
-                  <option key={lvl} value={lvl}>
-                    {lvl}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <div className="sm:col-span-2">
-              <Field label="Room Number / Landmark" id="loc-edit-room">
-                <input
-                  required
-                  minLength={1}
-                  maxLength={40}
-                  id="loc-edit-room"
-                  data-testid="loc-edit-input-room"
-                  value={editForm.room}
-                  onChange={e => setEditForm({ ...editForm, room: e.target.value })}
-                  placeholder="e.g. 03"
-                />
-              </Field>
-            </div>
-          </div>
-
-          <ErrorBox error={error} />
-
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditingLoc(null)}
-            >
-              Cancel
-            </Button>
-            <Button id="save-edit-location-btn" variant="primary" type="submit" disabled={busy}>
-              <Save size={14} />
-              {busy ? 'Saving Changes…' : 'Save Changes'}
             </Button>
           </div>
         </form>
