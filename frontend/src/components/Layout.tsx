@@ -28,10 +28,13 @@ import {
   AlertTriangle,
   RotateCcw,
   MapPin,
+  UserCog,
 } from 'lucide-react';
 import { Logo, Button, Modal, ErrorBox } from './shared';
+import { UserProfileModal } from './UserProfileModal';
 import { useAuth } from '../context';
 import { roleLabel, errorText } from '../lib/api';
+import logoNewApu from '../assets/logo_new_apu.jpg';
 import {
   isMonitoringSimActive,
   setMonitoringSimActive,
@@ -105,7 +108,7 @@ export const Layout = ({ children }: any) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobile, setMobile] = useState(false);
-  const [account, setAccount] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
   const [error, setError] = useState('');
@@ -219,13 +222,15 @@ export const Layout = ({ children }: any) => {
         <button className="mobile-close icon-button" data-testid="close-navigation" onClick={() => setMobile(false)}>
           <X size={18} />
         </button>
-        <div className="workspace-switch">
-          <img src="https://images.unsplash.com/photo-1562774053-701939374585?w=100&h=100&fit=crop" alt="Campus facility" />
-          <div>
-            <strong>APU University</strong>
-            <span>Main Campus</span>
+        <div className="workspace-switch flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700/80 p-1 shrink-0">
+            <img src={logoNewApu} alt="APU University Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="campus-dot" />
+          <div className="min-w-0 flex-1">
+            <strong className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block leading-tight">APU University</strong>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5 leading-tight">Main Campus</span>
+          </div>
+          <span className="campus-dot shrink-0" />
         </div>
         <nav>
           {links.map(
@@ -260,7 +265,12 @@ export const Layout = ({ children }: any) => {
             </div>
             <span className="environment-dot" data-testid="sidebar-heartbeat-dot" />
           </div>
-          <button className="user-profile" data-testid="open-account" onClick={() => setAccount(true)}>
+          <button
+            className="user-profile"
+            data-testid="open-account"
+            type="button"
+            onClick={() => setProfileModalOpen(true)}
+          >
             <span className="avatar">
               {user.name
                 .split(' ')
@@ -272,7 +282,7 @@ export const Layout = ({ children }: any) => {
               <strong>{user.name}</strong>
               <small>{roleLabel(user.role)}</small>
             </span>
-            <ChevronDown size={15} />
+            <UserCog size={15} />
           </button>
         </div>
       </aside>
@@ -591,18 +601,10 @@ export const Layout = ({ children }: any) => {
         </div>
       </Modal>
 
-      <Modal open={account} onClose={setAccount} title="User Account & Role" id="account-dialog">
-        <div className="account-info" data-testid="account-details">
-          <ShieldCheck size={30} />
-          <strong>{user.name}</strong>
-          <span>{user.email}</span>
-          <span>{roleLabel(user.role)}</span>
-        </div>
-        <ErrorBox error={error} />
-        <Button id="logout-button" onClick={signout}>
-          <LogOut size={16} /> Sign Out
-        </Button>
-      </Modal>
+      <UserProfileModal
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </div>
   );
 };

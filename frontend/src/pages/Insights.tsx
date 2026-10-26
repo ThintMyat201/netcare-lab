@@ -132,20 +132,24 @@ export function Reports() {
     const failed = Math.max(baseFailed, baseFailed + (liveFailed > 3 ? liveFailed - 3 : 0));
     const checklistsTotal = passed + failed;
 
-    const baseOpen = isToday ? 2 : is7d ? 14 : 45;
-    const baseInProg = isToday ? 1 : is7d ? 9 : 27;
-    const baseResolved = isToday ? 69 : is7d ? 538 : 1752;
+    const baseOpen = isToday ? 4 : is7d ? 15 : 45;
+    const baseInProg = isToday ? 3 : is7d ? 14 : 38;
+    const baseResolved = isToday ? 15 : is7d ? 50 : 142;
 
     const liveOpen = allTickets.filter((t: any) => t.status === 'open').length;
     const liveInProg = allTickets.filter((t: any) => t.status === 'in_progress').length;
     const liveResolved = allTickets.filter((t: any) => t.status === 'resolved').length;
 
-    const open = Math.max(baseOpen, baseOpen + (liveOpen > 3 ? liveOpen - 3 : 0));
-    const inProgress = Math.max(baseInProg, baseInProg + (liveInProg > 2 ? liveInProg - 2 : 0));
-    const resolved = Math.max(baseResolved, baseResolved + (liveResolved > 6 ? liveResolved - 6 : 0));
+    const open = is7d && liveOpen <= 3 ? 15 : Math.max(baseOpen, baseOpen + (liveOpen > 3 ? liveOpen - 3 : 0));
+    const inProgress = is7d && liveInProg <= 2 ? 14 : Math.max(baseInProg, baseInProg + (liveInProg > 2 ? liveInProg - 2 : 0));
+    const resolved = is7d && liveResolved <= 6 ? 50 : Math.max(baseResolved, baseResolved + (liveResolved > 6 ? liveResolved - 6 : 0));
     const ticketsTotal = open + inProgress + resolved;
 
-    const tier2Pct = 97;
+    const openPct = Math.round((open / ticketsTotal) * 100);
+    const inProgressPct = Math.round((inProgress / ticketsTotal) * 100);
+    const resolvedPct = 100 - openPct - inProgressPct;
+
+    const tier2Pct = 86;
     const tier2Count = Math.round((ticketsTotal * tier2Pct) / 100);
     const tier1Count = ticketsTotal - tier2Count;
     const tier1Pct = 100 - tier2Pct;
@@ -228,9 +232,9 @@ export function Reports() {
       open,
       inProgress,
       resolved,
-      openPct: pct(open, ticketsTotal),
-      inProgressPct: pct(inProgress, ticketsTotal),
-      resolvedPct: pct(resolved, ticketsTotal),
+      openPct,
+      inProgressPct,
+      resolvedPct,
       tier1Count,
       tier2Count,
       tier1Pct,
@@ -578,59 +582,67 @@ export function Reports() {
   return (
     <>
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 w-full mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight" data-testid="page-title">
             Operational Reports
           </h1>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-          <div className="inline-flex p-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80" data-testid="report-period-selector">
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          {/* Timeframe Buttons */}
+          <div className="inline-flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0" data-testid="report-period-selector">
             {[
               ['today', 'Today'],
               ['7d', 'Last 7 Days'],
               ['30d', 'Last 30 Days'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                data-testid={`report-period-${key}`}
-                aria-pressed={period === key}
-                className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  period === key
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                }`}
-                onClick={() => setPeriod(key as 'today' | '7d' | '30d')}
-              >
-                {label}
-              </button>
-            ))}
+            ].map(([key, label]) => {
+              const active = period === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  data-testid={`report-period-${key}`}
+                  aria-pressed={active}
+                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    active
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border border-transparent shadow-sm'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+                  onClick={() => setPeriod(key as 'today' | '7d' | '30d')}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          <Button
-            id="export-report"
-            data-testid="export-report-csv"
-            variant="outline"
-            disabled={!computedReport}
-            onClick={exportCSV}
-            className="whitespace-nowrap flex items-center gap-1.5"
-          >
-            <Download size={14} />
-            Export CSV
-          </Button>
+          {/* Export Buttons Group */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              id="export-report"
+              data-testid="export-report-csv"
+              disabled={!computedReport}
+              onClick={exportCSV}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              <Download size={14} />
+              <span>Export CSV</span>
+            </button>
 
-          <Button
-            id="export-report-pdf"
-            data-testid="export-report-pdf"
-            variant="primary"
-            disabled={!computedReport}
-            onClick={exportPDF}
-            className="whitespace-nowrap flex items-center gap-1.5"
-          >
-            <FileText size={14} />
-            Export PDF
-          </Button>
+            <button
+              type="button"
+              id="export-report-pdf"
+              data-testid="export-report-pdf"
+              disabled={!computedReport}
+              onClick={exportPDF}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              <FileText size={14} />
+              <span>Export PDF</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -707,9 +719,9 @@ export function Reports() {
 
                 <div>
                   <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 flex overflow-hidden">
-                    <div style={{ width: `${computedReport.resolvedPct}%` }} className="bg-emerald-500 h-full" />
-                    <div style={{ width: `${computedReport.inProgressPct}%` }} className="bg-amber-500 h-full" />
                     <div style={{ width: `${computedReport.openPct}%` }} className="bg-blue-500 h-full" />
+                    <div style={{ width: `${computedReport.inProgressPct}%` }} className="bg-amber-500 h-full" />
+                    <div style={{ width: `${computedReport.resolvedPct}%` }} className="bg-emerald-500 h-full" />
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mt-2">
                     <span className="flex items-center gap-1.5">
@@ -866,6 +878,16 @@ export function Reports() {
 export function Audit() {
   const { data, error, busy, load } = useData('/audit');
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const onWorkflowUpdate = () => load();
+    window.addEventListener('atlas-workflow-updated', onWorkflowUpdate);
+    window.addEventListener('atlas-user-profile-updated', onWorkflowUpdate);
+    return () => {
+      window.removeEventListener('atlas-workflow-updated', onWorkflowUpdate);
+      window.removeEventListener('atlas-user-profile-updated', onWorkflowUpdate);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = data?.filter((a: any) =>
     (a.action + ' ' + a.actor + ' ' + a.detail).toLowerCase().includes(search.toLowerCase())
   );
@@ -1060,8 +1082,10 @@ export function Audit() {
         <Button id="refresh-audit" onClick={load}>
           <RefreshCw size={15} />Refresh Log
         </Button>
-        <Button
+        <button
+          type="button"
           id="export-audit"
+          data-testid="export-audit-csv"
           onClick={() =>
             downloadCSV('atlas-activity-log.csv', [
               ['Timestamp MYT', 'Actor', 'Action', 'Detail'],
@@ -1069,17 +1093,22 @@ export function Audit() {
             ])
           }
           disabled={!data}
+          className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
         >
-          <Download size={15} />Export CSV
-        </Button>
-        <Button
+          <Download size={15} />
+          <span>Export CSV</span>
+        </button>
+        <button
+          type="button"
           id="export-audit-pdf"
           data-testid="export-audit-pdf"
           onClick={exportPDF}
           disabled={!data}
+          className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
         >
-          <FileText size={15} />Export PDF
-        </Button>
+          <FileText size={15} />
+          <span>Export PDF</span>
+        </button>
       </PageTitle>
 
       <ErrorBox error={error} retry={load} />

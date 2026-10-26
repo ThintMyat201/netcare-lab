@@ -645,3 +645,51 @@ def test_locations_crud_and_asset_patch_delete(monkeypatch):
         assert await fake_db.assets.find_one({"id": "pc-test-1"}) is None
 
     asyncio.run(_run())
+
+
+def test_profile_update_and_audit(monkeypatch):
+    import core
+    import auth
+    from auth import ProfilePatch, hash_password
+
+    fake_db = FakeDB()
+    user_hash = hash_password("OldPassword123!")
+    fake_db.users = FakeCollection(
+        [
+            {"id": "u1", "name": "Alex Morgan", "email": "alex@atlas.demo", "role": "admin", "active": True, "password_hash": user_hash},
+            {"id": "u2", "name": "Other User", "email": "other@atlas.demo", "role": "engineer", "active": True},
+        ]
+    )
+    fake_db.shifts = FakeCollection([{"id": "s1", "assistant_id": "u1", "assistant_name": "Alex Morgan"}])
+    fake_db.audit = FakeCollection()
+    fake_db.sessions = FakeCollection()
+    monkeypatch.setattr(core, "db", fake_db)
+    monkeypatch.setattr(auth, "db", fake_db)
+
+    async def _run():
+        dummy_request = type("Req", (), {"client": type("C", (), {"host": "127.0.0.1"})()})()
+        current_user = {"id": "u1", "name": "Alex Morgan", "email": "alex@atlas.demo", "role": "admin"}
+
+        # 1. Update name and email
+        res1 = await auth.update_profile(
+            ProfilePatch(name="Alex M. Senior", email="alex.senior@atlas.demo"),
+            request=dummy_request,
+            user=current_user,
+        )
+        assert res1["name"] == "Alex M. Senior"
+        assert res1["email"] == "alex.senior@atlas.demo"
+        shift = await fake_db.shifts.find_one({"id": "s1"})
+        assert shift["assistant_name"] == "Alex M. Senior"
+        aud1 = await fake_db.audit.find_one({"action": "Updated profile details"})
+        assert aud1 is not None
+
+        # 2. Update password with valid current password
+        res2 = await auth.update_profile(
+            ProfilePatch(current_password="OldPassword123!", new_password="NewSecurePass456!"),
+            request=dummy_request,
+            user=current_user,
+        )
+        aud2 = await fake_db.audit.find_one({"action": "Updated account password"})
+        assert aud2 is not None
+
+    asyncio.run(_run())

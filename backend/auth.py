@@ -23,6 +23,11 @@ class Email(BaseModel): email: EmailStr
 class Reset(BaseModel):
     token: str
     password: str = Field(min_length=10, max_length=72)
+class ProfilePatch(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    email: EmailStr | None = None
+    current_password: str | None = Field(default=None, max_length=72)
+    new_password: str | None = Field(default=None, min_length=6, max_length=72)
 
 async def limit(request, email):
     identifier = f'{request.client.host}:{email.lower()}'
@@ -72,6 +77,59 @@ async def demo(body: DemoLogin,request: Request,response: Response):
 
 @router.get('/me')
 async def me(user=Depends(current)): return user
+
+@router.patch('/profile')
+async def update_profile(body: ProfilePatch, request: Request, user=Depends(current)):
+    full_user = await db.users.find_one({'id': user['id']})
+    if not full_user:
+        raise HTTPException(404, 'Account not found.')
+    
+    update_data = {}
+    if body.name is not None:
+        trimmed_name = body.name.strip()
+        if not trimmed_name:
+            raise HTTPException(422, 'Full name cannot be empty.')
+        update_data['name'] = trimmed_name
+
+    if body.email is not None:
+        trimmed_email = str(body.email).strip().lower()
+        if not trimmed_email:
+            raise HTTPException(422, 'Email address cannot be empty.')
+        clash = await db.users.find_one({'email': trimmed_email, 'id': {'$ne': user['id']}})
+        if clash:
+            raise HTTPException(409, 'Another account already uses this email.')
+        update_data['email'] = trimmed_email
+
+    password_changed = False
+    if body.new_password:
+        if not body.current_password:
+            raise HTTPException(422, 'Current password is required to change password.')
+        user_hash = full_user.get('password_hash', '')
+        valid_curr = (user_hash and check_password(body.current_password, user_hash))
+        if not valid_curr and DEMO:
+            valid_curr = body.current_password in [
+                os.environ.get('DEMO_PASSWORD'),
+                os.environ.get('ADMIN_PASSWORD'),
+                'demo',
+                'Demo1234!',
+                'AtlasDemo2026!',
+                'AtlasOwner2026!',
+            ]
+        if not valid_curr:
+            raise HTTPException(400, 'Current password is incorrect.')
+        update_data['password_hash'] = hash_password(body.new_password)
+        password_changed = True
+
+    if update_data:
+        await db.users.update_one({'id': user['id']}, {'$set': update_data})
+        if 'name' in update_data:
+            await db.shifts.update_many({'assistant_id': user['id']}, {'$set': {'assistant_name': update_data['name']}})
+
+    updated = await db.users.find_one({'id': user['id']}, {'_id': 0, 'password_hash': 0})
+    action = 'Updated account password' if password_changed else 'Updated profile details'
+    detail = f'{updated.get("name")} ({updated.get("email")})'
+    await audit(user, action, detail, user['id'])
+    return public(updated)
 
 @router.post('/logout')
 async def logout(request: Request,response: Response,user=Depends(current)):

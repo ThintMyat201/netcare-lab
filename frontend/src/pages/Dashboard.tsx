@@ -51,14 +51,16 @@ function downloadCSV(name: string, rows: any[][]) {
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
   return (
-    <div className="metric-grid">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
       {cards.map((m, i) => (
         <div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}>
-          <div className="metric-top">
-            <span>{m.title}</span>
-            <m.icon size={17} />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200 tracking-tight mb-1">
+              {m.title}
+            </span>
+            <m.icon size={18} className="shrink-0 text-slate-400 dark:text-slate-500" />
           </div>
-          <div className="metric-value">
+          <div className="metric-value text-xl sm:text-2xl font-bold truncate">
             {m.value}
             {m.suffix && <span>{m.suffix}</span>}
           </div>
@@ -544,70 +546,77 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageTitle title="Campus Dashboard">
-        <span className="date-label" data-testid="dashboard-date">
-          {new Intl.DateTimeFormat('en-MY', {
-            timeZone: 'Asia/Kuala_Lumpur',
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          }).format(new Date())}
-        </span>
-        <Button id="refresh-overview" onClick={refresh} disabled={monitor.busy}>
-          <RefreshCw size={14} className={monitor.busy ? 'spin' : ''} />
-          Refresh
-        </Button>
-        <Button
-          id="export-dashboard-csv"
-          data-testid="export-dashboard-csv"
-          variant="outline"
-          onClick={exportCSV}
-          className="whitespace-nowrap flex items-center gap-1.5"
-        >
-          <Download size={14} />
-          Export CSV
-        </Button>
-        <Button
-          id="export-dashboard-pdf"
-          data-testid="export-dashboard-pdf"
-          variant="primary"
-          onClick={exportPDF}
-          className="whitespace-nowrap flex items-center gap-1.5"
-        >
-          <FileText size={14} />
-          Export PDF
-        </Button>
-        {user.role === 'assistant' && currentShift && !currentShift.acknowledged_at && (
-          <Button
-            id="dashboard-ack-shift-btn"
-            variant="secondary"
-            onClick={() => navigate('/shifts')}
-            title="Acknowledge your scheduled shift"
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100" data-testid="page-title">
+            Campus Dashboard
+          </h1>
+          <span className="date-label hidden lg:inline-block text-xs font-semibold text-slate-400" data-testid="dashboard-date">
+            {new Intl.DateTimeFormat('en-MY', {
+              timeZone: 'Asia/Kuala_Lumpur',
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }).format(new Date())}
+          </span>
+        </div>
+        <div className={user.role === 'assistant' ? 'grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto' : 'grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto'}>
+          <button
+            type="button"
+            id="refresh-overview"
+            onClick={refresh}
+            disabled={monitor.busy}
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50 w-full sm:w-auto"
           >
-            <CheckCheck size={14} />
-            Acknowledge Shift
-          </Button>
-        )}
-        {user.role === 'engineer' && (
-          <Button
-            id="dashboard-primary-action"
-            variant="primary"
-            onClick={() => navigate('/monitoring')}
+            <RefreshCw size={14} className={monitor.busy ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+          <button
+            type="button"
+            id="export-dashboard-csv"
+            data-testid="export-dashboard-csv"
+            onClick={exportCSV}
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap w-full sm:w-auto"
           >
-            <Radio size={15} /> Open Device Monitor <ArrowRight size={14} />
-          </Button>
-        )}
-        {user.role === 'assistant' && (
-          <Button
-            id="dashboard-primary-action"
-            variant="primary"
-            onClick={() => navigate(`/checklists?lab=${currentShift?.lab_id || 'lab-1'}&new=1`)}
+            <Download size={14} />
+            <span>Export CSV</span>
+          </button>
+          <button
+            type="button"
+            id="export-dashboard-pdf"
+            data-testid="export-dashboard-pdf"
+            onClick={exportPDF}
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap w-full sm:w-auto"
           >
-            <Plus size={16} /> Run Lab Inspection
-          </Button>
-        )}
-      </PageTitle>
+            <FileText size={14} />
+            <span>Export PDF</span>
+          </button>
+          {user.role === 'assistant' && (
+            <button
+              type="button"
+              id="dashboard-primary-action"
+              onClick={() => navigate(`/checklists?lab=${currentShift?.lab_id || 'lab-1'}&new=1`)}
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap w-full sm:w-auto"
+            >
+              <Plus size={16} />
+              <span>Run Lab Inspection</span>
+            </button>
+          )}
+          {user.role === 'engineer' && (
+            <button
+              type="button"
+              id="dashboard-primary-action"
+              onClick={() => navigate('/monitoring')}
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap w-full sm:w-auto"
+            >
+              <Radio size={15} />
+              <span>Open Device Monitor</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      </header>
 
       <ErrorBox error={monitor.error || overview.error} retry={refresh} />
 
@@ -616,20 +625,27 @@ export default function Dashboard() {
       {user.role === 'assistant' ? (
         <div className="dashboard-bottom">
           <section className="access-section">
-            <SectionHead title="Today's Campus Lab Shifts & Inspection Progress">
-              <Link to="/shifts" data-testid="view-all-shifts">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100" data-testid="section-today's-campus-lab-shifts-&-inspection-progress">
+                Today's Campus Lab Shifts &amp; Inspection Progress
+              </h2>
+              <Link
+                to="/shifts"
+                data-testid="view-all-shifts"
+                className="whitespace-nowrap shrink-0 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1.5 transition-colors"
+              >
                 Open Shift Schedule <ArrowRight size={13} />
               </Link>
-            </SectionHead>
+            </div>
             <div className="w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm dashboard-shifts-wrap">
               <div className="w-full overflow-x-auto">
-                <table className="data-table dashboard-shifts-table min-w-full">
+                <table className="data-table dashboard-shifts-table min-w-[580px] w-full">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 uppercase">
-                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-name">LAB &amp; SHIFT WINDOW</th>
-                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-status">STATUS</th>
-                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-left col-shift-progress">INSPECTION PROGRESS</th>
-                      <th className="px-5 py-3.5 text-xs font-semibold tracking-wider text-right col-shift-action">ACTION</th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-name">LAB &amp; SHIFT WINDOW</th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-status">STATUS</th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-progress">INSPECTION PROGRESS</th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-right whitespace-nowrap col-shift-action">ACTION</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -646,25 +662,25 @@ export default function Dashboard() {
                           : 'pending_ack';
                       return (
                         <tr key={s.id} data-testid={`dashboard-shift-${s.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-5 py-4 col-shift-name">
-                            <strong>{s.lab_name}</strong>
-                            <small className="cell-sub">{s.shift_window}</small>
+                          <td className="px-4 py-3 whitespace-nowrap col-shift-name">
+                            <strong className="block text-slate-900 dark:text-slate-100 font-bold">{s.lab_name}</strong>
+                            <small className="cell-sub block text-xs text-slate-400 mt-0.5">{s.shift_window}</small>
                           </td>
-                          <td className="px-5 py-4 col-shift-status">
+                          <td className="px-4 py-3 whitespace-nowrap col-shift-status">
                             <Status value={statusKey} id={`dashboard-shift-status-${s.id}`} />
                           </td>
-                          <td className="px-5 py-4 col-shift-progress">
+                          <td className="px-4 py-3 whitespace-nowrap col-shift-progress">
                             <div className="utilization">
                               <span className="utilization-bar online">
                                 <i style={{ width: `${displayPercent}%` }} />
                               </span>
-                              <span className="mono">
+                              <span className="mono text-xs">
                                 {displayChecked}/{prog.required} Checked
                               </span>
                             </div>
                           </td>
-                          <td className="px-5 py-4 col-shift-action text-right">
-                            <div className="dashboard-shift-actions justify-end">
+                          <td className="px-4 py-3 whitespace-nowrap text-right col-shift-action">
+                            <div className="dashboard-shift-actions justify-end flex items-center gap-1.5">
                               {!isAcknowledged && s.assistant_id === user.id ? (
                               <Button
                                 id={`dashboard-shift-ack-${s.id}`}

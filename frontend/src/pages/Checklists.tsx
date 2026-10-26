@@ -676,7 +676,7 @@ export default function Checklists() {
                           {w.latestCheck && (
                             <button
                               type="button"
-                              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors"
+                              className="action-btn-uniform inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 outline-none focus:outline-none focus:ring-0 transition-colors"
                               title="View inspection details"
                               aria-label="View inspection details"
                               data-testid={`view-checklist-${w.latestCheck.id}`}

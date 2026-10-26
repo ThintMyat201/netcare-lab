@@ -983,6 +983,21 @@ export function Team() {
     if (Array.isArray(list.data)) setMembers(list.data);
   }, [list.data]);
 
+  useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      const updatedUser = e.detail;
+      if (updatedUser && updatedUser.id) {
+        setMembers(prev => {
+          if (!prev) return prev;
+          return prev.map(m => (m.id === updatedUser.id ? { ...m, ...updatedUser } : m));
+        });
+      }
+      list.load();
+    };
+    window.addEventListener('atlas-user-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('atlas-user-profile-updated', handleProfileUpdate);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const all = useMemo(() => members || [], [members]);
   const isOwner = (u: any) => u?.id === 'owner';
   const isSelf = (u: any) => u?.id === user.id;

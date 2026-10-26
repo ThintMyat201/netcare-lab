@@ -298,7 +298,7 @@ export default function Tickets() {
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            className="action-btn-uniform"
+                            className="action-btn-uniform inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 outline-none focus:outline-none focus:ring-0 transition-colors"
                             title="View ticket details and actions"
                             aria-label="View ticket details and actions"
                             data-testid={`ticket-detail-${t.id}`}
