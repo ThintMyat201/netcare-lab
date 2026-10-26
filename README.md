@@ -61,7 +61,7 @@ The backend seeds the demo database on startup, so there is no separate seed com
 |---|---|---|
 | Python | 3.12 | `motor` 3.3.1 and `pymongo` 4.6.3 pin the async driver. 3.13 also passes the test suite. |
 | Node.js | 24.x | Any current LTS works. |
-| npm | ships with Node | Install with `npm install --legacy-peer-deps` (or `npm ci --legacy-peer-deps`). Plain `npm install` stops with `ERESOLVE` because `react-day-picker` 8 expects `date-fns` 2 or 3 and `package.json` pins `date-fns` 4.1.0. |
+| npm | ships with Node | Install with `npm install --legacy-peer-deps` (or `npm ci --legacy-peer-deps`). Plain `npm install` stops with `ERESOLVE` because some peer ranges are older than the project: `react-scripts` 5 expects TypeScript 3 or 4, and `react-day-picker` 8 expects React 16 to 18 and `date-fns` 2 or 3. |
 | MongoDB | 8.x | Must be reachable at `MONGO_URL` before the backend starts. The test suite does not need it. |
 
 Start MongoDB on macOS (Homebrew):
