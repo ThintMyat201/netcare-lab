@@ -51,7 +51,7 @@ function downloadCSV(name: string, rows: any[][]) {
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {cards.map((m, i) => (
         <div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}>
           <div className="flex items-center justify-between mb-2">
@@ -766,9 +766,9 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="dashboard-mid">
+          <div className="dashboard-mid flex flex-col gap-6">
             <TrafficChart history={m.history} />
-            <section className="lab-health">
+            <section className="lab-health w-full">
               <SectionHead title="Lab Operational Health">
                 <Link
                   to="/monitoring"
@@ -779,54 +779,56 @@ export default function Dashboard() {
                   <ArrowUpRight size={17} />
                 </Link>
               </SectionHead>
-              <div className="health-summary">
-                <div
-                  className="health-ring"
-                  style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
-                >
-                  <span>
-                    {Math.round((apStats.online / apStats.total) * 100)}
-                    <small>%</small>
-                  </span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <div className="health-summary lg:col-span-1">
+                  <div
+                    className="health-ring"
+                    style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
+                  >
+                    <span>
+                      {Math.round((apStats.online / apStats.total) * 100)}
+                      <small>%</small>
+                    </span>
+                  </div>
+                  <div>
+                    <strong data-testid="network-health-label">Network Health</strong>
+                    <span>
+                      {apStats.online} of {apStats.total} access points operational
+                    </span>
+                    <small>Real-time telemetry snapshot</small>
+                  </div>
                 </div>
-                <div>
-                  <strong data-testid="network-health-label">Network Health</strong>
-                  <span>
-                    {apStats.online} of {apStats.total} access points operational
-                  </span>
-                  <small>Real-time telemetry snapshot</small>
+                <div className="lab-list lg:col-span-2">
+                  {[
+                    { id: 'lab-1', name: 'Computing Lab A' },
+                    { id: 'lab-2', name: 'Computing Lab B' },
+                    { id: 'lab-4', name: 'Computing Lab C' },
+                    { id: 'lab-3', name: 'Innovation Lab' },
+                  ].map((l, i) => {
+                    const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
+                    const issues = rows.filter((a: any) => a.status !== 'online').length;
+                    return (
+                      <Link
+                        key={l.id}
+                        to={`/monitoring?lab=${l.id}`}
+                        className="lab-row"
+                        data-testid={`lab-health-${i}`}
+                      >
+                        <span className="lab-icon">
+                          <Building2 size={16} />
+                        </span>
+                        <span>
+                          <strong>{l.name}</strong>
+                          <small>{rows.length} access points</small>
+                        </span>
+                        <span className={`lab-state ${issues ? 'warn' : ''}`}>
+                          {issues ? `${issues} alert(s) active` : 'Operational'}
+                        </span>
+                        <ChevronRight size={13} />
+                      </Link>
+                    );
+                  })}
                 </div>
-              </div>
-              <div className="lab-list">
-                {[
-                  { id: 'lab-1', name: 'Computing Lab A' },
-                  { id: 'lab-2', name: 'Computing Lab B' },
-                  { id: 'lab-4', name: 'Computing Lab C' },
-                  { id: 'lab-3', name: 'Innovation Lab' },
-                ].map((l, i) => {
-                  const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
-                  const issues = rows.filter((a: any) => a.status !== 'online').length;
-                  return (
-                    <Link
-                      key={l.id}
-                      to={`/monitoring?lab=${l.id}`}
-                      className="lab-row"
-                      data-testid={`lab-health-${i}`}
-                    >
-                      <span className="lab-icon">
-                        <Building2 size={16} />
-                      </span>
-                      <span>
-                        <strong>{l.name}</strong>
-                        <small>{rows.length} access points</small>
-                      </span>
-                      <span className={`lab-state ${issues ? 'warn' : ''}`}>
-                        {issues ? `${issues} alert(s) active` : 'Operational'}
-                      </span>
-                      <ChevronRight size={13} />
-                    </Link>
-                  );
-                })}
               </div>
               <div className="lab-foot">
                 <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
@@ -837,7 +839,7 @@ export default function Dashboard() {
           <div className="dashboard-bottom">
             <section className="access-section">
               <SectionHead title="Access Point Status">
-                <div className="section-actions">
+                <div className="section-actions flex flex-wrap items-center gap-2 sm:gap-3">
                   <Select
                     id="dashboard-lab-filter"
                     value={lab}
@@ -854,13 +856,15 @@ export default function Dashboard() {
                   </Link>
                 </div>
               </SectionHead>
-              <APTable
-                aps={[...aps].sort(
-                  (a: any, b: any) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0)
-                )}
-                limit={5}
-                onSelect={(a: any) => navigate(`/monitoring?ap=${a.id}`)}
-              />
+              <div className="w-full overflow-x-auto">
+                <APTable
+                  aps={[...aps].sort(
+                    (a: any, b: any) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0)
+                  )}
+                  limit={5}
+                  onSelect={(a: any) => navigate(`/monitoring?ap=${a.id}`)}
+                />
+              </div>
               <div className="table-foot">
                 Showing {Math.min(5, aps.length)} of {aps.length} access points
                 <span>

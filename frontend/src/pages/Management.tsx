@@ -1065,7 +1065,7 @@ export function Team() {
     }));
 
   const emailTrimmed = form.email.trim().toLowerCase();
-  const emailFormatError = emailTrimmed && !EMAIL_PATTERN.test(emailTrimmed) ? 'Enter a valid email address (e.g. name@campus.edu.my).' : '';
+  const emailFormatError = emailTrimmed && !EMAIL_PATTERN.test(emailTrimmed) ? 'Enter a valid email address (e.g. name@apu.edu.my).' : '';
   const emailTaken =
     emailTrimmed && all.some(u => u.email?.toLowerCase() === emailTrimmed && u.id !== selected?.id)
       ? 'Another team member already uses this email address.'
@@ -1394,7 +1394,7 @@ export function Team() {
                   aria-describedby={emailError ? 'user-email-error' : undefined}
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
-                  placeholder="name@campus.edu.my"
+                  placeholder="name@apu.edu.my"
                   className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </Field>

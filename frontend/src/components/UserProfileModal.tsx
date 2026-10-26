@@ -263,7 +263,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                placeholder="e.g. alex@atlas.demo"
+                placeholder="e.g. alex@apu.edu.my"
               />
             </div>
           </div>

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Network, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Network, ClipboardCheck, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
+import campusBg from '../assets/A-CONNECTED-CAMPUS-2.jpg';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -46,17 +47,29 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-photo" />
-      <div className="login-top">
+    <div className="login-page relative min-h-screen flex flex-col justify-between overflow-hidden">
+      {/* Background Image Layer */}
+      <div
+        className="login-photo absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${campusBg})` }}
+      />
+      {/* Rich Dark Gradient Overlay */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-950/85 via-slate-950/80 to-slate-950/90 backdrop-blur-[2px]" />
+
+      <div className="login-top relative z-10">
         <Logo />
       </div>
-      <main className="login-main">
+      <main className="login-main relative z-10 flex flex-col items-center">
         <span className="eyebrow">CAMPUS NETWORK OPERATIONS</span>
         <h1>
           Every connection.<br />Under your care.
         </h1>
-        <div className="login-form">
+        <div className="login-form max-w-md w-full bg-slate-900/85 border border-slate-800/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
+          <div className="mb-4">
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm">
+              {recover ? <KeyRound size={20} /> : <Lock size={20} />}
+            </span>
+          </div>
           <h2>{recover ? 'Account Recovery' : 'Sign In to Atlas NetCare'}</h2>
           <p>
             {recover
@@ -73,7 +86,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="name@campus.edu.ph"
+                placeholder="name@apu.edu.my"
               />
             </Field>
 
@@ -117,29 +130,35 @@ export default function Login() {
             {recover ? '← Return to Sign In' : 'Forgot your password?'}
           </button>
 
-          <div className="demo-divider">
-            <span>OR QUICK ACCESS BY ROLE</span>
+          <div className="demo-divider flex items-center justify-center my-6 gap-3 text-[11px] font-semibold text-slate-400 tracking-wider">
+            <span className="h-px bg-slate-700/60 flex-1" />
+            <span className="px-1 text-slate-400 uppercase">OR QUICK ACCESS BY ROLE</span>
+            <span className="h-px bg-slate-700/60 flex-1" />
           </div>
 
-          <div className="demo-roles">
+          <div className="demo-roles grid grid-cols-3 gap-2.5">
             {[
               ['admin', 'Administrator', ShieldCheck],
               ['engineer', 'Network Engineer', Network],
               ['assistant', 'IT Assistant', ClipboardCheck]
             ].map(([role, label, Icon]: any) => (
-              <button disabled={busy} key={role} data-testid={`demo-login-${role}`} onClick={() => demo(role)}>
-                <Icon size={20} />
-                <span>{label}</span>
-                <ArrowRight size={13} />
+              <button
+                type="button"
+                disabled={busy}
+                key={role}
+                data-testid={`demo-login-${role}`}
+                onClick={() => demo(role)}
+                className="flex flex-col items-center justify-center gap-2 border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800/80 hover:border-blue-500/50 transition-all rounded-lg p-3 text-xs text-slate-200 cursor-pointer disabled:opacity-50"
+              >
+                <Icon size={18} className="text-blue-400 shrink-0" />
+                <span className="font-semibold text-center leading-tight">{label}</span>
               </button>
             ))}
           </div>
-
-          <p className="login-foot">Campus IT Network Operations & Lab Management Portal.</p>
         </div>
       </main>
 
-      <div className="login-bottom">
+      <div className="login-bottom relative z-10">
         ATLAS NETCARE <span>Campus Network Operations · Asia/Kuala Lumpur (MYT)</span>
       </div>
     </div>

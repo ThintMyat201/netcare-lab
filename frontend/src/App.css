@@ -675,8 +675,8 @@ button.password-eye-btn:hover {
 }
 
 .dashboard-mid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 25px;
   border-top: 2px solid var(--line);
   border-bottom: 2px solid var(--line);
@@ -841,9 +841,10 @@ button.password-eye-btn:hover {
 }
 
 .lab-health {
-  border-left: 2px solid var(--line);
-  padding-left: 25px;
+  border-left: none;
+  padding-left: 0;
   min-width: 0;
+  width: 100%;
 }
 
 .health-summary {
@@ -2918,7 +2919,7 @@ button.password-eye-btn:hover {
 
 .login-page {
   min-height: 100vh;
-  background: #0d121a;
+  background: #020617;
   position: relative;
   color: #e5eaf1;
   isolation: isolate;
@@ -2929,8 +2930,11 @@ button.password-eye-btn:hover {
 .login-photo {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: linear-gradient(90deg, #0d121aeb, #0d121add), url('https://images.unsplash.com/photo-1562774053-701939374585?w=2400&q=85') center/cover;
+  z-index: 0;
+  background-image: linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.80), rgba(2, 6, 23, 0.90)), url('./assets/A-CONNECTED-CAMPUS-2.jpg');
+  background-size: cover;
+  background-position: center;
+  backdrop-filter: blur(2px);
 }
 
 .login-top {
@@ -2967,12 +2971,13 @@ button.password-eye-btn:hover {
 
 .login-form {
   text-align: left;
-  backdrop-filter: blur(14px);
-  background: #131a24f0;
-  border: 2px solid #3c4b64;
-  border-radius: 8px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 16px 40px #00000070;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
 }
 
 .login-form h2 {
@@ -3006,45 +3011,45 @@ button.password-eye-btn:hover {
 .demo-divider {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: #7b8ea7;
   font-size: 10px;
-  font-weight: 700;
-  margin: 25px 0 16px;
+  font-weight: 600;
+  margin: 22px 0 16px;
   letter-spacing: .5px;
 }
 
 .demo-divider:before, .demo-divider:after {
   content: '';
-  height: 2px;
-  background: #2e3b4d;
+  height: 1px;
+  background: rgba(51, 65, 85, 0.6);
   flex: 1;
 }
 
 .demo-roles {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
+  gap: 10px;
 }
 
 .demo-roles > button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 14px 6px;
+  gap: 8px;
+  padding: 12px 8px;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   color: #d1dce9;
-  background: #18212e;
-  border: 2px solid #38465d;
-  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all .15s ease;
+  transition: all .2s ease;
 }
 
 .demo-roles > button > svg:first-child {
-  color: #83adfb;
+  color: #60a5fa;
 }
 
 .demo-roles > button > svg:last-child {
@@ -3052,8 +3057,8 @@ button.password-eye-btn:hover {
 }
 
 .demo-roles > button:hover {
-  border-color: #6a9ffc;
-  background: #203049;
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(30, 41, 59, 0.8);
   transform: translateY(-1px);
 }
 
@@ -3604,18 +3609,6 @@ button.password-eye-btn:hover {
     border-top: 2px solid var(--line);
     padding-top: 24px;
   }
-  .lab-health {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    column-gap: 25px;
-  }
-  .lab-health .section-head {
-    grid-column: 1 / -1;
-    margin-bottom: 8px;
-  }
-  .lab-health .lab-foot {
-    grid-column: 1 / -1;
-  }
   .health-summary {
     margin: 0;
   }
@@ -3624,13 +3617,6 @@ button.password-eye-btn:hover {
   }
   .lab-list .lab-row:first-child {
     border-top: 0;
-  }
-  .lab-list {
-    border-left: 2px solid var(--line);
-    padding-left: 20px;
-  }
-  .lab-health .lab-foot {
-    margin-top: 17px;
   }
   .activity-list {
     display: grid;
@@ -3817,12 +3803,8 @@ button.password-eye-btn:hover {
   .dashboard-bottom {
     gap: 20px;
   }
-  .lab-health {
-    grid-template-columns: 1fr 1.5fr;
-    gap: 15px;
-  }
   .lab-list {
-    padding-left: 12px;
+    padding-left: 0;
   }
   .lab-row {
     gap: 7px;

@@ -36,26 +36,172 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=235}:a
  const histCap=Math.max(6,maxPoints-livePoints.length);
  const sampledHist=bucketed.length<=histCap?bucketed:bucketed.filter((_,idx)=>idx===0||idx===bucketed.length-1||idx%Math.ceil(bucketed.length/histCap)===0).slice(-histCap);
  const filtered=[...sampledHist,...livePoints];
- return <section className="chart-section"><SectionHead title={title}><div className="segmented">{['1h','6h','24h'].map(p=><button type="button" aria-pressed={period===p} data-testid={`chart-range-${p}`} onClick={()=>setPeriod(p)} className={period===p?'selected':''} key={p}>{p}</button>)}</div></SectionHead><div className="chart-legend"><button type="button" aria-pressed={showBandwidth} data-testid="toggle-series-bandwidth" className={`legend-toggle ${showBandwidth?'active':'inactive'}`} onClick={()=>setShowBandwidth(v=>!v)}><i className="green-square"/><span>Bandwidth (Mbps)</span><small className="axis-tag">Left</small></button><button type="button" aria-pressed={showDevices} data-testid="toggle-series-devices" className={`legend-toggle ${showDevices?'active':'inactive'}`} onClick={()=>setShowDevices(v=>!v)}><i className="blue-square"/><span>Connected Devices</span><small className="axis-tag">Right</small></button><span className="chart-unit">TELEMETRY FEED</span></div><div data-testid="network-activity-chart" className="traffic-chart" style={{height}}><ResponsiveContainer width="100%" height="100%"><AreaChart key={period} data={filtered} margin={{top:10,right:4,left:0,bottom:0}}><defs><linearGradient id={`clientsFill-${chartId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5293ff" stopOpacity={.26}/><stop offset="100%" stopColor="#5293ff" stopOpacity={0}/></linearGradient><linearGradient id={`trafficFill-${chartId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3cd4a0" stopOpacity={.18}/><stop offset="100%" stopColor="#3cd4a0" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="var(--line-strong, #38465d)" strokeWidth={1.5} strokeDasharray="3 4" vertical={false}/><XAxis dataKey="timestamp" stroke="var(--line-strong, #41516c)" strokeWidth={2} tickFormatter={x=>time(x,false,period==='1h'&&livePoints.length>0)} minTickGap={period==='1h'?24:period==='6h'?45:65} tick={{fill:'var(--text)',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} dy={7}/><YAxis yAxisId="left" orientation="left" width={44} hide={!showBandwidth&&showDevices} domain={[0,'auto']} stroke="var(--line-strong, #41516c)" strokeWidth={2} tick={{fill:'#3cd4a0',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}}/><YAxis yAxisId="right" orientation="right" width={42} allowDecimals={false} hide={!showDevices&&showBandwidth} domain={[0,'auto']} stroke="var(--line-strong, #41516c)" strokeWidth={2} tick={{fill:'#649cfb',fontSize:10,fontWeight:600}} axisLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}} tickLine={{strokeWidth:2,stroke:'var(--line-strong, #41516c)'}}/><Tooltip contentStyle={{background:'var(--panel)',border:'2px solid var(--line-strong, #41516c)',borderRadius:6,fontSize:12,fontWeight:600,color:'var(--text)'}} labelFormatter={x=>`${time(String(x),true,true)} MYT`}/>{showBandwidth&&<Area yAxisId="left" type="monotone" name="Bandwidth (Mbps)" dataKey="throughput" stroke="#3cd4a0" strokeWidth={2.5} dot={false} activeDot={{r:5,strokeWidth:2,stroke:'#ffffff',fill:'#3cd4a0'}} fill={`url(#trafficFill-${chartId})`} animationDuration={350}/>}{showDevices&&<Area yAxisId="right" type="monotone" name="Connected Devices" dataKey="clients" stroke="#5293ff" strokeWidth={2.75} dot={false} activeDot={{r:5,strokeWidth:2,stroke:'#ffffff',fill:'#5293ff'}} fill={`url(#clientsFill-${chartId})`} animationDuration={350}/>}</AreaChart></ResponsiveContainer></div></section>;
+ return (
+  <section className="chart-section w-full">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div>
+        <h2
+          className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
+          data-testid={`section-${title.toLowerCase().replace(/\s+/g, '-')}`}
+        >
+          {title}
+        </h2>
+      </div>
+      <div className="segmented">
+        {['1h', '6h', '24h'].map(p => (
+          <button
+            type="button"
+            aria-pressed={period === p}
+            data-testid={`chart-range-${p}`}
+            onClick={() => setPeriod(p)}
+            className={period === p ? 'selected' : ''}
+            key={p}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+    <div className="chart-legend flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
+      <button
+        type="button"
+        aria-pressed={showBandwidth}
+        data-testid="toggle-series-bandwidth"
+        className={`legend-toggle ${showBandwidth ? 'active' : 'inactive'}`}
+        onClick={() => setShowBandwidth(v => !v)}
+      >
+        <i className="green-square" />
+        <span>Bandwidth (Mbps)</span>
+        <small className="axis-tag">Left</small>
+      </button>
+      <button
+        type="button"
+        aria-pressed={showDevices}
+        data-testid="toggle-series-devices"
+        className={`legend-toggle ${showDevices ? 'active' : 'inactive'}`}
+        onClick={() => setShowDevices(v => !v)}
+      >
+        <i className="blue-square" />
+        <span>Connected Devices</span>
+        <small className="axis-tag">Right</small>
+      </button>
+      <span className="chart-unit ml-auto">TELEMETRY FEED</span>
+    </div>
+    <div className="w-full overflow-x-auto">
+      <div data-testid="network-activity-chart" className="traffic-chart min-w-[500px] sm:min-w-0" style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart key={period} data={filtered} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={`clientsFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#5293ff" stopOpacity={0.26} />
+                <stop offset="100%" stopColor="#5293ff" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id={`trafficFill-${chartId}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3cd4a0" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#3cd4a0" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="var(--line-strong, #38465d)" strokeWidth={1.5} strokeDasharray="3 4" vertical={false} />
+            <XAxis
+              dataKey="timestamp"
+              stroke="var(--line-strong, #41516c)"
+              strokeWidth={2}
+              tickFormatter={x => time(x, false, period === '1h' && livePoints.length > 0)}
+              minTickGap={period === '1h' ? 24 : period === '6h' ? 45 : 65}
+              tick={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600 }}
+              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+              dy={7}
+            />
+            <YAxis
+              yAxisId="left"
+              orientation="left"
+              width={44}
+              hide={!showBandwidth && showDevices}
+              domain={[0, 'auto']}
+              stroke="var(--line-strong, #41516c)"
+              strokeWidth={2}
+              tick={{ fill: '#3cd4a0', fontSize: 10, fontWeight: 600 }}
+              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              width={42}
+              allowDecimals={false}
+              hide={!showDevices && showBandwidth}
+              domain={[0, 'auto']}
+              stroke="var(--line-strong, #41516c)"
+              strokeWidth={2}
+              tick={{ fill: '#649cfb', fontSize: 10, fontWeight: 600 }}
+              axisLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+              tickLine={{ strokeWidth: 2, stroke: 'var(--line-strong, #41516c)' }}
+            />
+            <Tooltip
+              contentStyle={{
+                background: 'var(--panel)',
+                border: '2px solid var(--line-strong, #41516c)',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text)',
+              }}
+              labelFormatter={x => `${time(String(x), true, true)} MYT`}
+            />
+            {showBandwidth && (
+              <Area
+                yAxisId="left"
+                type="monotone"
+                name="Bandwidth (Mbps)"
+                dataKey="throughput"
+                stroke="#3cd4a0"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#3cd4a0' }}
+                fill={`url(#trafficFill-${chartId})`}
+                animationDuration={350}
+              />
+            )}
+            {showDevices && (
+              <Area
+                yAxisId="right"
+                type="monotone"
+                name="Connected Devices"
+                dataKey="clients"
+                stroke="#5293ff"
+                strokeWidth={2.75}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: '#ffffff', fill: '#5293ff' }}
+                fill={`url(#clientsFill-${chartId})`}
+                animationDuration={350}
+              />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  </section>
+ );
 };
 export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, ticketsByAsset = {} }: any) => {
   const displayedAps = aps.slice(0, limit || aps.length);
 
   return (
-    <div className="table-wrap ap-monitoring-table-container">
+    <div className="table-wrap ap-monitoring-table-container w-full overflow-hidden">
       {aps.length ? (
         <div className="ap-table-scroll-wrap w-full overflow-x-auto">
-          <table className="data-table ap-table clean-ap-table w-full">
+          <table className="data-table ap-table clean-ap-table w-full min-w-[600px]">
             <thead>
-              <tr>
-                <th style={{ width: '26%' }}>ACCESS POINT</th>
-                <th style={{ width: '22%' }}>STATUS</th>
-                <th style={{ width: '16%' }}>CLIENTS</th>
-                <th style={{ width: '22%' }}>BANDWIDTH LOAD</th>
-                <th style={{ width: '14%', textAlign: 'right' }}>ACTION</th>
+              <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50">
+                <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-left" style={{ width: '26%' }}>ACCESS POINT</th>
+                <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-left" style={{ width: '22%' }}>STATUS</th>
+                <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-left" style={{ width: '16%' }}>CLIENTS</th>
+                <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-left" style={{ width: '22%' }}>BANDWIDTH LOAD</th>
+                <th className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-right" style={{ width: '14%', textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {displayedAps.map((a: any) => {
                 const linkedTicket = a.linked_ticket || ticketsByAsset[a.id];
                 const isNonHealthy = a.status === 'congested' || a.status === 'stale' || a.status === 'offline';
@@ -69,12 +215,12 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                     key={a.id}
                     data-testid={`ap-row-${a.id}`}
                     onClick={() => onSelect?.(a)}
-                    className={onSelect ? 'clickable' : ''}
+                    className={onSelect ? 'clickable hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors' : ''}
                   >
                     {/* 1. ACCESS POINT: Plain bold tag, location & IP in tooltip */}
-                    <td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <strong
-                        className="ap-tag-mono mono"
+                        className="ap-tag-mono mono block font-semibold text-slate-900 dark:text-slate-100"
                         title={fullTooltip}
                       >
                         {a.tag}
@@ -82,25 +228,25 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                     </td>
 
                     {/* 2. STATUS: Status badge with dot and text */}
-                    <td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <Status value={a.status} id={`ap-status-${a.id}`} />
                     </td>
 
                     {/* 3. CLIENTS: Connected devices count */}
-                    <td className="mono">{a.clients ?? '—'}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm mono font-medium text-slate-700 dark:text-slate-300">{a.clients ?? '—'}</td>
 
                     {/* 4. BANDWIDTH LOAD: Compact progress bar + percentage */}
-                    <td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <div className="utilization">
                         <span className={`utilization-bar ${a.status}`}>
                           <i style={{ width: `${a.load || 0}%` }} />
                         </span>
-                        <span className="mono">{a.load == null ? '—' : `${a.load}%`}</span>
+                        <span className="mono font-medium text-slate-700 dark:text-slate-300">{a.load == null ? '—' : `${a.load}%`}</span>
                       </div>
                     </td>
 
                     {/* 5. ACTION: Single uniform action button */}
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm" style={{ textAlign: 'right' }}>
                       <div className="ap-action-group inline-flex items-center justify-end">
                         <button
                           type="button"

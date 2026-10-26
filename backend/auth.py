@@ -71,7 +71,7 @@ async def login(body: Login,request: Request,response: Response):
 async def demo(body: DemoLogin,request: Request,response: Response):
     if not DEMO: raise HTTPException(404)
     await limit(request,'demo:'+body.role)
-    user=await db.users.find_one({'email':f'{body.role}@atlas.demo','active':True},{'_id':0})
+    user=await db.users.find_one({'$or': [{'email': f'{body.role}@apu.edu.my'}, {'email': f'{body.role}@atlas.demo'}], 'active': True}, {'_id': 0})
     if not user: raise HTTPException(404,'Demo account is unavailable.')
     return await session(user,response)
 

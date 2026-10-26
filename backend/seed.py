@@ -42,6 +42,9 @@ async def seed():
         return
     if await db.meta.find_one({'key':'seeded'}):
         from monitoring import ensure_telemetry_history, sync_alerts
+        async for u in db.users.find({'email': {'$regex': r'@atlas\.demo$'}}):
+            new_email = u['email'].replace('@atlas.demo', '@apu.edu.my')
+            await db.users.update_one({'_id': u['_id']}, {'$set': {'email': new_email}})
         await _normalize_demo_timestamps()
         await ensure_campus_inventory()
         await ensure_telemetry_history()
@@ -49,7 +52,7 @@ async def seed():
         return
     labs=[{'id':'lab-1','name':'Computing Lab A','building':'Technology Building','floor':'1st floor','code':'CL-A'}, {'id':'lab-2','name':'Computing Lab B','building':'Technology Building','floor':'2nd floor','code':'CL-B'}, {'id':'lab-3','name':'Innovation Lab','building':'Engineering Building','floor':'1st floor','code':'IL'}]
     for row in labs: await db.labs.update_one({'id':row['id']},{'$setOnInsert':row},upsert=True)
-    people=[('owner',os.environ['ADMIN_EMAIL'],'Campus Owner','admin'),('admin','admin@atlas.demo','Alex Morgan','admin'),('engineer','engineer@atlas.demo','Daniel Reyes','engineer'),('eng-2','sofia@atlas.demo','Sofia Cruz','engineer'),('assistant','assistant@atlas.demo','Jamie Santos','assistant'),('asst-2','mika@atlas.demo','Mika Flores','assistant'),('asst-3','leo@atlas.demo','Leo Garcia','assistant'),('asst-4','nina@atlas.demo','Nina Ramos','assistant'),('asst-5','kai@atlas.demo','Kai Mendoza','assistant')]
+    people=[('owner',os.environ['ADMIN_EMAIL'],'Campus Owner','admin'),('admin','admin@apu.edu.my','Alex Morgan','admin'),('engineer','engineer@apu.edu.my','Daniel Reyes','engineer'),('eng-2','sofia@apu.edu.my','Sofia Cruz','engineer'),('assistant','assistant@apu.edu.my','Jamie Santos','assistant'),('asst-2','mika@apu.edu.my','Mika Flores','assistant'),('asst-3','leo@apu.edu.my','Leo Garcia','assistant'),('asst-4','nina@apu.edu.my','Nina Ramos','assistant'),('asst-5','kai@apu.edu.my','Kai Mendoza','assistant')]
     password_hash=hash_password(os.environ['DEMO_PASSWORD'])
     for id,email,name,role in people:
         await db.users.update_one({'id':id},{'$setOnInsert':{'id':id,'email':email,'name':name,'role':role,'active':True,'password_hash':hash_password(os.environ['ADMIN_PASSWORD']) if id=='owner' else password_hash,'created_at':stamp()}},upsert=True)
