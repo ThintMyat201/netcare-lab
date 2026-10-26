@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import HTTPException
@@ -12,11 +13,13 @@ from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, ConfigDict
 
 load_dotenv(Path(__file__).parent / '.env')
-client = AsyncIOMotorClient(os.environ['MONGO_URL'], serverSelectionTimeoutMS=4000)
+CAMPUS_TIMEZONE = os.environ.get('CAMPUS_TIMEZONE', 'Asia/Kuala_Lumpur')
+CAMPUS_TZ = ZoneInfo(CAMPUS_TIMEZONE)
+client = AsyncIOMotorClient(os.environ['MONGO_URL'], serverSelectionTimeoutMS=4000, tz_aware=True, tzinfo=CAMPUS_TZ)
 # Demo data never shares operational collections with a non-demo installation.
 DEMO = os.environ['DEMO_MODE'] == 'true'
 db = client[os.environ['DB_NAME'] + ('_atlas_demo' if DEMO else '_atlas')]
-def now(): return datetime.now(timezone.utc)
+def now(): return datetime.now(CAMPUS_TZ)
 def stamp(): return now().isoformat()
 def uid(): return str(uuid.uuid4())
 class Document(BaseModel):
@@ -29,7 +32,7 @@ async def audit(user, action, detail, resource_id=None):
     await db.audit.insert_one({'id': uid(), 'actor_id': user['id'], 'actor': user['name'], 'action': action, 'detail': detail, 'resource_id': resource_id, 'timestamp': stamp()})
 
 PERMS = {
- 'admin': {'view','inventory','users','shifts','ack','checklist','incident','tickets','simulate','audit','reports'},
+ 'admin': {'view','inventory','users','shifts','ack','incident','tickets','simulate','audit','reports'},
  'engineer': {'view','incident','tickets','simulate'},
  'assistant': {'view','ack','checklist','incident'},
  'scheduler': {'maintain'}

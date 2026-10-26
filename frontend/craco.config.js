@@ -85,6 +85,9 @@ let webpackConfig = {
     },
     configure: (webpackConfig) => {
 
+      // Disable persistent filesystem caching to prevent stale module resolution across branch switches
+      webpackConfig.cache = false;
+
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
           ...webpackConfig.watchOptions,

@@ -1,20 +1,37 @@
 from core import db,client
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI,Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from seed import seed
 from auth import router as auth_router
-from operations import router as operations_router
-from monitoring import router as monitoring_router
+from operations import router as operations_router, make_reminders
+from monitoring import router as monitoring_router, generate_sample, sync_alerts
 from reporting import router as reporting_router
+
+async def _background_telemetry_loop():
+    while True:
+        try:
+            await asyncio.sleep(15)
+            await generate_sample(overwrite=True)
+            await sync_alerts()
+            await make_reminders()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            await asyncio.sleep(15)
 
 @asynccontextmanager
 async def lifespan(app):
     await seed()
-    yield
-    client.close()
+    bg_task = asyncio.create_task(_background_telemetry_loop())
+    try:
+        yield
+    finally:
+        bg_task.cancel()
+        client.close()
 
 app=FastAPI(title='Atlas NetCare Academic Demo',lifespan=lifespan)
 allowed_origins=[os.environ['FRONTEND_URL']]

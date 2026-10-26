@@ -14,6 +14,8 @@ export function errorText(e:any):string {
  const d=e.response?.data?.detail;
  return typeof d==='string'?d:Array.isArray(d)?d.map(x=>x.msg).join('. '):'The server is unavailable. Your unsent work is still here. Please try again.';
 }
-export const time=(value?:string,full=false)=>value?new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',...(full?{month:'short',day:'numeric'}:{}),hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value)):'—';
-export const roleLabel=(r:string)=>({admin:'Administrator',engineer:'Network engineer',assistant:'IT assistant'}[r]||r);
+export const CAMPUS_TIMEZONE='Asia/Kuala_Lumpur';
+export const normalizeTimestamp=(value:string)=>/Z|[+-]\d{2}:?\d{2}$/.test(value.trim())?value.trim():`${value.trim()}Z`;
+export const time=(value?:string,full=false,withSeconds=false)=>value?new Intl.DateTimeFormat('en-MY',{timeZone:CAMPUS_TIMEZONE,...(full?{month:'short',day:'numeric'}:{}),hour:'2-digit',minute:'2-digit',...(withSeconds?{second:'2-digit'}:{}),hour12:false}).format(new Date(normalizeTimestamp(value))):'—';
+export const roleLabel=(r:string)=>({admin:'Administrator',engineer:'Network Engineer',assistant:'IT Assistant'}[r]||r);
 export type User={id:string;name:string;email:string;role:string;active:boolean};

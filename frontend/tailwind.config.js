@@ -14,6 +14,27 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      borderWidth: {
+        DEFAULT: '2px',
+        '0': '0',
+        '1': '1px',
+        '2': '2px',
+        '3': '3px',
+        '4': '4px',
+        '6': '6px',
+        '8': '8px'
+      },
+      fontWeight: {
+        thin: '400',
+        extralight: '400',
+        light: '500',
+        normal: '550',
+        medium: '600',
+        semibold: '700',
+        bold: '800',
+        extrabold: '900',
+        black: '950'
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
