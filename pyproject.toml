@@ -5,3 +5,9 @@ extend-exclude = '\.venv'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # Third-party deprecations (mongomock, starlette, anyio) that this project cannot fix.
+    "ignore::DeprecationWarning:mongomock.*",
+    "ignore::PendingDeprecationWarning:starlette.*",
+    "ignore::DeprecationWarning:starlette.*",
+]
