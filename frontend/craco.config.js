@@ -2,15 +2,8 @@
 const path = require("path");
 require("dotenv").config();
 
-// Check if we're in development/preview mode (not production build)
-// Craco sets NODE_ENV=development for start, NODE_ENV=production for build
-const isDevServer = process.env.NODE_ENV !== "production";
-
-// Environment variable overrides
-const config = {
-  enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
-};
-
+// react-scripts 5 still passes dev-server options that webpack-dev-server 5 removed (the yarn "resolutions"
+// pin 5.2.6; npm installs 4.15.2). Translate them to the names both versions accept.
 function makeDevServerV5Compatible(devServerConfig) {
   const {
     https,
@@ -58,18 +51,7 @@ function makeDevServerV5Compatible(devServerConfig) {
   return compatibleConfig;
 }
 
-// Conditionally load health check modules only if enabled
-let WebpackHealthPlugin;
-let setupHealthEndpoints;
-let healthPluginInstance;
-
-if (config.enableHealthCheck) {
-  WebpackHealthPlugin = require("./plugins/health-check/webpack-health-plugin");
-  setupHealthEndpoints = require("./plugins/health-check/health-endpoints");
-  healthPluginInstance = new WebpackHealthPlugin();
-}
-
-let webpackConfig = {
+module.exports = {
   eslint: {
     configure: {
       extends: ["plugin:react-hooks/recommended"],
@@ -84,55 +66,23 @@ let webpackConfig = {
       '@': path.resolve(__dirname, 'src'),
     },
     configure: (webpackConfig) => {
-
       // Disable persistent filesystem caching to prevent stale module resolution across branch switches
       webpackConfig.cache = false;
 
       // Add ignored patterns to reduce watched directories
-        webpackConfig.watchOptions = {
-          ...webpackConfig.watchOptions,
-          ignored: [
-            '**/node_modules/**',
-            '**/.git/**',
-            '**/build/**',
-            '**/dist/**',
-            '**/coverage/**',
-            '**/public/**',
+      webpackConfig.watchOptions = {
+        ...webpackConfig.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/build/**',
+          '**/dist/**',
+          '**/coverage/**',
+          '**/public/**',
         ],
       };
-
-      // Add health check plugin to webpack if enabled
-      if (config.enableHealthCheck && healthPluginInstance) {
-        webpackConfig.plugins.push(healthPluginInstance);
-      }
       return webpackConfig;
     },
   },
+  devServer: makeDevServerV5Compatible,
 };
-
-webpackConfig.devServer = (devServerConfig) => {
-  // Add health check endpoints if enabled
-  if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
-    const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
-
-    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
-      // Call original setup if exists
-      if (originalSetupMiddlewares) {
-        middlewares = originalSetupMiddlewares(middlewares, devServer);
-      }
-
-      // Setup health endpoints
-      setupHealthEndpoints(devServer, healthPluginInstance);
-
-      return middlewares;
-    };
-  }
-
-  return devServerConfig;
-};
-
-const configureDevServer = webpackConfig.devServer;
-webpackConfig.devServer = (devServerConfig) =>
-  makeDevServerV5Compatible(configureDevServer(devServerConfig));
-
-module.exports = webpackConfig;

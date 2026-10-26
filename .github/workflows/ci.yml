@@ -34,8 +34,8 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      # Some peer ranges are older than this project: react-scripts 5 expects TypeScript 3 or 4, and
-      # react-day-picker 8 expects React 16-18 and date-fns 2 or 3. A strict install fails with ERESOLVE.
+      # react-scripts 5 (Create React App) declares TypeScript 3 or 4 as a peer, and this project uses
+      # TypeScript 5.9, so a strict install fails with ERESOLVE.
       - run: npm ci --legacy-peer-deps
       - name: Build
         # Create React App turns lint warnings into errors when CI=true; this job checks that the app compiles.
