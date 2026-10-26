@@ -59,7 +59,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=['GET', 'POST', 'PATCH'],
+    # DELETE is listed because the admin pages remove assets, locations and team members.
+    allow_methods=['GET', 'POST', 'PATCH', 'DELETE'],
     allow_headers=['Content-Type', 'Authorization', 'X-Atlas-Request'],
 )
 

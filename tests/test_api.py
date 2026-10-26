@@ -219,6 +219,15 @@ def test_removed_team_member_can_no_longer_sign_in(client, login):
     assert response.status_code == 401
 
 
+def test_browser_may_send_delete_requests(client):
+    preflight = client.options(
+        "/api/assets/pc-01",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "DELETE"},
+    )
+    assert preflight.status_code == 200
+    assert "DELETE" in preflight.headers["access-control-allow-methods"]
+
+
 # Monitoring
 
 
