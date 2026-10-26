@@ -5,6 +5,7 @@ import { ErrorBox, Loading, SectionHead, useData } from '../components/shared';
 import { time } from '../lib/api';
 import { mergeTickets, mergeChecklists } from '../lib/workflow';
 import { downloadCSV } from '../lib/csv';
+import { Asset, Checklist, Report, Shift, Ticket } from '../lib/types';
 
 function pct(part: number, total: number): number {
   if (!total || total <= 0) return 0;
@@ -13,11 +14,11 @@ function pct(part: number, total: number): number {
 
 export function Reports() {
   const navigate = useNavigate();
-  const { data, error, busy, load } = useData('/reports');
-  const ticketsData = useData('/tickets');
-  const checklistsData = useData('/checklists');
-  const shiftsData = useData('/shifts');
-  const assetsData = useData('/assets');
+  const { data, error, busy, load } = useData<Report>('/reports');
+  const ticketsData = useData<Ticket[]>('/tickets');
+  const checklistsData = useData<Checklist[]>('/checklists');
+  const shiftsData = useData<Shift[]>('/shifts');
+  const assetsData = useData<Asset[]>('/assets');
 
   const [period, setPeriod] = useState<'today' | '7d' | '30d'>('7d');
   const [version, setVersion] = useState(0);
@@ -40,8 +41,8 @@ export function Reports() {
 
   const hardwareStats = useMemo(() => {
     const assets = assetsData.data || [];
-    const aps = assets.filter((a: any) => a.kind === 'AP' && !a.archived);
-    const pcs = assets.filter((a: any) => a.kind === 'PC' && !a.archived);
+    const aps = assets.filter(a => a.kind === 'AP' && !a.archived);
+    const pcs = assets.filter(a => a.kind === 'PC' && !a.archived);
     const totalAps = aps.length || 28;
     const totalPcs = pcs.length || 30;
 
@@ -65,8 +66,8 @@ export function Reports() {
     const basePassed = isToday ? 9 : is7d ? 34 : 136;
     const baseFailed = isToday ? 3 : is7d ? 14 : 56;
 
-    const livePassed = allChecklists.filter((c: any) => c.result === 'passed').length;
-    const liveFailed = allChecklists.filter((c: any) => c.result === 'failed').length;
+    const livePassed = allChecklists.filter(c => c.result === 'passed').length;
+    const liveFailed = allChecklists.filter(c => c.result === 'failed').length;
     const passed = Math.max(basePassed, basePassed + (livePassed > 10 ? livePassed - 10 : 0));
     const failed = Math.max(baseFailed, baseFailed + (liveFailed > 3 ? liveFailed - 3 : 0));
     const checklistsTotal = passed + failed;
@@ -75,9 +76,9 @@ export function Reports() {
     const baseInProg = isToday ? 3 : is7d ? 14 : 38;
     const baseResolved = isToday ? 15 : is7d ? 50 : 142;
 
-    const liveOpen = allTickets.filter((t: any) => t.status === 'open').length;
-    const liveInProg = allTickets.filter((t: any) => t.status === 'in_progress').length;
-    const liveResolved = allTickets.filter((t: any) => t.status === 'resolved').length;
+    const liveOpen = allTickets.filter(t => t.status === 'open').length;
+    const liveInProg = allTickets.filter(t => t.status === 'in_progress').length;
+    const liveResolved = allTickets.filter(t => t.status === 'resolved').length;
 
     const open = is7d && liveOpen <= 3 ? 15 : Math.max(baseOpen, baseOpen + (liveOpen > 3 ? liveOpen - 3 : 0));
     const inProgress =
@@ -238,7 +239,7 @@ export function Reports() {
         'Active Incidents',
         'Health Status',
       ],
-      ...computedReport.labs.map((l: any) => [
+      ...computedReport.labs.map(l => [
         l.code,
         l.name,
         `${l.healthyAssets} / ${l.totalAssets} Healthy`,
@@ -500,7 +501,7 @@ export function Reports() {
     </thead>
     <tbody>
       ${computedReport.labs
-        .map((l: any) => {
+        .map(l => {
           const statusClass = l.healthStatus === 'healthy' ? 'badge-healthy' : 'badge-degraded';
           const statusText = l.healthStatus === 'healthy' ? '● Healthy' : '● Degraded';
           return `
@@ -816,7 +817,7 @@ export function Reports() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {computedReport.labs.map((l: any, i: number) => (
+                    {computedReport.labs.map((l, i) => (
                       <tr
                         key={l.name}
                         data-testid={`report-lab-${i}`}

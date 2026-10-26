@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Plus, Check, CheckCheck, ArrowUpRight, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context';
-import { api, errorText, time } from '../lib/api';
+import { api, errorStatus, errorText, time } from '../lib/api';
 import {
   mergeChecklists,
   mergeTickets,
@@ -13,6 +13,7 @@ import {
   findLocation,
 } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import { Asset, Checklist, Ticket } from '../lib/types';
 
 const categories: [string, string, string, string][] = [
   [
@@ -60,9 +61,9 @@ export default function Checklists() {
   const { user } = useAuth();
   const isAssistant = user?.role === 'assistant';
   const [params] = useSearchParams();
-  const { data, error, busy, load } = useData('/checklists');
-  const assets = useData('/assets');
-  const ticketsData = useData('/tickets');
+  const { data, error, busy, load } = useData<Checklist[]>('/checklists');
+  const assets = useData<Asset[]>('/assets');
+  const ticketsData = useData<Ticket[]>('/tickets');
 
   const initialLabParam = params.get('lab') || 'all';
   const [labFilter, setLabFilter] = useState(initialLabParam);
@@ -122,20 +123,20 @@ export default function Checklists() {
     if (!isAssistant || !assets.data) return;
     const requestedAsset = params.get('asset');
     if (requestedAsset && !draft.asset_id) {
-      setDraft((prev: any) => ({ ...prev, asset_id: requestedAsset }));
+      setDraft(prev => ({ ...prev, asset_id: requestedAsset }));
       return;
     }
     const targetLab = params.get('lab');
     if (targetLab && !draft.asset_id) {
       const prog = getLabInspectionProgress(targetLab, LAB_NAMES[targetLab] || '', allChecklists, assets.data);
       if (prog.nextUnchecked) {
-        setDraft((prev: any) => ({ ...prev, asset_id: prog.nextUnchecked.id }));
+        setDraft(prev => ({ ...prev, asset_id: prog.nextUnchecked.id }));
       }
     }
   }, [isAssistant, assets.data, params, allChecklists, draft.asset_id]);
 
   const activeAsset = useMemo(() => {
-    return assets.data?.find((a: any) => a.id === draft.asset_id);
+    return assets.data?.find(a => a.id === draft.asset_id);
   }, [assets.data, draft.asset_id]);
 
   const workstationTag = activeAsset?.tag || 'PC-CL-A-01';
@@ -143,7 +144,7 @@ export default function Checklists() {
   const roomBadge = loc ? `${loc.code} · ${loc.name}` : activeAsset?.lab_name || 'B-04-03 · Computing Lab A';
 
   const openTicketsForAsset = useMemo(() => {
-    return allTickets.filter((t: any) => t.status !== 'resolved');
+    return allTickets.filter(t => t.status !== 'resolved');
   }, [allTickets]);
 
   const update = (value: any) => setDraft({ ...draft, ...value });
@@ -188,7 +189,7 @@ export default function Checklists() {
 
       const r = await api.post('/checklists', payload);
       const saved = r.data;
-      const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
+      const pcAsset = assets.data?.find(a => a.id === draft.asset_id);
       const tierLabel = isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral';
       const assignedRole = isNetworkFault ? 'engineer' : 'assistant';
       const assignedName = isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)';
@@ -208,7 +209,7 @@ export default function Checklists() {
               ]
             : [];
 
-      const enrichedTickets = rawTickets.map((t: any) => {
+      const enrichedTickets = rawTickets.map(t => {
         const isNetTicket = t.category === 'network' || isNetworkFault;
         const tag = saved.asset_tag || pcAsset?.tag || 'PC-CL-A-01';
         const lab = saved.lab_name || pcAsset?.lab_name || 'Computing Lab A';
@@ -277,12 +278,13 @@ export default function Checklists() {
       setDraft({ asset_id: '', checks: {}, notes: '', request_id: crypto.randomUUID() });
       setLocked(false);
       load();
-    } catch (e: any) {
-      const isNetworkError = !e.response || e.response.status >= 500;
+    } catch (e) {
+      const status = errorStatus(e);
+      const isNetworkError = status === undefined || status >= 500;
       if (isNetworkError) {
         const isFailed = inspectionStatus === 'failed';
         const isNetworkFault = isFailed && (faultTier === 'tier2' || linkedTicketChoice === 'new-tier2');
-        const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
+        const pcAsset = assets.data?.find(a => a.id === draft.asset_id);
         const tag = pcAsset?.tag || 'PC-CL-A-01';
         const lab = pcAsset?.lab_name || 'Computing Lab A';
         const num = linkedTicketChoice.startsWith('INC-')
@@ -331,7 +333,7 @@ export default function Checklists() {
           saveLocalTicket(localTicket);
         }
 
-        const localChecklist = {
+        const localChecklist: Checklist = {
           id: `chk-local-${Date.now()}`,
           request_id: draft.request_id,
           asset_id: draft.asset_id,
@@ -412,19 +414,15 @@ export default function Checklists() {
     setBatchNotice('');
     const targetLabName = LAB_NAMES[mapLab] || 'Computing Lab A';
     const labPcs = (assets.data || []).filter(
-      (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === mapLab || a.lab_name === targetLabName),
+      a => a.kind === 'PC' && !a.archived && (a.lab_id === mapLab || a.lab_name === targetLabName),
     );
-    const openFaultAssetIds = new Set(
-      allTickets.filter((t: any) => t.status !== 'resolved').map((t: any) => t.asset_id),
-    );
-    const alreadyCheckedIds = new Set(allChecklists.map((c: any) => c.asset_id));
+    const openFaultAssetIds = new Set(allTickets.filter(t => t.status !== 'resolved').map(t => t.asset_id));
+    const alreadyCheckedIds = new Set(allChecklists.map(c => c.asset_id));
 
-    const toVerify = labPcs
-      .filter((pc: any) => !openFaultAssetIds.has(pc.id) && !alreadyCheckedIds.has(pc.id))
-      .slice(0, 4);
+    const toVerify = labPcs.filter(pc => !openFaultAssetIds.has(pc.id) && !alreadyCheckedIds.has(pc.id)).slice(0, 4);
 
     const nowIso = new Date().toISOString();
-    const passChecks = {
+    const passChecks: Checklist['checks'] = {
       power: 'pass',
       display: 'pass',
       peripherals: 'pass',
@@ -466,12 +464,12 @@ export default function Checklists() {
   };
 
   const allWorkstations = useMemo(() => {
-    const pcs = (assets.data || []).filter((a: any) => a.kind === 'PC' && !a.archived);
-    return pcs.map((pc: any) => {
+    const pcs = (assets.data || []).filter(a => a.kind === 'PC' && !a.archived);
+    return pcs.map(pc => {
       const activeTicket = allTickets.find(
-        (t: any) => t.status !== 'resolved' && (t.asset_id === pc.id || t.asset_tag === pc.tag),
+        t => t.status !== 'resolved' && (t.asset_id === pc.id || t.asset_tag === pc.tag),
       );
-      const latestCheck = allChecklists.find((c: any) => c.asset_id === pc.id || c.asset_tag === pc.tag);
+      const latestCheck = allChecklists.find(c => c.asset_id === pc.id || c.asset_tag === pc.tag);
       const linkedTicket = activeTicket || (latestCheck?.tickets && latestCheck.tickets[0]) || null;
       const outcomeKey =
         activeTicket || latestCheck?.result === 'failed'
@@ -496,7 +494,7 @@ export default function Checklists() {
   }, [assets.data, allTickets, allChecklists]);
 
   const filteredWorkstations = useMemo(() => {
-    return allWorkstations.filter((w: any) => {
+    return allWorkstations.filter(w => {
       const matchesLab =
         labFilter === 'all' ||
         w.lab_id === labFilter ||
@@ -508,9 +506,9 @@ export default function Checklists() {
   }, [allWorkstations, labFilter, outcomeFilter]);
 
   const selectableWorkstations = useMemo(() => {
-    const pcs = (assets.data || []).filter((a: any) => a.kind === 'PC' && !a.archived);
+    const pcs = (assets.data || []).filter(a => a.kind === 'PC' && !a.archived);
     if (labFilter === 'all') return pcs;
-    const inLab = pcs.filter((a: any) => a.lab_id === labFilter || a.lab_name === LAB_NAMES[labFilter]);
+    const inLab = pcs.filter(a => a.lab_id === labFilter || a.lab_name === LAB_NAMES[labFilter]);
     return inLab.length ? inLab : pcs;
   }, [assets.data, labFilter]);
 
@@ -547,9 +545,9 @@ export default function Checklists() {
         <div className="filter-tabs">
           {[
             ['all', 'All Workstations', allWorkstations.length],
-            ['passed', 'Passed', allWorkstations.filter((w: any) => w.outcomeKey === 'passed').length],
-            ['failed', 'Faults Reported', allWorkstations.filter((w: any) => w.outcomeKey === 'failed').length],
-            ['unchecked', 'Unchecked', allWorkstations.filter((w: any) => w.outcomeKey === 'unchecked').length],
+            ['passed', 'Passed', allWorkstations.filter(w => w.outcomeKey === 'passed').length],
+            ['failed', 'Faults Reported', allWorkstations.filter(w => w.outcomeKey === 'failed').length],
+            ['unchecked', 'Unchecked', allWorkstations.filter(w => w.outcomeKey === 'unchecked').length],
           ].map(([key, label, count]) => (
             <button
               key={key}
@@ -568,7 +566,7 @@ export default function Checklists() {
           id="checklist-lab-filter"
           aria-label="Filter checklists by lab"
           value={labFilter}
-          onChange={(e: any) => {
+          onChange={e => {
             setLabFilter(e.target.value);
             if (e.target.value !== 'all') setMapLab(e.target.value);
           }}
@@ -598,7 +596,7 @@ export default function Checklists() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {filteredWorkstations.map((w: any) => {
+                {filteredWorkstations.map(w => {
                   return (
                     <tr
                       key={w.id}
@@ -756,7 +754,7 @@ export default function Checklists() {
                   <p>
                     {success.tickets.length} incident ticket(s) automatically created ({success.fault_tier}):
                   </p>
-                  {success.tickets.map((t: any) =>
+                  {success.tickets.map(t =>
                     isAssistant ? (
                       <div className="linked-ticket-readonly" data-testid={`success-ticket-${t.id}`} key={t.id}>
                         <div>
@@ -804,10 +802,10 @@ export default function Checklists() {
                     value={draft.asset_id}
                     required
                     disabled={locked || sending}
-                    onChange={(e: any) => update({ asset_id: e.target.value })}
+                    onChange={e => update({ asset_id: e.target.value })}
                   >
                     <option value="">Select a workstation…</option>
-                    {selectableWorkstations.map((a: any) => (
+                    {selectableWorkstations.map(a => (
                       <option value={a.id} key={a.id}>
                         {a.tag} · {formatLocationWithCode(a.lab_name || a.lab_id)}
                       </option>
@@ -897,7 +895,7 @@ export default function Checklists() {
                         id="checklist-fault-tier"
                         value={linkedTicketChoice}
                         disabled={locked || sending}
-                        onChange={(e: any) => {
+                        onChange={e => {
                           const val = e.target.value;
                           setLinkedTicketChoice(val);
                           const isNet = val === 'new-tier2' || val.toLowerCase().includes('network');
@@ -918,7 +916,7 @@ export default function Checklists() {
                         <option value="new-tier2">
                           Auto-Trigger Quick Ticket · Tier 2 Network Connectivity Engineer
                         </option>
-                        {openTicketsForAsset.map((t: any) => (
+                        {openTicketsForAsset.map(t => (
                           <option key={t.id} value={t.number}>
                             Attach Existing Ticket · {t.number} ({t.title || t.category})
                           </option>

@@ -1,4 +1,8 @@
 import { CAMPUS_TIMEZONE } from './api';
+import { AccessPoint, Asset, Checklist, Shift, Ticket, User } from './types';
+
+/** The parts of an asset that say where it is. */
+type Placed = Pick<Asset, 'zone_group' | 'lab_id' | 'lab_name'> | null | undefined;
 
 const SHIFT_STATE_KEY = 'atlas_shift_workflow_v2';
 const LOCAL_TICKETS_KEY = 'atlas_local_tickets_v2';
@@ -16,7 +20,7 @@ export function isMonitoringSimActive(): boolean {
   }
 }
 
-export function getApOverrides(): Record<string, any> {
+export function getApOverrides(): Record<string, Partial<AccessPoint>> {
   try {
     const raw = sessionStorage.getItem(AP_OVERRIDES_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -25,7 +29,7 @@ export function getApOverrides(): Record<string, any> {
   }
 }
 
-export function saveApOverride(assetIdOrTag: string, override: any) {
+export function saveApOverride(assetIdOrTag: string, override: Partial<AccessPoint>) {
   try {
     const current = getApOverrides();
     const idKey = String(assetIdOrTag).toLowerCase();
@@ -81,6 +85,9 @@ export interface CampusLocation {
   name: string;
   block: string;
   level: string;
+  /** Older names for block and level that GET /api/locations still returns. */
+  building?: string;
+  floor?: string;
   room: string;
   category: string;
   zone_group?: ZoneGroup;
@@ -283,7 +290,7 @@ export function formatLocationBadge(labIdOrName?: string): { code: string; name:
 export function computeNextDevice(
   kind: 'PC' | 'AP' | string,
   labId: string,
-  existingAssets: any[] = [],
+  existingAssets: Pick<Asset, 'tag'>[] = [],
 ): { tag: string; name: string; model: string; placement: string } {
   const loc = findLocation(labId);
   const locId = loc?.id || labId;
@@ -317,9 +324,9 @@ export function computeNextDevice(
     prefix = `${kind}-${cleanCode}-`;
   }
 
-  const matching = existingAssets.filter((a: any) => (a.tag || '').toUpperCase().startsWith(prefix.toUpperCase()));
+  const matching = existingAssets.filter(a => (a.tag || '').toUpperCase().startsWith(prefix.toUpperCase()));
   let maxNum = 0;
-  matching.forEach((a: any) => {
+  matching.forEach(a => {
     const numPart = (a.tag || '').slice(prefix.length);
     const n = parseInt(numPart, 10);
     if (!isNaN(n) && n > maxNum) maxNum = n;
@@ -384,7 +391,7 @@ export function computeAutoRoomCode(block: string, level: string, room: string):
   return `${blockPrefix}-${levelNum}-${roomPadded}`;
 }
 
-export function zoneGroupOf(asset: any): ZoneGroup {
+export function zoneGroupOf(asset: Placed): ZoneGroup {
   return (
     (asset?.zone_group as ZoneGroup) ||
     findLocation(asset?.lab_id)?.zone_group ||
@@ -393,7 +400,7 @@ export function zoneGroupOf(asset: any): ZoneGroup {
   );
 }
 
-export function matchesZone(asset: any, zone: string): boolean {
+export function matchesZone(asset: Placed, zone: string): boolean {
   return zone === 'all' || zoneGroupOf(asset) === zone;
 }
 
@@ -408,11 +415,14 @@ export function dhcpScopePreview(kind: string, labId: string): string {
   return `VLAN ${vlan} · 10.${vlan}.${octet}.x (DHCP)`;
 }
 
-export function networkLabel(asset: any): { vlan: number; ip: string } {
+export function networkLabel(asset: Pick<Asset, 'vlan' | 'kind' | 'ip'> | null | undefined): {
+  vlan: number;
+  ip: string;
+} {
   return { vlan: asset?.vlan || vlanFor(asset?.kind), ip: asset?.ip || 'Lease pending' };
 }
 
-export const SIMULATION_FLEET_APS = [
+export const SIMULATION_FLEET_APS: AccessPoint[] = [
   // Computing Lab A (6 APs: 3 Online, 1 Congested, 1 Offline, 1 Feed Interrupted)
   {
     id: 'ap-01',
@@ -928,14 +938,14 @@ export const SIMULATION_FLEET_APS = [
   },
 ];
 
-export function getSharedFleetAps(): any[] {
+export function getSharedFleetAps(): AccessPoint[] {
   const isSim = isMonitoringSimActive();
   const overrides = getApOverrides();
   const nowIso = new Date().toISOString();
 
   if (!isSim) {
     // Healthy baseline: all 28 APs online
-    return SIMULATION_FLEET_APS.map((ap: any) => {
+    return SIMULATION_FLEET_APS.map(ap => {
       const idKey = String(ap.id).toLowerCase();
       const tagKey = String(ap.tag).toUpperCase();
       const override = overrides[idKey] || overrides[tagKey] || {};
@@ -950,10 +960,10 @@ export function getSharedFleetAps(): any[] {
         throughput: 32.5,
         ...override,
       };
-    }).sort((a: any, b: any) => (a.tag || '').localeCompare(b.tag || ''));
+    }).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
   }
 
-  return SIMULATION_FLEET_APS.map((ap: any) => {
+  return SIMULATION_FLEET_APS.map(ap => {
     const idKey = String(ap.id).toLowerCase();
     const tagKey = String(ap.tag).toUpperCase();
     const override = overrides[idKey] || overrides[tagKey];
@@ -968,7 +978,7 @@ export function getSharedFleetAps(): any[] {
       ...ap,
       last_seen: ap.last_seen || nowIso,
     };
-  }).sort((a: any, b: any) => (a.tag || '').localeCompare(b.tag || ''));
+  }).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
 }
 
 export function restoreDevice(assetIdOrTag: string) {
@@ -994,7 +1004,7 @@ export function restoreDevice(assetIdOrTag: string) {
     const rawChecklists = localStorage.getItem(LOCAL_CHECKLISTS_KEY);
     const checklists = rawChecklists ? JSON.parse(rawChecklists) : [];
     let changed = false;
-    const updated = checklists.map((c: any) => {
+    const updated = checklists.map((c: Checklist) => {
       if (
         c.asset_id === raw ||
         c.asset_tag === raw ||
@@ -1024,7 +1034,7 @@ export function restoreDevice(assetIdOrTag: string) {
   window.dispatchEvent(new Event('atlas-workflow-updated'));
 }
 
-export const SIMULATION_LINKED_TICKETS = [
+export const SIMULATION_LINKED_TICKETS: Ticket[] = [
   {
     id: 'sim-inc-1038',
     number: 'INC-1038',
@@ -1176,11 +1186,11 @@ export const CAMPUS_SHIFT_BLOCKS = [
   },
 ];
 
-export function getAssistantUnacknowledgedShifts(user: any): any[] {
+export function getAssistantUnacknowledgedShifts(user: User | null): Shift[] {
   try {
     const shifts = normalizeCampusShifts(null);
     return shifts.filter(
-      (s: any) =>
+      s =>
         !s.cancelled &&
         !s.acknowledged_at &&
         !s.completed_at &&
@@ -1211,7 +1221,7 @@ export function saveShiftOverride(shiftId: string, patch: Partial<ShiftWorkflowS
   }
 }
 
-export function loadLocalTickets(): any[] {
+export function loadLocalTickets(): Ticket[] {
   try {
     const raw = localStorage.getItem(LOCAL_TICKETS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -1220,9 +1230,9 @@ export function loadLocalTickets(): any[] {
   }
 }
 
-export function saveLocalTicket(ticket: any) {
+export function saveLocalTicket(ticket: Ticket) {
   const list = loadLocalTickets();
-  const next = [ticket, ...list.filter((t: any) => t.id !== ticket.id)];
+  const next = [ticket, ...list.filter(t => t.id !== ticket.id)];
   try {
     localStorage.setItem(LOCAL_TICKETS_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event('atlas-workflow-updated'));
@@ -1231,7 +1241,7 @@ export function saveLocalTicket(ticket: any) {
   }
 }
 
-export function loadLocalChecklists(): any[] {
+export function loadLocalChecklists(): Checklist[] {
   try {
     const raw = localStorage.getItem(LOCAL_CHECKLISTS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -1240,9 +1250,9 @@ export function loadLocalChecklists(): any[] {
   }
 }
 
-export function saveLocalChecklist(checklist: any) {
+export function saveLocalChecklist(checklist: Checklist) {
   const list = loadLocalChecklists();
-  const next = [checklist, ...list.filter((c: any) => c.id !== checklist.id)];
+  const next = [checklist, ...list.filter(c => c.id !== checklist.id)];
   try {
     localStorage.setItem(LOCAL_CHECKLISTS_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event('atlas-workflow-updated'));
@@ -1251,7 +1261,7 @@ export function saveLocalChecklist(checklist: any) {
   }
 }
 
-export function enrichTicket(t: any) {
+export function enrichTicket(t: Ticket): Ticket {
   const tag = String(t.asset_tag || '').toUpperCase();
   const inferredLab =
     t.lab_name ||
@@ -1292,11 +1302,11 @@ export function enrichTicket(t: any) {
   };
 }
 
-export function mergeTickets(apiTickets: any[] | null | undefined): any[] {
+export function mergeTickets(apiTickets: Ticket[] | null | undefined): Ticket[] {
   const local = loadLocalTickets();
   const base = Array.isArray(apiTickets) ? apiTickets : [];
   const sim = isMonitoringSimActive() ? SIMULATION_LINKED_TICKETS : [];
-  const byKey = new Map<string, any>();
+  const byKey = new Map<string, Ticket>();
   const seenIds = new Set<string>();
 
   for (const item of [...local, ...sim, ...base]) {
@@ -1320,10 +1330,10 @@ export function mergeTickets(apiTickets: any[] | null | undefined): any[] {
   );
 }
 
-export function mergeChecklists(apiChecklists: any[] | null | undefined): any[] {
+export function mergeChecklists(apiChecklists: Checklist[] | null | undefined): Checklist[] {
   const local = loadLocalChecklists();
   const base = Array.isArray(apiChecklists) ? apiChecklists : [];
-  const byId = new Map<string, any>();
+  const byId = new Map<string, Checklist>();
   for (const item of [...local, ...base]) {
     if (item?.id && !byId.has(item.id)) {
       byId.set(item.id, item);
@@ -1334,13 +1344,13 @@ export function mergeChecklists(apiChecklists: any[] | null | undefined): any[] 
   );
 }
 
-export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[] {
+export function normalizeCampusShifts(rawShifts: Shift[] | null | undefined): Shift[] {
   const today = getTodayMytDateString();
   const overrides = loadShiftOverrides();
   const input = Array.isArray(rawShifts) ? [...rawShifts] : [];
 
   // Ensure all 3 standard campus lab blocks exist with realistic 4-hour windows
-  const normalized: any[] = CAMPUS_SHIFT_BLOCKS.map((block, idx) => {
+  const normalized: Shift[] = CAMPUS_SHIFT_BLOCKS.map((block, idx) => {
     const existing =
       input.find(s => s.id === `shift-seed-${idx}`) ||
       input.find(s => s.lab_id === block.lab_id || s.lab_name === block.lab_name);
@@ -1441,21 +1451,21 @@ export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[
 export function getLabInspectionProgress(
   labId: string,
   labName: string,
-  checklists: any[] | null | undefined,
-  assets: any[] | null | undefined,
+  checklists: Checklist[] | null | undefined,
+  assets: Asset[] | null | undefined,
 ) {
   const required = 4;
   const allChecks = mergeChecklists(checklists);
-  const labChecks = allChecks.filter((c: any) => c.lab_id === labId || c.lab_name === labName);
-  const checkedAssetTags = new Set(labChecks.map((c: any) => c.asset_tag).filter(Boolean));
-  const checkedAssetIds = new Set(labChecks.map((c: any) => c.asset_id).filter(Boolean));
+  const labChecks = allChecks.filter(c => c.lab_id === labId || c.lab_name === labName);
+  const checkedAssetTags = new Set(labChecks.map(c => c.asset_tag).filter(Boolean));
+  const checkedAssetIds = new Set(labChecks.map(c => c.asset_id).filter(Boolean));
 
   const labWorkstations = (Array.isArray(assets) ? assets : []).filter(
-    (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === labId || a.lab_name === labName),
+    a => a.kind === 'PC' && !a.archived && (a.lab_id === labId || a.lab_name === labName),
   );
 
   const nextUnchecked =
-    labWorkstations.find((pc: any) => !checkedAssetIds.has(pc.id) && !checkedAssetTags.has(pc.tag)) ||
+    labWorkstations.find(pc => !checkedAssetIds.has(pc.id) && !checkedAssetTags.has(pc.tag)) ||
     labWorkstations[0] ||
     null;
 

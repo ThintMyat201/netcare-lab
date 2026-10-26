@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { ReactNode, useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -25,6 +25,7 @@ import {
   RotateCcw,
   MapPin,
   UserCog,
+  type LucideIcon,
 } from 'lucide-react';
 import { Logo, Modal } from './shared';
 import { UserProfileModal } from './UserProfileModal';
@@ -70,7 +71,10 @@ const QUICK_JUMP_ITEMS = [
   { label: 'Operational SLA Reports & CSV Export', type: 'Administration', to: '/reports', roles: ['admin'] },
 ];
 
-const getNavigation = (role: string) => {
+type NavItem = [path: string, label: string, icon: LucideIcon];
+type NavGroup = { label: string; items: NavItem[] };
+
+const getNavigation = (role: string): NavGroup[] => {
   if (role === 'assistant') {
     return [
       {
@@ -119,7 +123,7 @@ const getNavigation = (role: string) => {
   ];
 };
 
-export const Layout = ({ children }: any) => {
+export const Layout = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -150,11 +154,11 @@ export const Layout = ({ children }: any) => {
   }, [version, simAnomalyActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeApAnomalies = useMemo(() => {
-    return liveFleetAps.filter((a: any) => a.status !== 'online');
+    return liveFleetAps.filter(a => a.status !== 'online');
   }, [liveFleetAps]);
 
   const activeTickets = useMemo(() => {
-    return mergeTickets([]).filter((t: any) => t.status !== 'resolved');
+    return mergeTickets([]).filter(t => t.status !== 'resolved');
   }, [version, simAnomalyActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasAlertActive = isAssistant ? assistantUnackShifts.length > 0 : activeApAnomalies.length > 0;
@@ -179,15 +183,16 @@ export const Layout = ({ children }: any) => {
   }, [bellOpen]);
 
   useEffect(() => {
-    const onSimState = (e: any) => {
+    const onSimState = (event: Event) => {
+      const e = event as CustomEvent<{ active?: boolean }>;
       if (typeof e?.detail?.active === 'boolean') {
         setSimAnomalyActive(e.detail.active);
       } else {
         setSimAnomalyActive(isMonitoringSimActive());
       }
     };
-    window.addEventListener('atlas-sim-state', onSimState as EventListener);
-    return () => window.removeEventListener('atlas-sim-state', onSimState as EventListener);
+    window.addEventListener('atlas-sim-state', onSimState);
+    return () => window.removeEventListener('atlas-sim-state', onSimState);
   }, []);
 
   useEffect(() => {
@@ -252,7 +257,7 @@ export const Layout = ({ children }: any) => {
               group.items.length > 0 && (
                 <div className="nav-group" key={group.label}>
                   <p>{group.label}</p>
-                  {group.items.map(([path, label, Icon]: any) => (
+                  {group.items.map(([path, label, Icon]) => (
                     <NavLink
                       end={path === '/'}
                       to={path}
@@ -414,7 +419,7 @@ export const Layout = ({ children }: any) => {
                           </div>
 
                           <div className="notification-items-list">
-                            {assistantUnackShifts.map((s: any) => (
+                            {assistantUnackShifts.map(s => (
                               <div className="notification-item congested" key={s.id}>
                                 <div className="notif-item-head">
                                   <span className="notif-tag">{s.lab_name}</span>
@@ -467,21 +472,19 @@ export const Layout = ({ children }: any) => {
                         <>
                           <div className="notification-summary-chips">
                             <span className="chip congested">
-                              <Activity size={12} /> {liveFleetAps.filter((a: any) => a.status === 'congested').length}{' '}
+                              <Activity size={12} /> {liveFleetAps.filter(a => a.status === 'congested').length}{' '}
                               Congested
                             </span>
                             <span className="chip offline">
-                              <Power size={12} /> {liveFleetAps.filter((a: any) => a.status === 'offline').length}{' '}
-                              Offline
+                              <Power size={12} /> {liveFleetAps.filter(a => a.status === 'offline').length} Offline
                             </span>
                             <span className="chip stale">
-                              <Radio size={12} /> {liveFleetAps.filter((a: any) => a.status === 'stale').length}{' '}
-                              Interrupted
+                              <Radio size={12} /> {liveFleetAps.filter(a => a.status === 'stale').length} Interrupted
                             </span>
                           </div>
 
                           <div className="notification-items-list">
-                            {activeApAnomalies.map((ap: any) => {
+                            {activeApAnomalies.map(ap => {
                               const isCongested = ap.status === 'congested';
                               const isOffline = ap.status === 'offline';
                               const badgeClass = isCongested ? 'congested' : isOffline ? 'offline' : 'stale';
@@ -490,9 +493,7 @@ export const Layout = ({ children }: any) => {
                                 : isOffline
                                   ? 'Offline'
                                   : 'Feed Interrupted';
-                              const simTicket = activeTickets.find(
-                                (t: any) => t.asset_id === ap.id || t.asset_tag === ap.tag,
-                              );
+                              const simTicket = activeTickets.find(t => t.asset_id === ap.id || t.asset_tag === ap.tag);
 
                               return (
                                 <div key={ap.id} className={`notification-item ${badgeClass}`}>

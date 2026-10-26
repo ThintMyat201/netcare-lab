@@ -30,6 +30,7 @@ import {
   getLabInspectionProgress,
   getSharedFleetAps,
 } from '../lib/workflow';
+import { Asset, Checklist, MonitoringSnapshot, Overview, Shift, Ticket as TicketRecord } from '../lib/types';
 
 function RoleMetricsGrid({ cards }: { cards: any[] }) {
   return (
@@ -59,12 +60,12 @@ function RoleMetricsGrid({ cards }: { cards: any[] }) {
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const monitor = useData('/monitoring');
-  const overview = useData('/overview');
-  const checklistsData = useData('/checklists');
-  const assetsData = useData('/assets');
-  const ticketsData = useData('/tickets');
-  const shiftsData = useData('/shifts');
+  const monitor = useData<MonitoringSnapshot>('/monitoring');
+  const overview = useData<Overview>('/overview');
+  const checklistsData = useData<Checklist[]>('/checklists');
+  const assetsData = useData<Asset[]>('/assets');
+  const ticketsData = useData<TicketRecord[]>('/tickets');
+  const shiftsData = useData<Shift[]>('/shifts');
 
   const [lab, setLab] = useState('all');
   const [simulation, setSimulation] = useState(false);
@@ -98,16 +99,16 @@ export default function Dashboard() {
 
   const apStats = useMemo(() => {
     const total = normalizedAps.length;
-    const online = normalizedAps.filter((a: any) => a.status === 'online').length;
-    const congested = normalizedAps.filter((a: any) => a.status === 'congested').length;
-    const offline = normalizedAps.filter((a: any) => a.status === 'offline').length;
-    const stale = normalizedAps.filter((a: any) => a.status === 'stale').length;
-    const clients = normalizedAps.reduce((s: number, a: any) => s + (typeof a.clients === 'number' ? a.clients : 0), 0);
+    const online = normalizedAps.filter(a => a.status === 'online').length;
+    const congested = normalizedAps.filter(a => a.status === 'congested').length;
+    const offline = normalizedAps.filter(a => a.status === 'offline').length;
+    const stale = normalizedAps.filter(a => a.status === 'stale').length;
+    const clients = normalizedAps.reduce((s: number, a) => s + (typeof a.clients === 'number' ? a.clients : 0), 0);
     const peakLoad = normalizedAps.reduce(
-      (max: number, a: any) => Math.max(max, typeof a.load === 'number' ? a.load : 0),
+      (max: number, a) => Math.max(max, typeof a.load === 'number' ? a.load : 0),
       0,
     );
-    const peakAp = normalizedAps.find((a: any) => a.load === peakLoad);
+    const peakAp = normalizedAps.find(a => a.load === peakLoad);
     return { total, online, congested, offline, stale, clients, peakLoad, peakAp };
   }, [normalizedAps]);
 
@@ -128,7 +129,7 @@ export default function Dashboard() {
 
   // Workstation checklist faults strictly isolated from AP telemetry incidents
   const workstationChecklistFaults = useMemo(() => {
-    return allTickets.filter((t: any) => {
+    return allTickets.filter(t => {
       if (t.status === 'resolved') return false;
       const tag = String(t.asset_tag || '').toUpperCase();
       const assetId = String(t.asset_id || '').toLowerCase();
@@ -150,27 +151,27 @@ export default function Dashboard() {
     );
   }
 
-  const aps = normalizedAps.filter((a: any) => lab === 'all' || a.lab_id === lab);
+  const aps = normalizedAps.filter(a => lab === 'all' || a.lab_id === lab);
 
   // Compute role-specific summary cards
-  const openTickets = allTickets.filter((t: any) => t.status !== 'resolved');
-  const networkIncidents = openTickets.filter((t: any) => t.tier_code === 'tier2' || t.category === 'network');
+  const openTickets = allTickets.filter(t => t.status !== 'resolved');
+  const networkIncidents = openTickets.filter(t => t.tier_code === 'tier2' || t.category === 'network');
 
   const currentShift =
-    allShifts.find((s: any) => s.lifecycle === 'in_progress') ||
-    allShifts.find((s: any) => s.lifecycle === 'pending_ack') ||
+    allShifts.find(s => s.lifecycle === 'in_progress') ||
+    allShifts.find(s => s.lifecycle === 'pending_ack') ||
     allShifts[0];
 
   const currentShiftProgress = currentShift
     ? getLabInspectionProgress(currentShift.lab_id, currentShift.lab_name, allChecklists, assetsData.data)
     : { checked: 0, required: 4, nextUnchecked: null };
 
-  const totalRemainingWorkstations = allShifts.reduce((sum: number, s: any) => {
+  const totalRemainingWorkstations = allShifts.reduce((sum: number, s) => {
     const p = getLabInspectionProgress(s.lab_id, s.lab_name, allChecklists, assetsData.data);
     return sum + Math.max(0, p.required - p.checked);
   }, 0);
 
-  const ackedShiftsCount = allShifts.filter((s: any) => s.acknowledged_at || s.completed_at).length;
+  const ackedShiftsCount = allShifts.filter(s => s.acknowledged_at || s.completed_at).length;
   const shiftAckRate = allShifts.length ? Math.round((ackedShiftsCount / allShifts.length) * 100) : 100;
   const slaCompliance = apStats.total
     ? Math.min(99.8, Math.max(82, Math.round(((apStats.online / apStats.total) * 0.7 + 0.26) * 1000) / 10))
@@ -203,7 +204,7 @@ export default function Dashboard() {
             suffix: ' escalated',
             icon: AlertTriangle,
             foot: `${
-              workstationChecklistFaults.filter((t: any) => t.category === 'network' || t.tier_code === 'tier2').length
+              workstationChecklistFaults.filter(t => t.category === 'network' || t.tier_code === 'tier2').length
             } Tier 2 Network escalated to NOC · Workstation faults`,
             tone: 'amber',
           },
@@ -316,7 +317,7 @@ export default function Dashboard() {
       ['ACTIVE FAULTS & INCIDENTS QUEUE'],
       ['Ticket #', 'Title', 'Asset Tag', 'Lab / Location', 'Tier / Category', 'Priority', 'Status', 'Created (MYT)'],
       ...(openTickets.length > 0
-        ? openTickets.map((t: any) => [
+        ? openTickets.map(t => [
             t.number || t.id,
             t.title,
             t.asset_tag || '—',
@@ -501,7 +502,7 @@ export default function Dashboard() {
         openTickets.length > 0
           ? openTickets
               .map(
-                (t: any) => `
+                t => `
         <tr>
           <td><strong>${t.number || t.id}</strong></td>
           <td>${t.title}</td>
@@ -671,7 +672,7 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {allShifts.slice(0, 3).map((s: any) => {
+                    {allShifts.slice(0, 3).map(s => {
                       const prog = getLabInspectionProgress(s.lab_id, s.lab_name, allChecklists, assetsData.data);
                       const isAcknowledged = Boolean(s.acknowledged_at);
                       const displayChecked = isAcknowledged ? prog.checked : 0;
@@ -754,7 +755,7 @@ export default function Dashboard() {
             </SectionHead>
             <div className="activity-list">
               {workstationChecklistFaults.length ? (
-                workstationChecklistFaults.slice(0, 4).map((t: any) => (
+                workstationChecklistFaults.slice(0, 4).map(t => (
                   <div className="activity-item non-interactive" key={t.id}>
                     <span className="activity-icon fault-escalated">
                       <AlertTriangle size={14} />
@@ -871,8 +872,8 @@ export default function Dashboard() {
                       { id: 'lab-4', name: 'Computing Lab C' },
                       { id: 'lab-3', name: 'Innovation Lab' },
                     ].map((l, i) => {
-                      const rows = normalizedAps.filter((a: any) => a.lab_name === l.name || a.lab_id === l.id);
-                      const issues = rows.filter((a: any) => a.status !== 'online').length;
+                      const rows = normalizedAps.filter(a => a.lab_name === l.name || a.lab_id === l.id);
+                      const issues = rows.filter(a => a.status !== 'online').length;
                       return (
                         <Link
                           key={l.id}
@@ -924,7 +925,7 @@ export default function Dashboard() {
             <section className="access-section">
               <SectionHead title="Access Point Status">
                 <div className="section-actions flex flex-wrap items-center gap-2 sm:gap-3">
-                  <Select id="dashboard-lab-filter" value={lab} onChange={(e: any) => setLab(e.target.value)}>
+                  <Select id="dashboard-lab-filter" value={lab} onChange={e => setLab(e.target.value)}>
                     <option value="all">All Labs ({normalizedAps.length} APs)</option>
                     <option value="lab-1">Computing Lab A (6 APs)</option>
                     <option value="lab-2">Computing Lab B (5 APs)</option>
@@ -938,9 +939,7 @@ export default function Dashboard() {
               </SectionHead>
               <div className="w-full overflow-x-auto">
                 <APTable
-                  aps={[...aps].sort(
-                    (a: any, b: any) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0),
-                  )}
+                  aps={[...aps].sort((a, b) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0))}
                   limit={5}
                   onSelect={(a: any) => navigate(`/monitoring?ap=${a.id}`)}
                 />
@@ -966,7 +965,7 @@ export default function Dashboard() {
               </SectionHead>
               <div className="activity-list">
                 {user.role === 'engineer'
-                  ? networkIncidents.slice(0, 4).map((t: any) => (
+                  ? networkIncidents.slice(0, 4).map(t => (
                       <Link
                         to={`/tickets?ticket=${t.id}`}
                         data-testid={`engineer-incident-${t.id}`}
@@ -987,7 +986,7 @@ export default function Dashboard() {
                         </div>
                       </Link>
                     ))
-                  : o.activity.slice(0, 4).map((a: any, i: number) => (
+                  : o.activity.slice(0, 4).map((a, i) => (
                       <div className="activity-item" data-testid={`activity-${a.id}`} key={a.id}>
                         <span className={`activity-icon activity-${i}`}>
                           <CheckCheck size={14} />

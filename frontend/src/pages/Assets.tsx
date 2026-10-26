@@ -26,6 +26,7 @@ import {
   vlanFor,
   computeNextDevice,
 } from '../lib/workflow';
+import { Asset } from '../lib/types';
 
 const ZONE_ICONS: Record<string, any> = {
   labs: Cpu,
@@ -49,7 +50,7 @@ export const ZoneBadge = ({ asset, testId }: { asset: any; testId?: string }) =>
 };
 
 export function Assets() {
-  const list = useData('/assets');
+  const list = useData<Asset[]>('/assets');
   const [open, setOpen] = useState(false);
   const [detailsAsset, setDetailsAsset] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -305,7 +306,7 @@ export function Assets() {
   };
 
   const all = Array.isArray(list.data) ? list.data : [];
-  const rows = all.filter((a: any) => matchesKind(a, kind) && matchesLocation(a) && matchesSearch(a));
+  const rows = all.filter(a => matchesKind(a, kind) && matchesLocation(a) && matchesSearch(a));
 
   return (
     <>
@@ -344,7 +345,7 @@ export function Assets() {
               onClick={() => setKind(key)}
             >
               {label}
-              <span>{all.filter((a: any) => matchesKind(a, key) && matchesLocation(a)).length}</span>
+              <span>{all.filter(a => matchesKind(a, key) && matchesLocation(a)).length}</span>
             </button>
           ))}
         </div>
@@ -411,7 +412,7 @@ export function Assets() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {rows.map((a: any) => {
+                {rows.map(a => {
                   const loc = findLocation(a.lab_id) || findLocation(a.lab_name);
                   const locCode = loc?.code || 'CAMPUS';
                   const locName = a.lab_name || loc?.name || 'Unassigned';
@@ -484,14 +485,14 @@ export function Assets() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Row 1: Equipment Type | Assigned Location / Zone */}
             <Field label="Equipment Type" id="asset-kind">
-              <Select id="asset-kind" value={form.kind} onChange={(e: any) => changeKind(e.target.value)}>
+              <Select id="asset-kind" value={form.kind} onChange={e => changeKind(e.target.value)}>
                 <option value="PC">Workstation</option>
                 <option value="AP">Access Point</option>
               </Select>
             </Field>
 
             <Field label="Assigned Location / Zone" id="asset-lab">
-              <Select id="asset-lab" value={form.lab_id} onChange={(e: any) => changeLocation(e.target.value)}>
+              <Select id="asset-lab" value={form.lab_id} onChange={e => changeLocation(e.target.value)}>
                 {form.kind === 'AP'
                   ? AP_LOCATION_GROUPS.map(group => (
                       <optgroup key={group.label} label={group.label}>
@@ -646,11 +647,7 @@ export function Assets() {
                   </Field>
 
                   <Field label="Equipment Type" id="edit-asset-kind">
-                    <Select
-                      id="edit-asset-kind"
-                      value={editForm.kind}
-                      onChange={(e: any) => changeEditKind(e.target.value)}
-                    >
+                    <Select id="edit-asset-kind" value={editForm.kind} onChange={e => changeEditKind(e.target.value)}>
                       <option value="AP">Access Point</option>
                       <option value="PC">Workstation</option>
                     </Select>
@@ -661,7 +658,7 @@ export function Assets() {
                     <Select
                       id="edit-asset-lab"
                       value={editForm.lab_id}
-                      onChange={(e: any) => setEditForm({ ...editForm, lab_id: e.target.value })}
+                      onChange={e => setEditForm({ ...editForm, lab_id: e.target.value })}
                     >
                       {editForm.kind === 'AP'
                         ? AP_LOCATION_GROUPS.map(group => (

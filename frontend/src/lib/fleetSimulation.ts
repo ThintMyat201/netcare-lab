@@ -1,12 +1,13 @@
 /** Client-side AP fleet simulation used by the Monitoring page. */
 import { SIMULATION_FLEET_APS } from './workflow';
+import { AccessPoint, FleetStats } from './types';
 
 export function apIndex(id: string): number {
   const digits = String(id || '1').replace(/\D/g, '');
   return digits ? parseInt(digits, 10) : 1;
 }
 
-export function baselineApMetrics(ap: any, idx: number, tick = 0, sampleIso?: string) {
+export function baselineApMetrics(ap: AccessPoint, idx: number, tick = 0, sampleIso?: string): AccessPoint {
   const num = apIndex(ap.id) || idx + 1;
   const labId = ap.lab_id || 'lab-1';
   const baseClients = labId === 'lab-3' ? 40 : labId === 'lab-1' ? 29 : labId === 'lab-4' ? 31 : 27;
@@ -48,7 +49,7 @@ export function buildHealthyFleet(nowIso?: string) {
   ).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
 }
 
-export function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: string) {
+export function stepApMetrics(ap: AccessPoint, idx: number, tick: number, sampleIso: string): AccessPoint {
   const num = apIndex(ap.id) || idx + 1;
   const status = ap.status || 'online';
   const scenario =
@@ -118,7 +119,7 @@ export function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: str
   return baselineApMetrics(ap, idx, tick, sampleIso);
 }
 
-export function computeStats(aps: any[]) {
+export function computeStats(aps: AccessPoint[]): FleetStats {
   return {
     total: aps.length,
     online: aps.filter(a => a.status === 'online').length,

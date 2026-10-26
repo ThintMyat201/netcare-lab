@@ -1,6 +1,6 @@
 /** Download rows as a UTF-8 CSV file, neutralising spreadsheet formula prefixes. */
-export function downloadCSV(name: string, rows: any[][]) {
-  const escape = (v: any) =>
+export function downloadCSV(name: string, rows: unknown[][]) {
+  const escape = (v: unknown) =>
     '"' +
     String(v ?? '')
       .replace(/^[=+@-]/, "'")

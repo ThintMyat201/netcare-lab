@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { RefreshCw, TriangleAlert, ArrowUpRight, CheckCheck, FlaskConical } from 'lucide-react';
 import { PageTitle, Button, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { time } from '../lib/api';
+import { Alert } from '../lib/types';
 
 export function Alerts() {
-  const { data, error, busy, load } = useData('/alerts');
+  const { data, error, busy, load } = useData<Alert[]>('/alerts');
   const [filter, setFilter] = useState('active');
-  const rows = data?.filter((a: any) => (filter === 'all' ? true : filter === 'active' ? a.active : !a.active));
+  const rows = data?.filter(a => (filter === 'all' ? true : filter === 'active' ? a.active : !a.active));
 
   return (
     <>
@@ -45,7 +46,7 @@ export function Alerts() {
           >
             {label}
             <span>
-              {data?.filter((a: any) => (key === 'all' ? true : key === 'active' ? a.active : !a.active)).length || 0}
+              {data?.filter(a => (key === 'all' ? true : key === 'active' ? a.active : !a.active)).length || 0}
             </span>
           </button>
         ))}
@@ -55,7 +56,7 @@ export function Alerts() {
         <Loading />
       ) : rows?.length ? (
         <div className="alert-grid">
-          {rows.map((a: any) => (
+          {rows.map(a => (
             <article key={a.id} className={`alert-card ${a.status}`} data-testid={`alert-${a.id}`}>
               {a.active ? (
                 <TriangleAlert className="alert-icon" size={21} />

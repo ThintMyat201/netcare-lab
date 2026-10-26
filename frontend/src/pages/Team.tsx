@@ -16,6 +16,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useAuth } from '../context';
 import { api, errorText, roleLabel } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import { User } from '../lib/types';
 
 const USER_SCOPES = [
   'All Campus Systems',
@@ -69,7 +70,7 @@ const blankMember: MemberForm = {
 
 export function Team() {
   const { user } = useAuth();
-  const list = useData('/users');
+  const list = useData<User[]>('/users');
   const [members, setMembers] = useState<any[] | null>(null);
   const [roleFilter, setRoleFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -528,7 +529,7 @@ export function Team() {
                 id="user-role"
                 value={form.role}
                 disabled={lockRole}
-                onChange={(e: any) => changeRole(e.target.value)}
+                onChange={e => changeRole(e.target.value)}
                 className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
                 {['admin', 'engineer', 'assistant'].map(r => (
@@ -543,7 +544,7 @@ export function Team() {
               <Select
                 id="user-scope"
                 value={form.scope}
-                onChange={(e: any) => setForm({ ...form, scope: e.target.value })}
+                onChange={e => setForm({ ...form, scope: e.target.value })}
                 className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
                 {USER_SCOPES.map(s => (
@@ -560,7 +561,7 @@ export function Team() {
                 id="user-active"
                 value={String(form.active)}
                 disabled={lockStatus}
-                onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
+                onChange={e => setForm({ ...form, active: e.target.value === 'true' })}
                 className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
                 <option value="true" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">

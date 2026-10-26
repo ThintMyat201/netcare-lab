@@ -4,7 +4,12 @@ import { ArrowUpRight, Radio, ArrowDownToLine, Activity, Users, FlaskConical, Ch
 import { Button, Status, Modal, Field, Select, ErrorBox } from './shared';
 import { api, errorText, time } from '../lib/api';
 import { formatLocationBadge } from '../lib/workflow';
-export const Metrics = ({ stats, openTickets }: any) => (
+import { AccessPoint, FleetStats, Ticket, TrafficPoint } from '../lib/types';
+
+/** A history sample, or a live sample the Monitoring page adds between history points. */
+export type ChartPoint = Partial<TrafficPoint> & { timestamp: string; live?: boolean };
+
+export const Metrics = ({ stats, openTickets }: { stats: FleetStats; openTickets: number }) => (
   <div className="metric-grid">
     {[
       {
@@ -62,15 +67,16 @@ export const Metrics = ({ stats, openTickets }: any) => (
     ))}
   </div>
 );
-const ClipboardIcon = ({ size }: any) => <ArrowDownToLine size={size} />;
-export const TrafficChart = ({ history, title = 'Network Traffic & Load', height = 315 }: any) => {
+const ClipboardIcon = ({ size }: { size?: number }) => <ArrowDownToLine size={size} />;
+type TrafficChartProps = { history: ChartPoint[] | null | undefined; title?: string; height?: number };
+export const TrafficChart = ({ history, title = 'Network Traffic & Load', height = 315 }: TrafficChartProps) => {
   const [period, setPeriod] = useState('24h'),
     [showDevices, setShowDevices] = useState(true),
     [showBandwidth, setShowBandwidth] = useState(true),
     chartId = React.useId().replace(/:/g, '');
   const hours = period === '24h' ? 24 : period === '6h' ? 6 : 1;
   const sorted = Array.isArray(history)
-    ? [...history].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    ? [...history].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     : [];
   const latestRaw = sorted.length ? new Date(sorted[sorted.length - 1].timestamp).getTime() : Date.now();
   const hasSpan = sorted.length >= 5 && latestRaw - new Date(sorted[0].timestamp).getTime() >= 3600000;
@@ -79,7 +85,7 @@ export const TrafficChart = ({ history, title = 'Network Traffic & Load', height
     : Array.from({ length: 97 }, (_, i) => {
         const step = 96 - i,
           slotTime = latestRaw - step * 900000,
-          existing = sorted.find((x: any) => !x.live && Math.abs(new Date(x.timestamp).getTime() - slotTime) < 450000);
+          existing = sorted.find(x => !x.live && Math.abs(new Date(x.timestamp).getTime() - slotTime) < 450000);
         if (existing) return existing;
         const phase = Math.floor(slotTime / 900000),
           baseClients = sorted[sorted.length - 1]?.clients || 310;
@@ -88,11 +94,11 @@ export const TrafficChart = ({ history, title = 'Network Traffic & Load', height
         return { timestamp: new Date(slotTime).toISOString(), clients, throughput };
       });
   const latest = series.length ? new Date(series[series.length - 1].timestamp).getTime() : Date.now();
-  const inWindow = series.filter((x: any) => new Date(x.timestamp).getTime() >= latest - hours * 3600000 - 30000);
-  const livePoints = inWindow.filter((x: any) => x.live).slice(-16);
-  const historicalWindow = inWindow.filter((x: any) => !x.live);
+  const inWindow = series.filter(x => new Date(x.timestamp).getTime() >= latest - hours * 3600000 - 30000);
+  const livePoints = inWindow.filter(x => x.live).slice(-16);
+  const historicalWindow = inWindow.filter(x => !x.live);
   const bucketMs = period === '24h' ? 900000 : period === '6h' ? 300000 : 60000;
-  const bucketMap = new Map<number, any>();
+  const bucketMap = new Map<number, ChartPoint>();
   for (const pt of historicalWindow) {
     const ts = new Date(pt.timestamp).getTime();
     if (!Number.isNaN(ts)) bucketMap.set(Math.floor(ts / bucketMs), pt);
@@ -276,7 +282,16 @@ export const TrafficChart = ({ history, title = 'Network Traffic & Load', height
     </section>
   );
 };
-export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, ticketsByAsset = {} }: any) => {
+type APTableProps = {
+  aps: AccessPoint[];
+  onSelect?: (ap: AccessPoint) => void;
+  limit?: number;
+  onResetFilter?: () => void;
+  /** Accepted for compatibility; the table no longer shows ticket links. */
+  onCreateTicket?: (ap: AccessPoint) => void;
+  ticketsByAsset?: Record<string, Ticket>;
+};
+export const APTable = ({ aps, onSelect, limit, onResetFilter }: APTableProps) => {
   const displayedAps = aps.slice(0, limit || aps.length);
 
   return (
@@ -307,7 +322,7 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {displayedAps.map((a: any) => {
+              {displayedAps.map(a => {
                 const locInfo = formatLocationBadge(a.lab_name || a.lab_id);
                 const locCode = locInfo.code;
                 const locName = locInfo.name;
@@ -364,7 +379,7 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
                           className="action-btn-uniform"
                           title={`Open AP Action Modal for ${a.tag}`}
                           aria-label={`Open AP Action Modal for ${a.tag}`}
-                          onClick={(e: any) => {
+                          onClick={e => {
                             e.stopPropagation();
                             onSelect?.(a);
                           }}
@@ -392,7 +407,13 @@ export const APTable = ({ aps, onSelect, limit, onResetFilter, onCreateTicket, t
     </div>
   );
 };
-export const Simulation = ({ open, onClose, aps, onDone }: any) => {
+type SimulationProps = {
+  open: boolean;
+  onClose: (open: boolean) => void;
+  aps: AccessPoint[];
+  onDone?: (scenario: string, asset: string) => void;
+};
+export const Simulation = ({ open, onClose, aps, onDone }: SimulationProps) => {
   const [asset, setAsset] = useState('all'),
     [scenario, setScenario] = useState('congestion'),
     [busy, setBusy] = useState(false),
@@ -415,12 +436,12 @@ export const Simulation = ({ open, onClose, aps, onDone }: any) => {
   return (
     <Modal open={open} onClose={onClose} title="Network Simulation Controls" id="simulation-dialog">
       <Field label="Target Access Point / Lab" id="scenario-asset">
-        <Select id="scenario-asset" value={asset} onChange={(e: any) => setAsset(e.target.value)}>
+        <Select id="scenario-asset" value={asset} onChange={e => setAsset(e.target.value)}>
           <option value="all">All Access Points</option>
           <option value="lab-1">Computing Lab A (All APs)</option>
           <option value="lab-2">Computing Lab B (All APs)</option>
           <option value="lab-3">Innovation Lab (All APs)</option>
-          {aps.map((a: any) => (
+          {aps.map(a => (
             <option key={a.id} value={a.id}>
               {a.tag} · {a.lab_name}
             </option>

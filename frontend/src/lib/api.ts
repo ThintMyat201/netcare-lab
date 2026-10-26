@@ -1,15 +1,19 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { ApiErrorBody } from './types';
+
+export type { User } from './types';
+
 export const api = axios.create({
   baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
   withCredentials: true,
   timeout: 12000,
   headers: { 'X-Atlas-Request': '1' },
 });
-let refresh: Promise<any> | null = null;
+let refresh: Promise<AxiosResponse> | null = null;
 api.interceptors.response.use(
   r => r,
-  async error => {
-    const config = error.config;
+  async (error: AxiosError) => {
+    const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     if (error.response?.status === 401 && !config?._retry && !config?.url?.startsWith('/auth/')) {
       config._retry = true;
       try {
@@ -25,8 +29,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
-export function errorText(e: any): string {
-  const d = e.response?.data?.detail;
+
+/** The HTTP status of a failed request, or undefined when the server never answered. */
+export const errorStatus = (e: unknown): number | undefined => (axios.isAxiosError(e) ? e.response?.status : undefined);
+
+export function errorText(e: unknown): string {
+  const d = axios.isAxiosError<ApiErrorBody>(e) ? e.response?.data?.detail : undefined;
   return typeof d === 'string'
     ? d
     : Array.isArray(d)
@@ -49,4 +57,3 @@ export const time = (value?: string, full = false, withSeconds = false) =>
     : '—';
 export const roleLabel = (r: string) =>
   ({ admin: 'Administrator', engineer: 'Network Engineer', assistant: 'IT Assistant' })[r] || r;
-export type User = { id: string; name: string; email: string; role: string; active: boolean };

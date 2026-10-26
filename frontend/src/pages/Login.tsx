@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Network, ClipboardCheck, Lock, KeyRound } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Network, ClipboardCheck, Lock, KeyRound, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
@@ -17,7 +17,7 @@ export default function Login() {
 
   if (user) return <Navigate to="/" replace />;
 
-  const submit = async (e: any) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError('');
@@ -143,7 +143,7 @@ export default function Login() {
               ['admin', 'Administrator', ShieldCheck],
               ['engineer', 'Network Engineer', Network],
               ['assistant', 'IT Assistant', ClipboardCheck],
-            ].map(([role, label, Icon]: any) => (
+            ].map(([role, label, Icon]: [string, string, LucideIcon]) => (
               <button
                 type="button"
                 disabled={busy}

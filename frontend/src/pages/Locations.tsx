@@ -3,6 +3,7 @@ import { Plus, Search, Pencil, Trash2, CheckCheck, X, Save, Sparkles, ArrowUpRig
 import { api, errorText } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { CampusLocation, CAMPUS_LOCATIONS, computeAutoRoomCode } from '../lib/workflow';
+import { Asset } from '../lib/types';
 
 const ZONE_PILLS = [
   { key: 'all', label: 'All Zones' },
@@ -27,8 +28,8 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function Locations() {
-  const list = useData('/locations');
-  const assetsList = useData('/assets');
+  const list = useData<CampusLocation[]>('/locations');
+  const assetsList = useData<Asset[]>('/assets');
   const [openAdd, setOpenAdd] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<CampusLocation | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -63,7 +64,7 @@ export default function Locations() {
     if (!Array.isArray(list.data) || list.data.length === 0) {
       return CAMPUS_LOCATIONS;
     }
-    return list.data.map((item: any) => {
+    return list.data.map(item => {
       // Find client reference location by ID or code or name to backfill any missing fields
       const ref = CAMPUS_LOCATIONS.find(l => l.id === item.id || l.code === item.code || l.name === item.name);
       return {
@@ -276,7 +277,7 @@ export default function Locations() {
   // Devices in currently selected room for drawer inspection
   const selectedRoomDevices = useMemo(() => {
     if (!selectedRoom || !Array.isArray(assetsList.data)) return [];
-    return assetsList.data.filter((a: any) => {
+    return assetsList.data.filter(a => {
       return (
         a.lab_id === selectedRoom.id ||
         a.lab_name === selectedRoom.name ||
@@ -466,7 +467,7 @@ export default function Locations() {
                       id="loc-edit-block"
                       data-testid="loc-edit-select-block"
                       value={editForm.block}
-                      onChange={(e: any) => handleEditBlockChange(e.target.value)}
+                      onChange={e => handleEditBlockChange(e.target.value)}
                     >
                       {BLOCK_OPTIONS.map(b => (
                         <option key={b} value={b}>
@@ -481,7 +482,7 @@ export default function Locations() {
                       id="loc-edit-level"
                       data-testid="loc-edit-select-level"
                       value={editForm.level}
-                      onChange={(e: any) => handleEditLevelChange(e.target.value)}
+                      onChange={e => handleEditLevelChange(e.target.value)}
                     >
                       {LEVEL_OPTIONS.map(lvl => (
                         <option key={lvl} value={lvl}>
@@ -511,7 +512,7 @@ export default function Locations() {
                       id="loc-edit-cat"
                       data-testid="loc-edit-select-cat"
                       value={editForm.category}
-                      onChange={(e: any) => setEditForm({ ...editForm, category: e.target.value })}
+                      onChange={e => setEditForm({ ...editForm, category: e.target.value })}
                     >
                       {CATEGORY_OPTIONS.map(c => (
                         <option key={c} value={c}>
@@ -592,11 +593,11 @@ export default function Locations() {
                     <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100">
                       {(() => {
                         const wsCount =
-                          selectedRoomDevices.filter((d: any) => d.kind === 'PC').length ||
+                          selectedRoomDevices.filter(d => d.kind === 'PC').length ||
                           selectedRoom.workstation_count ||
                           0;
                         const apCount =
-                          selectedRoomDevices.filter((d: any) => d.kind === 'AP').length || selectedRoom.ap_count || 0;
+                          selectedRoomDevices.filter(d => d.kind === 'AP').length || selectedRoom.ap_count || 0;
                         const devParts: string[] = [];
                         if (wsCount > 0) devParts.push(`${wsCount} PC`);
                         if (apCount > 0) devParts.push(`${apCount} AP`);
@@ -620,7 +621,7 @@ export default function Locations() {
                         <span>Device Tag</span>
                         <span>Type</span>
                       </div>
-                      {selectedRoomDevices.map((dev: any) => (
+                      {selectedRoomDevices.map(dev => (
                         <div
                           key={dev.id}
                           className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
@@ -704,7 +705,7 @@ export default function Locations() {
                 id="loc-add-block"
                 data-testid="loc-select-block"
                 value={form.block}
-                onChange={(e: any) => handleBlockChange(e.target.value)}
+                onChange={e => handleBlockChange(e.target.value)}
               >
                 {BLOCK_OPTIONS.map(b => (
                   <option key={b} value={b}>
@@ -719,7 +720,7 @@ export default function Locations() {
                 id="loc-add-level"
                 data-testid="loc-select-level"
                 value={form.level}
-                onChange={(e: any) => handleLevelChange(e.target.value)}
+                onChange={e => handleLevelChange(e.target.value)}
               >
                 {LEVEL_OPTIONS.map(lvl => (
                   <option key={lvl} value={lvl}>
@@ -748,7 +749,7 @@ export default function Locations() {
                 id="loc-add-cat"
                 data-testid="loc-select-cat"
                 value={form.category}
-                onChange={(e: any) => setForm({ ...form, category: e.target.value })}
+                onChange={e => setForm({ ...form, category: e.target.value })}
               >
                 {CATEGORY_OPTIONS.map(c => (
                   <option key={c} value={c}>

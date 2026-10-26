@@ -23,6 +23,7 @@ import {
   Empty,
   useData,
 } from '../components/shared';
+import { Asset, Ticket } from '../lib/types';
 
 function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 'slate' } {
   if (ticket.status === 'resolved') {
@@ -44,8 +45,8 @@ function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 's
 export default function Tickets() {
   const { user } = useAuth();
   const [params] = useSearchParams();
-  const list = useData('/tickets');
-  const assets = useData('/assets');
+  const list = useData<Ticket[]>('/tickets');
+  const assets = useData<Asset[]>('/assets');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -76,9 +77,7 @@ export default function Tickets() {
 
   useEffect(() => {
     if (allTickets.length && params.get('ticket')) {
-      setSelected(
-        allTickets.find((t: any) => t.id === params.get('ticket') || t.number === params.get('ticket')) || null,
-      );
+      setSelected(allTickets.find(t => t.id === params.get('ticket') || t.number === params.get('ticket')) || null);
     }
   }, [allTickets, params]);
 
@@ -160,7 +159,7 @@ export default function Tickets() {
   };
 
   const rows = allTickets.filter(
-    (t: any) =>
+    t =>
       (filter === 'all' || t.status === filter) &&
       (t.number + ' ' + t.title + ' ' + t.asset_tag + ' ' + (t.tier || ''))
         .toLowerCase()
@@ -209,7 +208,7 @@ export default function Tickets() {
               onClick={() => setFilter(key)}
             >
               {label}
-              <span>{allTickets.filter((t: any) => key === 'all' || t.status === key).length || 0}</span>
+              <span>{allTickets.filter(t => key === 'all' || t.status === key).length || 0}</span>
             </button>
           ))}
         </div>
@@ -242,7 +241,7 @@ export default function Tickets() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {rows.map((t: any) => {
+                {rows.map(t => {
                   const sla = getSlaBadge(t);
                   const cleanAssignee = t.assigned_name ? t.assigned_name.replace(/\s*\([^)]*\)/g, '').trim() : '—';
                   const priorityLabel =
@@ -346,13 +345,13 @@ export default function Tickets() {
                 id="incident-asset"
                 value={form.asset_id}
                 required
-                onChange={(e: any) => setForm({ ...form, asset_id: e.target.value })}
+                onChange={e => setForm({ ...form, asset_id: e.target.value })}
                 className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
                 <option value="">Select equipment...</option>
                 {assets.data
-                  ?.filter((a: any) => !a.archived)
-                  .map((a: any) => (
+                  ?.filter(a => !a.archived)
+                  .map(a => (
                     <option key={a.id} value={a.id}>
                       {a.tag} ({a.model})
                     </option>
@@ -364,7 +363,7 @@ export default function Tickets() {
               <Select
                 id="incident-category"
                 value={form.category}
-                onChange={(e: any) => setForm({ ...form, category: e.target.value })}
+                onChange={e => setForm({ ...form, category: e.target.value })}
                 className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
                 <option value="network">Network / Connectivity (Tier 2)</option>
@@ -413,7 +412,7 @@ export default function Tickets() {
             <Select
               id="incident-priority"
               value={form.priority}
-              onChange={(e: any) => setForm({ ...form, priority: e.target.value })}
+              onChange={e => setForm({ ...form, priority: e.target.value })}
               className="w-full rounded-lg px-3.5 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
               <option value="medium">Medium Priority</option>

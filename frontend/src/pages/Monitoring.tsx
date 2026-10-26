@@ -49,6 +49,7 @@ import {
   stepApMetrics,
   computeStats,
 } from '../lib/fleetSimulation';
+import { MonitoringSnapshot, Ticket } from '../lib/types';
 
 export default function Monitoring() {
   const { user } = useAuth();
@@ -87,8 +88,8 @@ export default function Monitoring() {
   const userSimulatedRef = useRef<boolean>(initialSimActive);
   const pulseTimeoutRef = useRef<number | null>(null);
 
-  const { data, error, busy, load } = useData(`/monitoring${lab ? '?lab_id=' + lab : ''}`);
-  const ticketsData = useData('/tickets');
+  const { data, error, busy, load } = useData<MonitoringSnapshot>(`/monitoring${lab ? '?lab_id=' + lab : ''}`);
+  const ticketsData = useData<Ticket[]>('/tickets');
 
   const [workflowVersion, setWorkflowVersion] = useState(0);
 
@@ -246,7 +247,7 @@ export default function Monitoring() {
       restoreDevice(ap.id);
       const idx = Math.max(
         0,
-        (liveAps || data?.aps || []).findIndex((x: any) => x.id === ap.id),
+        (liveAps || data?.aps || []).findIndex(x => x.id === ap.id),
       );
       const healthyAp = baselineApMetrics(
         { ...ap, status: 'online', scenario: 'normal' },
@@ -256,7 +257,7 @@ export default function Monitoring() {
       );
       setLiveAps(getSharedFleetAps());
       setSelected(healthyAp);
-      setDetail((prev: any) =>
+      setDetail(prev =>
         prev
           ? {
               ...prev,
@@ -283,7 +284,7 @@ export default function Monitoring() {
 
   useEffect(() => {
     if (data && params.get('ap')) {
-      const a = (liveAps || data.aps).find((item: any) => item.id === params.get('ap'));
+      const a = (liveAps || data.aps).find(item => item.id === params.get('ap'));
       if (a) inspect(a);
     }
   }, [!!data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -317,25 +318,23 @@ export default function Monitoring() {
     const sampleIso = new Date().toISOString();
 
     const sourceAps = liveAps || data?.aps || [];
-    const updatedAps = sourceAps.map((ap: any, idx: number) => stepApMetrics(ap, idx, tick, sampleIso));
+    const updatedAps = sourceAps.map((ap, idx) => stepApMetrics(ap, idx, tick, sampleIso));
 
-    const reportingAps = updatedAps.filter((a: any) => typeof a.clients === 'number');
-    const totalClients = reportingAps.reduce((sum: number, a: any) => sum + (a.clients || 0), 0);
+    const reportingAps = updatedAps.filter(a => typeof a.clients === 'number');
+    const totalClients = reportingAps.reduce((sum: number, a) => sum + (a.clients || 0), 0);
     const totalThroughput =
       Math.round(
         reportingAps.reduce(
-          (sum: number, a: any) => sum + (typeof a.throughput === 'number' ? a.throughput : (a.clients || 0) * 0.96),
+          (sum: number, a) => sum + (typeof a.throughput === 'number' ? a.throughput : (a.clients || 0) * 0.96),
           0,
         ) * 10,
       ) / 10;
     const avgLoad = reportingAps.length
-      ? Math.round((reportingAps.reduce((sum: number, a: any) => sum + (a.load || 0), 0) / reportingAps.length) * 10) /
-        10
+      ? Math.round((reportingAps.reduce((sum: number, a) => sum + (a.load || 0), 0) / reportingAps.length) * 10) / 10
       : null;
-    const latencyAps = reportingAps.filter((a: any) => typeof a.latency === 'number');
+    const latencyAps = reportingAps.filter(a => typeof a.latency === 'number');
     const avgLatency = latencyAps.length
-      ? Math.round((latencyAps.reduce((sum: number, a: any) => sum + (a.latency || 0), 0) / latencyAps.length) * 10) /
-        10
+      ? Math.round((latencyAps.reduce((sum: number, a) => sum + (a.latency || 0), 0) / latencyAps.length) * 10) / 10
       : null;
 
     const newPoint = {
@@ -352,10 +351,10 @@ export default function Monitoring() {
     setLiveSamples(prev => [...prev.slice(-24), newPoint]);
 
     if (selected) {
-      const updatedSelected = updatedAps.find((a: any) => a.id === selected.id);
+      const updatedSelected = updatedAps.find(a => a.id === selected.id);
       if (updatedSelected) {
         setSelected(updatedSelected);
-        setDetail((prev: any) =>
+        setDetail(prev =>
           prev
             ? {
                 ...prev,
@@ -476,15 +475,15 @@ export default function Monitoring() {
     setSimulationActive(true);
     setMonitoringSimActive(true);
 
-    const reporting = updatedAps.filter((a: any) => typeof a.clients === 'number');
-    const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
-    const totalThroughput = Math.round(reporting.reduce((s: number, a: any) => s + (a.throughput || 0), 0) * 10) / 10;
+    const reporting = updatedAps.filter(a => typeof a.clients === 'number');
+    const totalClients = reporting.reduce((s: number, a) => s + (a.clients || 0), 0);
+    const totalThroughput = Math.round(reporting.reduce((s: number, a) => s + (a.throughput || 0), 0) * 10) / 10;
     const avgLoad = reporting.length
-      ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
+      ? Math.round((reporting.reduce((s: number, a) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
       : null;
-    const latList = reporting.filter((a: any) => typeof a.latency === 'number');
+    const latList = reporting.filter(a => typeof a.latency === 'number');
     const avgLatency = latList.length
-      ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
+      ? Math.round((latList.reduce((s: number, a) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
       : null;
 
     setLiveSamples(prev => [
@@ -531,15 +530,15 @@ export default function Monitoring() {
     setSimulationActive(false);
     setMonitoringSimActive(false);
 
-    const reporting = restoredAps.filter((a: any) => typeof a.clients === 'number');
-    const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
-    const totalThroughput = Math.round(reporting.reduce((s: number, a: any) => s + (a.throughput || 0), 0) * 10) / 10;
+    const reporting = restoredAps.filter(a => typeof a.clients === 'number');
+    const totalClients = reporting.reduce((s: number, a) => s + (a.clients || 0), 0);
+    const totalThroughput = Math.round(reporting.reduce((s: number, a) => s + (a.throughput || 0), 0) * 10) / 10;
     const avgLoad = reporting.length
-      ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
+      ? Math.round((reporting.reduce((s: number, a) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
       : null;
-    const latList = reporting.filter((a: any) => typeof a.latency === 'number');
+    const latList = reporting.filter(a => typeof a.latency === 'number');
     const avgLatency = latList.length
-      ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
+      ? Math.round((latList.reduce((s: number, a) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
       : null;
 
     setLiveSamples(prev => [
@@ -578,18 +577,15 @@ export default function Monitoring() {
     () => (liveAps && liveAps.length > 0 ? liveAps : simulationActive ? buildSimulationFleet() : buildHealthyFleet()),
     [liveAps, simulationActive],
   );
-  const labScopedAps = useMemo(
-    () => (lab ? activeAps.filter((a: any) => a.lab_id === lab) : activeAps),
-    [activeAps, lab],
-  );
+  const labScopedAps = useMemo(() => (lab ? activeAps.filter(a => a.lab_id === lab) : activeAps), [activeAps, lab]);
   const stats = useMemo(() => computeStats(labScopedAps), [labScopedAps]);
 
   const chartHistory = useMemo(() => {
     const baseHistory = Array.isArray(data?.history) ? data.history : [];
-    const allCongested = data?.aps?.length >= 4 && data.aps.every((a: any) => a.status === 'congested');
+    const allCongested = data?.aps?.length >= 4 && data.aps.every(a => a.status === 'congested');
     const normalizedBase =
       allCongested && !userSimulatedRef.current
-        ? baseHistory.map((pt: any, i: number) => {
+        ? baseHistory.map((pt, i) => {
             const phase = i * 0.45;
             const clients = Math.max(45, Math.round(stats.clients + Math.sin(phase) * 26 + Math.cos(phase * 0.6) * 14));
             const throughput = Math.round(clients * (0.96 + Math.sin(phase * 0.8) * 0.12) * 10) / 10;
@@ -610,7 +606,7 @@ export default function Monitoring() {
   }
 
   const query = search.trim().toLowerCase();
-  const filteredAps = labScopedAps.filter((a: any) => {
+  const filteredAps = labScopedAps.filter(a => {
     if (status !== 'all' && a.status !== status) return false;
     if (!query) return true;
     const haystack = [a.tag, a.name, a.lab_name, a.placement, a.ip, a.model, a.mac, ZONE_GROUP_LABELS[zoneGroupOf(a)]]
@@ -668,7 +664,7 @@ export default function Monitoring() {
                 id="auto-sample-interval"
                 aria-label="Auto-sample interval"
                 value={sampleInterval}
-                onChange={(e: any) => {
+                onChange={e => {
                   const nextVal = Number(e.target.value);
                   setSampleInterval(nextVal);
                   if (nextVal > 0) {
@@ -781,7 +777,7 @@ export default function Monitoring() {
               id="monitor-lab-filter"
               className="ap-location-select"
               value={lab}
-              onChange={(e: any) => {
+              onChange={e => {
                 setLab(e.target.value);
               }}
             >
@@ -790,7 +786,7 @@ export default function Monitoring() {
                 <optgroup key={group.label} label={group.label}>
                   {CAMPUS_LOCATIONS.filter(l => group.zones.includes(l.zone_group)).map(l => (
                     <option key={l.id} value={l.id}>
-                      [{l.code}] {l.name} ({activeAps.filter((a: any) => a.lab_id === l.id).length} APs)
+                      [{l.code}] {l.name} ({activeAps.filter(a => a.lab_id === l.id).length} APs)
                     </option>
                   ))}
                 </optgroup>
@@ -1024,7 +1020,7 @@ export default function Monitoring() {
                           <Select
                             id="ap-ticket-priority"
                             value={ticketForm.priority}
-                            onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                            onChange={e => setTicketForm({ ...ticketForm, priority: e.target.value })}
                           >
                             <option value="high">High Priority</option>
                             <option value="medium">Medium Priority</option>

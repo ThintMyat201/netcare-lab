@@ -37,6 +37,10 @@ jobs:
       # react-scripts 5 (Create React App) declares TypeScript 3 or 4 as a peer, and this project uses
       # TypeScript 5.9, so a strict install fails with ERESOLVE.
       - run: npm ci --legacy-peer-deps
+      - name: Type check
+        run: npm run typecheck
+      - name: Format
+        run: npm run format:check
       - name: Build
         # Create React App turns lint warnings into errors when CI=true; this job checks that the app compiles.
         run: CI=false npm run build

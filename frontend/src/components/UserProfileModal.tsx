@@ -67,7 +67,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
     try {
       await logout();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       setError(errorText(err) || 'Failed to sign out.');
       setSigningOut(false);
     }
@@ -115,7 +115,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
 
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: { name: string; email: string; current_password?: string; new_password?: string } = {
         name: trimmedName,
         email: trimmedEmail,
       };
@@ -132,11 +132,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
         if (res.data) {
           updatedUser = { ...user, ...res.data };
         }
-      } catch (err: any) {
+      } catch (err) {
         // Fallback: If direct /auth/profile is not available in mock/demo, also try /users/{id}
         if (user.role === 'admin' && user.id) {
           try {
-            const adminPatch: any = { name: trimmedName, email: trimmedEmail };
+            const adminPatch: { name: string; email: string; password?: string } = {
+              name: trimmedName,
+              email: trimmedEmail,
+            };
             if (isChangingPassword) adminPatch.password = newPassword;
             const res = await api.patch(`/users/${user.id}`, adminPatch);
             if (res.data) updatedUser = { ...user, ...res.data };
@@ -173,7 +176,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
 
       // Close modal
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       setError(errorText(err) || 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);

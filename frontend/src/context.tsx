@@ -1,24 +1,37 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { api, User } from './lib/api';
-const Context = createContext<any>(null);
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { api, errorStatus } from './lib/api';
+import { User } from './lib/types';
+
+export type LoginBody = { email: string; password: string } | { role: string };
+
+export interface AuthContextValue {
+  user: User | null;
+  setUser: (user: User | null) => void;
+  updateUser: (updated: Partial<User>) => void;
+  ready: boolean;
+  login: (body: LoginBody, demo?: boolean) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const Context = createContext<AuthContextValue>(null);
 export const useAuth = () => useContext(Context);
-export const AuthProvider = ({ children }: any) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false);
   useEffect(() => {
     let live = true;
     (async () => {
       try {
-        const r = await api.get('/auth/me');
+        const r = await api.get<User>('/auth/me');
         if (live) setUser(r.data);
-      } catch (e: any) {
+      } catch (e) {
         if (
-          e.response?.status === 401 &&
+          errorStatus(e) === 401 &&
           !sessionStorage.getItem('atlas-logged-out') &&
           window.location.pathname !== '/login'
         ) {
           try {
-            const r = await api.post('/auth/demo', { role: 'admin' });
+            const r = await api.post<User>('/auth/demo', { role: 'admin' });
             if (live) setUser(r.data);
           } catch {}
         }
@@ -33,8 +46,8 @@ export const AuthProvider = ({ children }: any) => {
       window.removeEventListener('session-expired', expired);
     };
   }, []);
-  const login = async (body: any, demo = false) => {
-    const r = await api.post(demo ? '/auth/demo' : '/auth/login', body);
+  const login = async (body: LoginBody, demo = false) => {
+    const r = await api.post<User>(demo ? '/auth/demo' : '/auth/login', body);
     sessionStorage.removeItem('atlas-logged-out');
     setUser(r.data);
   };
@@ -44,7 +57,7 @@ export const AuthProvider = ({ children }: any) => {
     setUser(null);
   };
   const updateUser = (updated: Partial<User>) => {
-    setUser((prev: any) => (prev ? { ...prev, ...updated } : null));
+    setUser(prev => (prev ? { ...prev, ...updated } : null));
   };
   return <Context.Provider value={{ user, setUser, updateUser, ready, login, logout }}>{children}</Context.Provider>;
 };

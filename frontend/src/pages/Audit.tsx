@@ -3,9 +3,10 @@ import { Download, FileText, Search, RefreshCw } from 'lucide-react';
 import { PageTitle, Button, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { time } from '../lib/api';
 import { downloadCSV } from '../lib/csv';
+import { AuditEntry } from '../lib/types';
 
 export function Audit() {
-  const { data, error, busy, load } = useData('/audit');
+  const { data, error, busy, load } = useData<AuditEntry[]>('/audit');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function Audit() {
       window.removeEventListener('atlas-user-profile-updated', onWorkflowUpdate);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const rows = data?.filter((a: any) =>
+  const rows = data?.filter(a =>
     (a.action + ' ' + a.actor + ' ' + a.detail).toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -38,7 +39,7 @@ export function Audit() {
 
     const tableRows = rows
       .map(
-        (a: any) => `
+        a => `
       <tr>
         <td class="mono whitespace-nowrap">${escapeHtml(time(a.timestamp, true))} MYT</td>
         <td class="font-medium">${escapeHtml(a.actor || 'System')}</td>
@@ -215,7 +216,7 @@ export function Audit() {
           onClick={() =>
             downloadCSV('atlas-activity-log.csv', [
               ['Timestamp MYT', 'Actor', 'Action', 'Detail'],
-              ...(rows || []).map((a: any) => [a.timestamp, a.actor, a.action, a.detail]),
+              ...(rows || []).map(a => [a.timestamp, a.actor, a.action, a.detail]),
             ])
           }
           disabled={!data}
@@ -269,7 +270,7 @@ export function Audit() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {rows.map((a: any) => (
+                {rows.map(a => (
                   <tr
                     key={a.id}
                     data-testid={`audit-event-${a.id}`}

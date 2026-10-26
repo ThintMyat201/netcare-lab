@@ -22,13 +22,14 @@ import {
   findLocation,
 } from '../lib/workflow';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import { Asset, Checklist, Shift } from '../lib/types';
 
 export default function Shifts() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const list = useData('/shifts');
-  const checklists = useData('/checklists');
-  const assets = useData('/assets');
+  const list = useData<Shift[]>('/shifts');
+  const checklists = useData<Checklist[]>('/checklists');
+  const assets = useData<Asset[]>('/assets');
 
   const SESSION_WINDOWS: Record<string, { start: string; end: string }> = {
     morning: { start: '08:00', end: '12:00' },
@@ -70,7 +71,7 @@ export default function Shifts() {
   );
 
   const rows = useMemo(() => {
-    return normalizedShifts.filter((s: any) => {
+    return normalizedShifts.filter(s => {
       if (filter !== 'all' && s.cancelled) return false;
       if (scopeFilter === 'my') {
         const isMy =
@@ -279,7 +280,7 @@ export default function Shifts() {
           </div>
         )}
 
-        <Select id="shift-filter" value={filter} onChange={(e: any) => setFilter(e.target.value)}>
+        <Select id="shift-filter" value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="active">Active Shifts</option>
           <option value="all">All Shifts (Including Cancelled)</option>
         </Select>
@@ -321,7 +322,7 @@ export default function Shifts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {rows.map((s: any) => {
+                {rows.map(s => {
                   const progress = getLabInspectionProgress(s.lab_id, s.lab_name, checklists.data, assets.data);
                   const isAcknowledged = Boolean(s.acknowledged_at);
                   const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
@@ -460,8 +461,8 @@ export default function Shifts() {
             const displayChecked = isAcknowledged ? progress.checked : 0;
             const percent = isAcknowledged ? progress.percent : 0;
             const isAllChecked = isAcknowledged && progress.checked >= progress.required;
-            const checkedAssetTags = new Set((progress.labChecks || []).map((c: any) => c.asset_tag).filter(Boolean));
-            const checkedAssetIds = new Set((progress.labChecks || []).map((c: any) => c.asset_id).filter(Boolean));
+            const checkedAssetTags = new Set((progress.labChecks || []).map(c => c.asset_tag).filter(Boolean));
+            const checkedAssetIds = new Set((progress.labChecks || []).map(c => c.asset_id).filter(Boolean));
 
             return (
               <div className="flex flex-col gap-3.5">
@@ -521,7 +522,7 @@ export default function Shifts() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {targetWorkstations.map((pc: any) => {
+                    {targetWorkstations.map(pc => {
                       const isVerified =
                         isCompleted || (isAcknowledged && (checkedAssetIds.has(pc.id) || checkedAssetTags.has(pc.tag)));
                       return (
@@ -688,7 +689,7 @@ export default function Shifts() {
               id="shift-assistant"
               required
               value={form.assistant_id}
-              onChange={(e: any) => setForm({ ...form, assistant_id: e.target.value })}
+              onChange={e => setForm({ ...form, assistant_id: e.target.value })}
             >
               <option value="">Select an assistant…</option>
               {users
@@ -706,7 +707,7 @@ export default function Shifts() {
               id="shift-lab"
               required
               value={form.lab_id}
-              onChange={(e: any) => setForm({ ...form, lab_id: e.target.value })}
+              onChange={e => setForm({ ...form, lab_id: e.target.value })}
             >
               <option value="lab-1">B-04-03 · Computing Lab A</option>
               <option value="lab-2">B-04-04 · Computing Lab B</option>
@@ -731,7 +732,7 @@ export default function Shifts() {
               <Select
                 id="shift-window"
                 value={form.session}
-                onChange={(e: any) => setForm({ ...form, session: e.target.value })}
+                onChange={e => setForm({ ...form, session: e.target.value as typeof form.session })}
               >
                 <option value="morning">Morning (08:00 – 12:00)</option>
                 <option value="afternoon">Afternoon (12:00 – 16:00)</option>
