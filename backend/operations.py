@@ -281,7 +281,10 @@ async def update_asset(id: str, body: AssetPatch, user=Depends(current)):
                 {'$set': {'active': False, 'resolved_at': stamp()}, '$unset': {'active_key': ''}},
             )
     if updates:
-        await db.assets.update_one({'id': id}, {'$set': updates})
+        try:
+            await db.assets.update_one({'id': id}, {'$set': updates})
+        except DuplicateKeyError:
+            raise HTTPException(409, 'Another asset already uses this tag.')
         await audit(
             user,
             'Asset updated',
