@@ -75,12 +75,12 @@ export function Assets() {
   const selectedLocation = findLocation(form.lab_id);
   const locationChoices = useMemo(
     () => CAMPUS_LOCATIONS.filter(l => form.kind === 'AP' || l.zone_group === 'labs'),
-    [form.kind]
+    [form.kind],
   );
 
   const editLocationChoices = useMemo(
     () => CAMPUS_LOCATIONS.filter(l => editForm.kind === 'AP' || l.zone_group === 'labs'),
-    [editForm.kind]
+    [editForm.kind],
   );
 
   const openAddModal = (targetLabId?: string) => {
@@ -135,7 +135,9 @@ export function Assets() {
     e.preventDefault();
     const hwId = form.mac.trim();
     if (hwId && !MAC_PATTERN.test(hwId) && !SERIAL_PATTERN.test(hwId)) {
-      setError('Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /), or leave blank to auto-generate.');
+      setError(
+        'Enter a valid MAC address (AA:BB:CC:11:22:33) or serial tag (4–40 letters, digits, - _ /), or leave blank to auto-generate.',
+      );
       return;
     }
     setBusy(true);
@@ -148,7 +150,7 @@ export function Assets() {
       setNotice(
         `${created.tag || form.tag.toUpperCase()} registered in ${created.lab_name || selectedLocation?.name} · DHCP leased VLAN ${
           created.vlan || vlanFor(form.kind)
-        } · ${created.ip || 'pending'} · Hardware ID ${created.mac || 'auto-generated'}.`
+        } · ${created.ip || 'pending'} · Hardware ID ${created.mac || 'auto-generated'}.`,
       );
       list.load();
     } catch (e) {
@@ -220,7 +222,6 @@ export function Assets() {
       setBusy(false);
     }
   };
-
 
   const archive = async (a: any) => {
     if (!window.confirm(`Archive equipment ${a.tag}? Existing inspection logs and tickets will be retained.`)) return;
@@ -308,14 +309,8 @@ export function Assets() {
 
   return (
     <>
-      <PageTitle
-        title="Hardware Inventory"
-      >
-        <Button
-          id="add-asset"
-          variant="primary"
-          onClick={() => openAddModal()}
-        >
+      <PageTitle title="Hardware Inventory">
+        <Button id="add-asset" variant="primary" onClick={() => openAddModal()}>
           <Plus size={16} />
           Add Equipment
         </Button>
@@ -398,11 +393,21 @@ export function Assets() {
             <table className="clean-inventory-table w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4" style={{ width: '22%' }}>TAG</th>
-                  <th className="px-5 py-4" style={{ width: '18%' }}>TYPE</th>
-                  <th className="px-5 py-4" style={{ width: '30%' }}>MODEL</th>
-                  <th className="px-5 py-4" style={{ width: '16%' }}>ROOM</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>ACTIONS</th>
+                  <th className="px-5 py-4" style={{ width: '22%' }}>
+                    TAG
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>
+                    TYPE
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '30%' }}>
+                    MODEL
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '16%' }}>
+                    ROOM
+                  </th>
+                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>
+                    ACTIONS
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -438,7 +443,11 @@ export function Assets() {
 
                       {/* 4. ROOM: Plain text room code only */}
                       <td className="px-5 py-4">
-                        <span className="device-room-mono mono" title={fullRoomTooltip} data-testid={`asset-room-code-${a.id}`}>
+                        <span
+                          className="device-room-mono mono"
+                          title={fullRoomTooltip}
+                          data-testid={`asset-room-code-${a.id}`}
+                        >
                           {locCode}
                         </span>
                       </td>
@@ -458,11 +467,11 @@ export function Assets() {
                           </button>
                         </div>
                       </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : (
@@ -470,12 +479,7 @@ export function Assets() {
       )}
 
       {/* 2-CLICK SMART AUTO-FILLING REGISTER MODAL */}
-      <Modal
-        open={open}
-        onClose={setOpen}
-        title="Register Equipment"
-        id="asset-dialog"
-      >
+      <Modal open={open} onClose={setOpen} title="Register Equipment" id="asset-dialog">
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Row 1: Equipment Type | Assigned Location / Zone */}
@@ -583,19 +587,10 @@ export function Assets() {
           <ErrorBox error={error} />
 
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button
-              id="save-asset"
-              variant="primary"
-              type="submit"
-              disabled={busy}
-            >
+            <Button id="save-asset" variant="primary" type="submit" disabled={busy}>
               <Save size={14} />
               {busy ? 'Registering…' : 'Register Equipment'}
             </Button>
@@ -613,9 +608,7 @@ export function Assets() {
         title={
           detailsAsset ? (
             <div className="flex items-center gap-2.5">
-              <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
-                {detailsAsset.tag}
-              </span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">{detailsAsset.tag}</span>
               <span
                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                   detailsAsset.archived
@@ -653,7 +646,11 @@ export function Assets() {
                   </Field>
 
                   <Field label="Equipment Type" id="edit-asset-kind">
-                    <Select id="edit-asset-kind" value={editForm.kind} onChange={(e: any) => changeEditKind(e.target.value)}>
+                    <Select
+                      id="edit-asset-kind"
+                      value={editForm.kind}
+                      onChange={(e: any) => changeEditKind(e.target.value)}
+                    >
                       <option value="AP">Access Point</option>
                       <option value="PC">Workstation</option>
                     </Select>
@@ -789,8 +786,13 @@ export function Assets() {
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Location
                         </span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100" data-testid={`asset-room-code-${detailsAsset.id}`}>
-                          {loc ? `${loc.code} · ${detailsAsset.lab_name || loc.name}` : detailsAsset.lab_name || 'Unassigned'}
+                        <span
+                          className="text-sm font-medium text-slate-900 dark:text-slate-100"
+                          data-testid={`asset-room-code-${detailsAsset.id}`}
+                        >
+                          {loc
+                            ? `${loc.code} · ${detailsAsset.lab_name || loc.name}`
+                            : detailsAsset.lab_name || 'Unassigned'}
                         </span>
                       </div>
 
@@ -798,7 +800,10 @@ export function Assets() {
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Placement Landmark
                         </span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100" data-testid={`asset-placement-${detailsAsset.id}`}>
+                        <span
+                          className="text-sm font-medium text-slate-900 dark:text-slate-100"
+                          data-testid={`asset-placement-${detailsAsset.id}`}
+                        >
                           {detailsAsset.placement || 'Placement landmark not recorded'}
                         </span>
                       </div>

@@ -1,20 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import {
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  CheckCheck,
-  X,
-  Save,
-  Sparkles,
-  ArrowUpRight,
-} from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, CheckCheck, X, Save, Sparkles, ArrowUpRight } from 'lucide-react';
 import { api, errorText } from '../lib/api';
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { CampusLocation, CAMPUS_LOCATIONS, computeAutoRoomCode } from '../lib/workflow';
-
-
 
 const ZONE_PILLS = [
   { key: 'all', label: 'All Zones' },
@@ -25,26 +13,9 @@ const ZONE_PILLS = [
   { key: 'Outdoor', label: 'Outdoor / Transit' },
 ];
 
-const BLOCK_OPTIONS = [
-  'Block A',
-  'Block B',
-  'Block C',
-  'Block D',
-  'Block E / Tech',
-  'Block S',
-  'Outdoor Gate 1',
-];
+const BLOCK_OPTIONS = ['Block A', 'Block B', 'Block C', 'Block D', 'Block E / Tech', 'Block S', 'Outdoor Gate 1'];
 
-const LEVEL_OPTIONS = [
-  'Ground Level',
-  'Level 1',
-  'Level 2',
-  'Level 3',
-  'Level 4',
-  'Level 5',
-  'Level 6',
-  'Rooftop',
-];
+const LEVEL_OPTIONS = ['Ground Level', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Rooftop'];
 
 const CATEGORY_OPTIONS = [
   'Computing Lab',
@@ -94,9 +65,7 @@ export default function Locations() {
     }
     return list.data.map((item: any) => {
       // Find client reference location by ID or code or name to backfill any missing fields
-      const ref = CAMPUS_LOCATIONS.find(
-        l => l.id === item.id || l.code === item.code || l.name === item.name
-      );
+      const ref = CAMPUS_LOCATIONS.find(l => l.id === item.id || l.code === item.code || l.name === item.name);
       return {
         id: item.id || ref?.id || 'loc-unknown',
         code: item.code || ref?.code || item.name || 'CAMPUS',
@@ -185,7 +154,6 @@ export default function Locations() {
     setIsEditing(true);
   };
 
-
   const handleEditBlockChange = (block: string) => {
     const code = computeAutoRoomCode(block, editForm.level, editForm.room);
     setEditForm(prev => ({ ...prev, block, code: code || prev.code }));
@@ -232,12 +200,16 @@ export default function Locations() {
     const eqCount = loc.equipment_count ?? 0;
     if (eqCount > 0) {
       alert(
-        `Cannot delete location [${loc.code}] ${loc.name} because it currently has ${eqCount} active equipment installed (${loc.workstation_count || 0} workstations, ${loc.ap_count || 0} APs).\n\nPlease reassign or archive all equipment in Hardware Inventory before removing this room.`
+        `Cannot delete location [${loc.code}] ${loc.name} because it currently has ${eqCount} active equipment installed (${loc.workstation_count || 0} workstations, ${loc.ap_count || 0} APs).\n\nPlease reassign or archive all equipment in Hardware Inventory before removing this room.`,
       );
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to remove location [${loc.code}] ${loc.name}? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to remove location [${loc.code}] ${loc.name}? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
@@ -265,10 +237,18 @@ export default function Locations() {
     const code = String(loc.code || '');
 
     if (pill === 'Block A') return block.includes('Block A') || code.startsWith('A-');
-    if (pill === 'Block B') return (block.includes('Block B') || code.startsWith('B-')) && !category.includes('Specialty');
-    if (pill === 'Block C') return block.includes('Block C') || category.includes('Common') || code.includes('CANTEEN') || code.includes('LOUNGE');
-    if (pill === 'Tech Labs') return category.includes('Specialty') || block.includes('Tech') || code.includes('Tech') || code.includes('Robotic');
-    if (pill === 'Outdoor') return category.includes('Outdoor') || block.includes('Outdoor') || code.includes('BUS') || code.startsWith('G-');
+    if (pill === 'Block B')
+      return (block.includes('Block B') || code.startsWith('B-')) && !category.includes('Specialty');
+    if (pill === 'Block C')
+      return (
+        block.includes('Block C') || category.includes('Common') || code.includes('CANTEEN') || code.includes('LOUNGE')
+      );
+    if (pill === 'Tech Labs')
+      return (
+        category.includes('Specialty') || block.includes('Tech') || code.includes('Tech') || code.includes('Robotic')
+      );
+    if (pill === 'Outdoor')
+      return category.includes('Outdoor') || block.includes('Outdoor') || code.includes('BUS') || code.startsWith('G-');
     return true;
   };
 
@@ -282,15 +262,7 @@ export default function Locations() {
 
       // Search query
       if (query) {
-        const text = [
-          loc.code,
-          loc.name,
-          loc.block,
-          loc.level,
-          loc.room,
-          loc.category,
-          loc.short,
-        ]
+        const text = [loc.code, loc.name, loc.block, loc.level, loc.room, loc.category, loc.short]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -315,14 +287,8 @@ export default function Locations() {
 
   return (
     <>
-      <PageTitle
-        title="Campus Locations & Rooms"
-      >
-        <Button
-          id="add-location-btn"
-          variant="primary"
-          onClick={handleOpenAdd}
-        >
+      <PageTitle title="Campus Locations & Rooms">
+        <Button id="add-location-btn" variant="primary" onClick={handleOpenAdd}>
           <Plus size={16} />
           Add Location
         </Button>
@@ -351,9 +317,7 @@ export default function Locations() {
               onClick={() => setZonePill(key)}
             >
               {label}
-              <span>
-                {rawData.filter(loc => matchesZonePill(loc, key)).length}
-              </span>
+              <span>{rawData.filter(loc => matchesZonePill(loc, key)).length}</span>
             </button>
           ))}
         </div>
@@ -368,12 +332,7 @@ export default function Locations() {
             aria-label="Search campus locations"
           />
           {search && (
-            <button
-              type="button"
-              className="search-clear"
-              aria-label="Clear search"
-              onClick={() => setSearch('')}
-            >
+            <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setSearch('')}>
               <X size={14} />
             </button>
           )}
@@ -388,10 +347,18 @@ export default function Locations() {
             <table className="clean-locations-table w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4" style={{ width: '22%' }}>ROOM CODE</th>
-                  <th className="px-5 py-4" style={{ width: '44%' }}>LOCATION NAME</th>
-                  <th className="px-5 py-4" style={{ width: '20%' }}>DEVICES</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>ACTIONS</th>
+                  <th className="px-5 py-4" style={{ width: '22%' }}>
+                    ROOM CODE
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '44%' }}>
+                    LOCATION NAME
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '20%' }}>
+                    DEVICES
+                  </th>
+                  <th className="px-5 py-4 text-right" style={{ width: '14%' }}>
+                    ACTIONS
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -468,9 +435,7 @@ export default function Locations() {
               <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 {selectedRoom.code}
               </span>
-              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                {selectedRoom.name}
-              </span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedRoom.name}</span>
             </div>
           ) : (
             'Location Details'
@@ -626,12 +591,18 @@ export default function Locations() {
                     </span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100">
                       {(() => {
-                        const wsCount = selectedRoomDevices.filter((d: any) => d.kind === 'PC').length || selectedRoom.workstation_count || 0;
-                        const apCount = selectedRoomDevices.filter((d: any) => d.kind === 'AP').length || selectedRoom.ap_count || 0;
+                        const wsCount =
+                          selectedRoomDevices.filter((d: any) => d.kind === 'PC').length ||
+                          selectedRoom.workstation_count ||
+                          0;
+                        const apCount =
+                          selectedRoomDevices.filter((d: any) => d.kind === 'AP').length || selectedRoom.ap_count || 0;
                         const devParts: string[] = [];
                         if (wsCount > 0) devParts.push(`${wsCount} PC`);
                         if (apCount > 0) devParts.push(`${apCount} AP`);
-                        return devParts.length > 0 ? devParts.join(' · ') : `${selectedRoomDevices.length || selectedRoom.equipment_count || 0} Total`;
+                        return devParts.length > 0
+                          ? devParts.join(' · ')
+                          : `${selectedRoomDevices.length || selectedRoom.equipment_count || 0} Total`;
                       })()}
                     </span>
                   </div>
@@ -715,12 +686,7 @@ export default function Locations() {
       </Modal>
 
       {/* SMART AUTO-CODE CREATE LOCATION MODAL */}
-      <Modal
-        open={openAdd}
-        onClose={setOpenAdd}
-        title="Add Campus Location"
-        id="add-location-dialog"
-      >
+      <Modal open={openAdd} onClose={setOpenAdd} title="Add Campus Location" id="add-location-dialog">
         <form onSubmit={handleAddSubmit} className="flex flex-col gap-4">
           {/* APSpace Live Auto-Code Preview Banner */}
           <div className="auto-code-preview-bar">
@@ -814,19 +780,10 @@ export default function Locations() {
           <ErrorBox error={error} />
 
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpenAdd(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setOpenAdd(false)}>
               Cancel
             </Button>
-            <Button
-              id="save-location-btn"
-              variant="primary"
-              type="submit"
-              disabled={busy}
-            >
+            <Button id="save-location-btn" variant="primary" type="submit" disabled={busy}>
               <Save size={14} />
               {busy ? 'Saving…' : 'Create Location'}
             </Button>

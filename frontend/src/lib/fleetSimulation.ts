@@ -44,7 +44,7 @@ export function buildSimulationFleet(nowIso?: string) {
 export function buildHealthyFleet(nowIso?: string) {
   const ts = nowIso || new Date().toISOString();
   return SIMULATION_FLEET_APS.map((ap, idx) =>
-    baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, 0, ts)
+    baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, 0, ts),
   ).sort((a, b) => (a.tag || '').localeCompare(b.tag || ''));
 }
 
@@ -53,13 +53,7 @@ export function stepApMetrics(ap: any, idx: number, tick: number, sampleIso: str
   const status = ap.status || 'online';
   const scenario =
     ap.scenario ||
-    (status === 'congested'
-      ? 'congestion'
-      : status === 'offline'
-      ? 'outage'
-      : status === 'stale'
-      ? 'feed'
-      : 'normal');
+    (status === 'congested' ? 'congestion' : status === 'offline' ? 'outage' : status === 'stale' ? 'feed' : 'normal');
 
   if (scenario === 'feed' || status === 'stale') {
     return {

@@ -62,7 +62,9 @@ export default function Login() {
       <main className="login-main relative z-10 flex flex-col items-center">
         <span className="eyebrow">CAMPUS NETWORK OPERATIONS</span>
         <h1>
-          Every connection.<br />Under your care.
+          Every connection.
+          <br />
+          Under your care.
         </h1>
         <div className="login-form max-w-md w-full bg-slate-900/85 border border-slate-800/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
           <div className="mb-4">
@@ -140,7 +142,7 @@ export default function Login() {
             {[
               ['admin', 'Administrator', ShieldCheck],
               ['engineer', 'Network Engineer', Network],
-              ['assistant', 'IT Assistant', ClipboardCheck]
+              ['assistant', 'IT Assistant', ClipboardCheck],
             ].map(([role, label, Icon]: any) => (
               <button
                 type="button"

@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  RefreshCw,
-  TriangleAlert,
-  ArrowUpRight,
-  CheckCheck,
-  FlaskConical,
-} from 'lucide-react';
+import { RefreshCw, TriangleAlert, ArrowUpRight, CheckCheck, FlaskConical } from 'lucide-react';
 import { PageTitle, Button, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { time } from '../lib/api';
 
@@ -17,12 +11,10 @@ export function Alerts() {
 
   return (
     <>
-      <PageTitle
-        title="System Alerts"
-        subtitle="Real-time network anomaly detection, warnings, and recovery history."
-      >
+      <PageTitle title="System Alerts" subtitle="Real-time network anomaly detection, warnings, and recovery history.">
         <Button id="refresh-alerts" onClick={load}>
-          <RefreshCw size={15} />Refresh Alerts
+          <RefreshCw size={15} />
+          Refresh Alerts
         </Button>
       </PageTitle>
 

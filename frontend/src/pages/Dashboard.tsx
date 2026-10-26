@@ -103,24 +103,27 @@ export default function Dashboard() {
     const offline = normalizedAps.filter((a: any) => a.status === 'offline').length;
     const stale = normalizedAps.filter((a: any) => a.status === 'stale').length;
     const clients = normalizedAps.reduce((s: number, a: any) => s + (typeof a.clients === 'number' ? a.clients : 0), 0);
-    const peakLoad = normalizedAps.reduce((max: number, a: any) => Math.max(max, typeof a.load === 'number' ? a.load : 0), 0);
+    const peakLoad = normalizedAps.reduce(
+      (max: number, a: any) => Math.max(max, typeof a.load === 'number' ? a.load : 0),
+      0,
+    );
     const peakAp = normalizedAps.find((a: any) => a.load === peakLoad);
     return { total, online, congested, offline, stale, clients, peakLoad, peakAp };
   }, [normalizedAps]);
 
   const allShifts = useMemo(
     () => normalizeCampusShifts(shiftsData.data || o?.shifts),
-    [shiftsData.data, o?.shifts, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [shiftsData.data, o?.shifts, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const allTickets = useMemo(
     () => mergeTickets(ticketsData.data || o?.tickets),
-    [ticketsData.data, o?.tickets, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [ticketsData.data, o?.tickets, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const allChecklists = useMemo(
     () => mergeChecklists(checklistsData.data),
-    [checklistsData.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [checklistsData.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Workstation checklist faults strictly isolated from AP telemetry incidents
@@ -214,74 +217,76 @@ export default function Dashboard() {
           },
         ]
       : user.role === 'engineer'
-      ? [
-          {
-            title: 'Campus AP Health',
-            value: apStats.online,
-            suffix: `/ ${apStats.total} Online`,
-            icon: Radio,
-            foot: `${apStats.congested} congested · ${apStats.offline} offline · ${apStats.stale} interrupted`,
-            tone: 'green',
-          },
-          {
-            title: 'Peak Bandwidth Load',
-            value: `${apStats.peakLoad}%`,
-            suffix: apStats.peakAp ? ` (${apStats.peakAp.tag})` : '',
-            icon: Activity,
-            foot: `${apStats.clients} active wireless clients connected`,
-            tone: 'amber',
-          },
-          {
-            title: 'Assigned Network Incidents',
-            value: networkIncidents.length,
-            suffix: ' Tier 2',
-            icon: Ticket,
-            foot: 'Auto-routed from checklists & AP telemetry',
-            tone: 'violet',
-          },
-          {
-            title: 'Connected Devices',
-            value: apStats.clients,
-            suffix: '',
-            icon: Users,
-            foot: 'Across all reporting campus access points',
-            tone: 'blue',
-          },
-        ]
-      : [
-          {
-            title: 'Campus SLA Compliance',
-            value: `${slaCompliance}%`,
-            suffix: '',
-            icon: ShieldCheck,
-            foot: `${apStats.online} of ${apStats.total} access points meeting target SLA`,
-            tone: 'green',
-          },
-          {
-            title: 'Shift Acknowledgement Rate',
-            value: `${shiftAckRate}%`,
-            suffix: ` (${ackedShiftsCount}/${allShifts.length})`,
-            icon: CalendarDays,
-            foot: 'Standard 4-hour campus blocks (MYT)',
-            tone: 'blue',
-          },
-          {
-            title: 'Total Active Incidents',
-            value: openTickets.length,
-            suffix: '',
-            icon: Ticket,
-            foot: `${networkIncidents.length} Tier 2 Network · ${openTickets.length - networkIncidents.length} Tier 1 Hardware`,
-            tone: 'amber',
-          },
-          {
-            title: 'Recent Audit Activity',
-            value: o.activity?.length || 0,
-            suffix: ' events',
-            icon: ClipboardCheck,
-            foot: o.activity?.[0] ? `Latest: ${o.activity[0].action} (${o.activity[0].actor})` : 'Operational logs persisted',
-            tone: 'violet',
-          },
-        ];
+        ? [
+            {
+              title: 'Campus AP Health',
+              value: apStats.online,
+              suffix: `/ ${apStats.total} Online`,
+              icon: Radio,
+              foot: `${apStats.congested} congested · ${apStats.offline} offline · ${apStats.stale} interrupted`,
+              tone: 'green',
+            },
+            {
+              title: 'Peak Bandwidth Load',
+              value: `${apStats.peakLoad}%`,
+              suffix: apStats.peakAp ? ` (${apStats.peakAp.tag})` : '',
+              icon: Activity,
+              foot: `${apStats.clients} active wireless clients connected`,
+              tone: 'amber',
+            },
+            {
+              title: 'Assigned Network Incidents',
+              value: networkIncidents.length,
+              suffix: ' Tier 2',
+              icon: Ticket,
+              foot: 'Auto-routed from checklists & AP telemetry',
+              tone: 'violet',
+            },
+            {
+              title: 'Connected Devices',
+              value: apStats.clients,
+              suffix: '',
+              icon: Users,
+              foot: 'Across all reporting campus access points',
+              tone: 'blue',
+            },
+          ]
+        : [
+            {
+              title: 'Campus SLA Compliance',
+              value: `${slaCompliance}%`,
+              suffix: '',
+              icon: ShieldCheck,
+              foot: `${apStats.online} of ${apStats.total} access points meeting target SLA`,
+              tone: 'green',
+            },
+            {
+              title: 'Shift Acknowledgement Rate',
+              value: `${shiftAckRate}%`,
+              suffix: ` (${ackedShiftsCount}/${allShifts.length})`,
+              icon: CalendarDays,
+              foot: 'Standard 4-hour campus blocks (MYT)',
+              tone: 'blue',
+            },
+            {
+              title: 'Total Active Incidents',
+              value: openTickets.length,
+              suffix: '',
+              icon: Ticket,
+              foot: `${networkIncidents.length} Tier 2 Network · ${openTickets.length - networkIncidents.length} Tier 1 Hardware`,
+              tone: 'amber',
+            },
+            {
+              title: 'Recent Audit Activity',
+              value: o.activity?.length || 0,
+              suffix: ' events',
+              icon: ClipboardCheck,
+              foot: o.activity?.[0]
+                ? `Latest: ${o.activity[0].action} (${o.activity[0].actor})`
+                : 'Operational logs persisted',
+              tone: 'violet',
+            },
+          ];
 
   const exportCSV = () => {
     const rows = [
@@ -291,10 +296,22 @@ export default function Dashboard() {
       ['CAMPUS OPERATIONAL METRICS'],
       ['Metric', 'Value', 'Details'],
       ['Campus SLA Compliance', `${slaCompliance}%`, `${apStats.online} of ${apStats.total} APs meeting target SLA`],
-      ['Access Points Online', `${apStats.online} / ${apStats.total}`, `${apStats.congested} congested, ${apStats.offline} offline, ${apStats.stale} stale`],
+      [
+        'Access Points Online',
+        `${apStats.online} / ${apStats.total}`,
+        `${apStats.congested} congested, ${apStats.offline} offline, ${apStats.stale} stale`,
+      ],
       ['Wireless Clients Connected', apStats.clients, `Peak Load: ${apStats.peakLoad}%`],
-      ['Shift Acknowledgement Rate', `${shiftAckRate}%`, `${ackedShiftsCount} of ${allShifts.length} shifts acknowledged`],
-      ['Active Faults & Incidents', openTickets.length, `${networkIncidents.length} Tier-2 Network, ${openTickets.length - networkIncidents.length} Tier-1 Hardware`],
+      [
+        'Shift Acknowledgement Rate',
+        `${shiftAckRate}%`,
+        `${ackedShiftsCount} of ${allShifts.length} shifts acknowledged`,
+      ],
+      [
+        'Active Faults & Incidents',
+        openTickets.length,
+        `${networkIncidents.length} Tier-2 Network, ${openTickets.length - networkIncidents.length} Tier-1 Hardware`,
+      ],
       [],
       ['ACTIVE FAULTS & INCIDENTS QUEUE'],
       ['Ticket #', 'Title', 'Asset Tag', 'Lab / Location', 'Tier / Category', 'Priority', 'Status', 'Created (MYT)'],
@@ -480,7 +497,11 @@ export default function Dashboard() {
       </tr>
     </thead>
     <tbody>
-      ${openTickets.length > 0 ? openTickets.map((t: any) => `
+      ${
+        openTickets.length > 0
+          ? openTickets
+              .map(
+                (t: any) => `
         <tr>
           <td><strong>${t.number || t.id}</strong></td>
           <td>${t.title}</td>
@@ -490,13 +511,17 @@ export default function Dashboard() {
           <td>${t.priority || 'Normal'}</td>
           <td style="text-align: right;">${t.status}</td>
         </tr>
-      `).join('') : `
+      `,
+              )
+              .join('')
+          : `
         <tr>
           <td colspan="7" style="text-align: center; color: #64748b; font-style: italic;">
             Zero active incidents. Campus network and equipment are nominal.
           </td>
         </tr>
-      `}
+      `
+      }
     </tbody>
   </table>
 
@@ -528,7 +553,10 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100" data-testid="page-title">
             Campus Dashboard
           </h1>
-          <span className="date-label hidden lg:inline-block text-xs font-semibold text-slate-400" data-testid="dashboard-date">
+          <span
+            className="date-label hidden lg:inline-block text-xs font-semibold text-slate-400"
+            data-testid="dashboard-date"
+          >
             {new Intl.DateTimeFormat('en-MY', {
               timeZone: 'Asia/Kuala_Lumpur',
               weekday: 'short',
@@ -538,7 +566,13 @@ export default function Dashboard() {
             }).format(new Date())}
           </span>
         </div>
-        <div className={user.role === 'assistant' ? 'grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto' : 'grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto'}>
+        <div
+          className={
+            user.role === 'assistant'
+              ? 'grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto'
+              : 'grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto'
+          }
+        >
           <button
             type="button"
             id="refresh-overview"
@@ -603,7 +637,10 @@ export default function Dashboard() {
         <div className="dashboard-bottom">
           <section className="access-section">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100" data-testid="section-today's-campus-lab-shifts-&-inspection-progress">
+              <h2
+                className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
+                data-testid="section-today's-campus-lab-shifts-&-inspection-progress"
+              >
                 Today's Campus Lab Shifts &amp; Inspection Progress
               </h2>
               <Link
@@ -619,10 +656,18 @@ export default function Dashboard() {
                 <table className="data-table dashboard-shifts-table min-w-[580px] w-full">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 uppercase">
-                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-name">LAB &amp; SHIFT WINDOW</th>
-                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-status">STATUS</th>
-                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-progress">INSPECTION PROGRESS</th>
-                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-right whitespace-nowrap col-shift-action">ACTION</th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-name">
+                        LAB &amp; SHIFT WINDOW
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-status">
+                        STATUS
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-left whitespace-nowrap col-shift-progress">
+                        INSPECTION PROGRESS
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold tracking-wider text-right whitespace-nowrap col-shift-action">
+                        ACTION
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -632,13 +677,13 @@ export default function Dashboard() {
                       const displayChecked = isAcknowledged ? prog.checked : 0;
                       const displayPercent = isAcknowledged ? prog.percent : 0;
                       const statusKey =
-                        s.lifecycle === 'completed'
-                          ? 'completed'
-                          : isAcknowledged
-                          ? 'on_duty'
-                          : 'pending_ack';
+                        s.lifecycle === 'completed' ? 'completed' : isAcknowledged ? 'on_duty' : 'pending_ack';
                       return (
-                        <tr key={s.id} data-testid={`dashboard-shift-${s.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <tr
+                          key={s.id}
+                          data-testid={`dashboard-shift-${s.id}`}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                        >
                           <td className="px-4 py-3 whitespace-nowrap col-shift-name">
                             <strong className="block text-slate-900 dark:text-slate-100 font-bold">{s.lab_name}</strong>
                             <small className="cell-sub block text-xs text-slate-400 mt-0.5">{s.shift_window}</small>
@@ -659,39 +704,39 @@ export default function Dashboard() {
                           <td className="px-4 py-3 whitespace-nowrap text-right col-shift-action">
                             <div className="dashboard-shift-actions justify-end flex items-center gap-1.5">
                               {!isAcknowledged && s.assistant_id === user.id ? (
-                              <Button
-                                id={`dashboard-shift-ack-${s.id}`}
-                                className="compact"
-                                variant="primary"
-                                onClick={() => navigate('/shifts')}
-                                title="Acknowledge shift to unlock lab inspection"
-                              >
-                                <CheckCheck size={12} /> Acknowledge Shift
-                              </Button>
-                            ) : (
-                              <Button
-                                id={`dashboard-run-inspection-${s.id}`}
-                                className="compact"
-                                variant="primary"
-                                disabled={!isAcknowledged && user.role === 'assistant'}
-                                onClick={() =>
-                                  navigate(
-                                    `/checklists?lab=${s.lab_id}&new=1${
-                                      prog.nextUnchecked ? `&asset=${prog.nextUnchecked.id}` : ''
-                                    }`
-                                  )
-                                }
-                              >
-                                Run Lab Inspection <ArrowRight size={13} />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                                <Button
+                                  id={`dashboard-shift-ack-${s.id}`}
+                                  className="compact"
+                                  variant="primary"
+                                  onClick={() => navigate('/shifts')}
+                                  title="Acknowledge shift to unlock lab inspection"
+                                >
+                                  <CheckCheck size={12} /> Acknowledge Shift
+                                </Button>
+                              ) : (
+                                <Button
+                                  id={`dashboard-run-inspection-${s.id}`}
+                                  className="compact"
+                                  variant="primary"
+                                  disabled={!isAcknowledged && user.role === 'assistant'}
+                                  onClick={() =>
+                                    navigate(
+                                      `/checklists?lab=${s.lab_id}&new=1${
+                                        prog.nextUnchecked ? `&asset=${prog.nextUnchecked.id}` : ''
+                                      }`,
+                                    )
+                                  }
+                                >
+                                  Run Lab Inspection <ArrowRight size={13} />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>
@@ -725,7 +770,8 @@ export default function Dashboard() {
                       </div>
                       <p>{t.title}</p>
                       <small>
-                        Auto-routed to {t.category === 'network' ? 'Network Engineer' : 'Lab Support'} · Read-only tracking
+                        Auto-routed to {t.category === 'network' ? 'Network Engineer' : 'Lab Support'} · Read-only
+                        tracking
                       </small>
                     </div>
                   </div>
@@ -867,7 +913,9 @@ export default function Dashboard() {
                   <span className="tiny-dot w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Telemetry Feed Active</span>
                 </span>
-                <span className="min-w-0 break-words text-right font-mono">Last sample {time(m.last_updated, false, true)} MYT</span>
+                <span className="min-w-0 break-words text-right font-mono">
+                  Last sample {time(m.last_updated, false, true)} MYT
+                </span>
               </div>
             </section>
           </div>
@@ -876,11 +924,7 @@ export default function Dashboard() {
             <section className="access-section">
               <SectionHead title="Access Point Status">
                 <div className="section-actions flex flex-wrap items-center gap-2 sm:gap-3">
-                  <Select
-                    id="dashboard-lab-filter"
-                    value={lab}
-                    onChange={(e: any) => setLab(e.target.value)}
-                  >
+                  <Select id="dashboard-lab-filter" value={lab} onChange={(e: any) => setLab(e.target.value)}>
                     <option value="all">All Labs ({normalizedAps.length} APs)</option>
                     <option value="lab-1">Computing Lab A (6 APs)</option>
                     <option value="lab-2">Computing Lab B (5 APs)</option>
@@ -895,7 +939,7 @@ export default function Dashboard() {
               <div className="w-full overflow-x-auto">
                 <APTable
                   aps={[...aps].sort(
-                    (a: any, b: any) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0)
+                    (a: any, b: any) => (a.status === 'online' ? 1 : 0) - (b.status === 'online' ? 1 : 0),
                   )}
                   limit={5}
                   onSelect={(a: any) => navigate(`/monitoring?ap=${a.id}`)}
@@ -910,9 +954,7 @@ export default function Dashboard() {
             </section>
 
             <section className="activity-section">
-              <SectionHead
-                title={user.role === 'engineer' ? 'Assigned Network Incidents' : 'Recent System Activity'}
-              >
+              <SectionHead title={user.role === 'engineer' ? 'Assigned Network Incidents' : 'Recent System Activity'}>
                 <Link
                   to={user.role === 'admin' ? '/audit' : '/tickets'}
                   data-testid="activity-see-all"

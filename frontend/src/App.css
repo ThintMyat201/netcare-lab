@@ -147,7 +147,7 @@
   font-weight: 600;
   margin-bottom: 3px;
   position: relative;
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .nav-item:hover {
@@ -346,7 +346,7 @@ button.password-eye-btn:hover {
   gap: 6px;
   font-weight: 700;
   white-space: nowrap;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
 }
 
 .timezone {
@@ -374,7 +374,7 @@ button.password-eye-btn:hover {
   border-radius: 5px;
   flex-shrink: 0;
   cursor: pointer;
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .icon-button:hover {
@@ -401,7 +401,7 @@ button.password-eye-btn:hover {
 .main-content {
   padding: 32px;
   flex: 1;
-  animation: page-in .35s ease-out;
+  animation: page-in 0.35s ease-out;
   max-width: 2000px;
   width: 100%;
   margin: 0 auto;
@@ -668,7 +668,7 @@ button.password-eye-btn:hover {
   width: 3px;
   background: var(--green);
   border-radius: 2px 2px 0 0;
-  opacity: .8;
+  opacity: 0.8;
 }
 
 .spark-1 i {
@@ -790,7 +790,7 @@ button.password-eye-btn:hover {
   font-size: 10px;
   font-weight: 650;
   cursor: pointer;
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .chart-legend > .legend-toggle:hover {
@@ -799,7 +799,7 @@ button.password-eye-btn:hover {
 }
 
 .chart-legend > .legend-toggle.inactive {
-  opacity: .45;
+  opacity: 0.45;
   text-decoration: line-through;
   color: var(--muted);
 }
@@ -832,7 +832,7 @@ button.password-eye-btn:hover {
   font-weight: 700;
   color: var(--faint);
   margin-left: auto;
-  letter-spacing: .8px;
+  letter-spacing: 0.8px;
 }
 
 .traffic-chart {
@@ -865,7 +865,7 @@ button.password-eye-btn:hover {
   transform: rotate(-45deg);
   flex-shrink: 0;
   box-shadow: 0 0 0 2px var(--line);
-  transition: background .3s;
+  transition: background 0.3s;
 }
 
 .health-ring > span {
@@ -1011,7 +1011,7 @@ button.password-eye-btn:hover {
   background: var(--panel);
   padding: 14px 20px;
   border-bottom: 1px solid var(--border, var(--line));
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -1113,25 +1113,35 @@ button.password-eye-btn:hover {
   background: currentColor;
 }
 
-.status.online, .status.active, .status.acknowledged, .status.resolved {
+.status.online,
+.status.active,
+.status.acknowledged,
+.status.resolved {
   color: var(--green);
   border-color: #54d6aa50;
   background: #54d6aa14;
 }
 
-.status.congested, .status.pending, .status.medium, .status.missed {
+.status.congested,
+.status.pending,
+.status.medium,
+.status.missed {
   color: var(--amber);
   border-color: #edb75e60;
   background: #edb75e14;
 }
 
-.status.offline, .status.high {
+.status.offline,
+.status.high {
   color: var(--red);
   border-color: #f47e8955;
   background: #f47e8914;
 }
 
-.status.in_progress, .status.open, .status.upcoming, .status.low {
+.status.in_progress,
+.status.open,
+.status.upcoming,
+.status.low {
   color: var(--blue);
   border-color: #6a9ffc50;
   background: #6a9ffc14;
@@ -1200,7 +1210,7 @@ button.password-eye-btn:hover {
   align-items: center;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: .4px;
+  letter-spacing: 0.4px;
 }
 
 .activity-section {
@@ -1343,7 +1353,8 @@ button.password-eye-btn:hover {
   border: 2px solid var(--line);
 }
 
-.mobile-close, .mobile-menu {
+.mobile-close,
+.mobile-menu {
   display: none;
 }
 
@@ -1413,7 +1424,9 @@ button.password-eye-btn:hover {
   padding: 24px !important;
   font-family: 'IBM Plex Sans', sans-serif;
   gap: 15px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
 .dark .atlas-modal {
@@ -1427,7 +1440,9 @@ button.password-eye-btn:hover {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   color: #0f172a !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
 .atlas-modal h2 {
@@ -1442,7 +1457,7 @@ button.password-eye-btn:hover {
   color: var(--muted);
 }
 
-.atlas-modal [data-testid$="-description"] {
+.atlas-modal [data-testid$='-description'] {
   position: absolute !important;
   width: 1px !important;
   height: 1px !important;
@@ -1461,7 +1476,7 @@ button.password-eye-btn:hover {
   margin-top: 8px;
 }
 
-.atlas-modal [data-testid=dialog-close-button] {
+.atlas-modal [data-testid='dialog-close-button'] {
   top: 20px;
   right: 20px;
 }
@@ -1568,7 +1583,7 @@ button.password-eye-btn:hover {
   color: var(--text);
   font-weight: 600;
   cursor: pointer;
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .scenario-options > button.selected {
@@ -1676,7 +1691,7 @@ button.password-eye-btn:hover {
   font-weight: 700;
   color: var(--faint);
   white-space: nowrap;
-  letter-spacing: .3px;
+  letter-spacing: 0.3px;
 }
 
 .auto-poll-control .select-wrap select {
@@ -1701,11 +1716,13 @@ button.password-eye-btn:hover {
   color: var(--green);
   font-size: 10px;
   font-weight: 750;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
 }
 
 .feed-label .tiny-dot {
-  transition: transform .2s ease, box-shadow .2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .feed-label .tiny-dot.feed-live {
@@ -1714,12 +1731,14 @@ button.password-eye-btn:hover {
 
 .feed-label .tiny-dot.feed-pulse {
   transform: scale(1.45);
-  box-shadow: 0 0 0 4px #48d59d35, 0 0 12px var(--green);
+  box-shadow:
+    0 0 0 4px #48d59d35,
+    0 0 12px var(--green);
 }
 
 .sample-timestamp-flash {
   color: var(--green);
-  transition: color .25s ease;
+  transition: color 0.25s ease;
 }
 
 .sample-btn-active {
@@ -1896,7 +1915,7 @@ button.password-eye-btn:hover {
   font-weight: 750;
   color: var(--muted);
   margin-top: 9px;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
 }
 
 .checklist-items {
@@ -2734,7 +2753,7 @@ button.password-eye-btn:hover {
 }
 
 .shift-card.cancelled {
-  opacity: .65;
+  opacity: 0.65;
 }
 
 .shift-window-badge {
@@ -2794,7 +2813,7 @@ button.password-eye-btn:hover {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--blue), var(--green));
-  transition: width .3s ease;
+  transition: width 0.3s ease;
 }
 
 .shift-progress-sub {
@@ -2855,7 +2874,7 @@ button.password-eye-btn:hover {
   border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
   margin-left: 6px;
 }
 
@@ -2931,7 +2950,9 @@ button.password-eye-btn:hover {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.80), rgba(2, 6, 23, 0.90)), url('./assets/A-CONNECTED-CAMPUS-2.jpg');
+  background-image:
+    linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.9)),
+    url('./assets/A-CONNECTED-CAMPUS-2.jpg');
   background-size: cover;
   background-position: center;
   backdrop-filter: blur(2px);
@@ -3016,10 +3037,11 @@ button.password-eye-btn:hover {
   font-size: 10px;
   font-weight: 600;
   margin: 22px 0 16px;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
 }
 
-.demo-divider:before, .demo-divider:after {
+.demo-divider:before,
+.demo-divider:after {
   content: '';
   height: 1px;
   background: rgba(51, 65, 85, 0.6);
@@ -3045,7 +3067,7 @@ button.password-eye-btn:hover {
   border: 1px solid rgba(51, 65, 85, 0.6);
   border-radius: 8px;
   cursor: pointer;
-  transition: all .2s ease;
+  transition: all 0.2s ease;
 }
 
 .demo-roles > button > svg:first-child {
@@ -3288,7 +3310,7 @@ button.password-eye-btn:hover {
   justify-content: space-between;
   font-size: 10px;
   font-weight: 750;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
   color: var(--muted);
   margin-bottom: 10px;
 }
@@ -3534,7 +3556,7 @@ button.password-eye-btn:hover {
     font-size: 9px;
   }
   .spark-bars {
-    opacity: .6;
+    opacity: 0.6;
   }
   .spark-bars i {
     width: 4px;
@@ -3552,7 +3574,8 @@ button.password-eye-btn:hover {
   .chart-unit {
     display: none !important;
   }
-  .ap-table th, .ap-table td {
+  .ap-table th,
+  .ap-table td {
     padding: 11px 9px;
   }
   .ap-table .asset-icon {
@@ -3658,7 +3681,7 @@ button.password-eye-btn:hover {
 @media (max-width: 760px) {
   .sidebar {
     transform: translateX(-100%);
-    transition: transform .25s;
+    transition: transform 0.25s;
     width: 240px;
     padding-top: 26px;
   }
@@ -3688,7 +3711,8 @@ button.password-eye-btn:hover {
   .breadcrumb > svg {
     display: none;
   }
-  .mobile-menu, .mobile-close {
+  .mobile-menu,
+  .mobile-close {
     display: inline-flex;
   }
   .mobile-close {
@@ -3775,7 +3799,7 @@ button.password-eye-btn:hover {
     font-size: 16px;
   }
   .spark-bars {
-    opacity: .6;
+    opacity: 0.6;
     gap: 2px;
   }
   .spark-bars i {
@@ -4045,7 +4069,8 @@ button.password-eye-btn:hover {
     padding: 0;
     border: 0;
   }
-  .lab-health .section-head, .lab-health .lab-foot {
+  .lab-health .section-head,
+  .lab-health .lab-foot {
     grid-column: auto;
   }
   .lab-icon {
@@ -4082,7 +4107,9 @@ button.password-eye-btn:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *:before, *:after {
+  *,
+  *:before,
+  *:after {
     animation: none !important;
     transition: none !important;
   }
@@ -4182,7 +4209,9 @@ button.password-eye-btn:hover {
   text-align: left;
   color: var(--text);
   cursor: pointer;
-  transition: border-color .15s ease, transform .12s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.12s ease;
 }
 
 .lab-seat-tile:hover:not(:disabled) {
@@ -4411,7 +4440,9 @@ button.password-eye-btn:hover {
   border-radius: 6px;
   padding: 12px 13px;
   cursor: pointer;
-  transition: border-color .15s ease, transform .12s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.12s ease;
 }
 
 .kanban-card:hover {
@@ -4614,7 +4645,10 @@ button.password-eye-btn:hover {
   font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color .15s ease, color .15s ease, background .15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .role-pills button:hover {
@@ -4684,7 +4718,7 @@ button.password-eye-btn:hover {
 }
 
 .team-table tr.is-suspended td:not(:last-child) {
-  opacity: .62;
+  opacity: 0.62;
 }
 
 .you-badge {
@@ -4694,7 +4728,7 @@ button.password-eye-btn:hover {
   border-radius: 4px;
   font-size: 9px;
   font-weight: 750;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   vertical-align: 1px;
   color: var(--blue);
@@ -4731,9 +4765,15 @@ button.password-eye-btn:hover {
   border-color: rgba(72, 213, 157, 0.34);
 }
 
-.light-theme .role-badge.role-admin { color: #5b45d6; }
-.light-theme .role-badge.role-engineer { color: #0e7490; }
-.light-theme .role-badge.role-assistant { color: #047857; }
+.light-theme .role-badge.role-admin {
+  color: #5b45d6;
+}
+.light-theme .role-badge.role-engineer {
+  color: #0e7490;
+}
+.light-theme .role-badge.role-assistant {
+  color: #047857;
+}
 
 .scope-cell {
   font-size: 12px;
@@ -4755,10 +4795,20 @@ button.password-eye-btn:hover {
   border-radius: 50%;
 }
 
-.member-status.active { color: var(--green); }
-.member-status.active i { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
-.member-status.suspended { color: var(--red); }
-.member-status.suspended i { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 20%, transparent); }
+.member-status.active {
+  color: var(--green);
+}
+.member-status.active i {
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent);
+}
+.member-status.suspended {
+  color: var(--red);
+}
+.member-status.suspended i {
+  background: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 20%, transparent);
+}
 
 .owner-type {
   display: inline-flex;
@@ -4774,21 +4824,25 @@ button.password-eye-btn:hover {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
   z-index: 50;
 }
 
 .dark .member-menu {
   background-color: #0f172a !important;
   border: 1px solid rgba(51, 65, 85, 0.8) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.05) !important;
 }
 
 .member-menu-label {
   padding: 6px 10px 8px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #64748b;
 }
@@ -4810,7 +4864,9 @@ button.password-eye-btn:hover {
   outline: none;
   user-select: none;
   background: transparent;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 
 .dark .member-menu-item {
@@ -4915,7 +4971,7 @@ button.password-eye-btn:hover {
   color: var(--red);
 }
 
-input[aria-invalid="true"] {
+input[aria-invalid='true'] {
   border-color: var(--red) !important;
 }
 
@@ -4940,7 +4996,9 @@ input[aria-invalid="true"] {
   margin: 6px 0 18px;
 }
 
-.remove-confirm strong { color: var(--text); }
+.remove-confirm strong {
+  color: var(--text);
+}
 
 .confirm-actions {
   display: flex;
@@ -4955,8 +5013,12 @@ input[aria-invalid="true"] {
 }
 
 @media (max-width: 760px) {
-  .team-toolbar .count-label { margin-left: 0; }
-  .team-toolbar .search-field { max-width: none; }
+  .team-toolbar .count-label {
+    margin-left: 0;
+  }
+  .team-toolbar .search-field {
+    max-width: none;
+  }
 }
 
 /* ==========================================================================
@@ -5224,7 +5286,9 @@ input[aria-invalid="true"] {
   border-color: var(--blue) !important;
   color: #93c5fd !important;
   font-weight: 750 !important;
-  box-shadow: 0 0 0 1px var(--blue), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  box-shadow:
+    0 0 0 1px var(--blue),
+    0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 .monitoring-filter-tabs button.active:after {
@@ -5330,7 +5394,9 @@ input[aria-invalid="true"] {
 .ap-indicator-chevron {
   color: var(--muted, #64748b);
   opacity: 0.6;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .ap-healthy-indicator:hover .ap-indicator-chevron {
@@ -5625,7 +5691,9 @@ input[aria-invalid="true"] {
   background: #eff6ff !important;
   border-color: #3b82f6 !important;
   color: #1d4ed8 !important;
-  box-shadow: 0 0 0 1px #3b82f6, 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 0 0 1px #3b82f6,
+    0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
 
 .light-theme .monitoring-filter-tabs button > span {
@@ -5701,7 +5769,8 @@ input[aria-invalid="true"] {
    ========================================================================== */
 
 @keyframes bell-shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   15% {
@@ -5722,12 +5791,17 @@ input[aria-invalid="true"] {
 }
 
 @keyframes badge-pulse-ring {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4);
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(244, 63, 94, 0.65),
+      0 2px 8px rgba(0, 0, 0, 0.4);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(244, 63, 94, 0), 0 3px 12px rgba(244, 63, 94, 0.7);
+    box-shadow:
+      0 0 0 4px rgba(244, 63, 94, 0),
+      0 3px 12px rgba(244, 63, 94, 0.7);
     transform: scale(1.06);
   }
 }
@@ -5759,7 +5833,9 @@ input[aria-invalid="true"] {
 .notification-button.bell-alert-active {
   border-color: rgba(244, 63, 94, 0.6) !important;
   background: rgba(244, 63, 94, 0.12) !important;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 0 14px rgba(244, 63, 94, 0.3) !important;
+  box-shadow:
+    0 0 0 2px rgba(245, 158, 11, 0.4),
+    0 0 14px rgba(244, 63, 94, 0.3) !important;
 }
 
 .bell-icon-shake {
@@ -5818,7 +5894,9 @@ input[aria-invalid="true"] {
   background: var(--panel, #0f172a);
   border: 1px solid var(--line, #334155);
   border-radius: 12px;
-  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 20px 48px -8px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
   z-index: 150;
   display: flex;
   flex-direction: column;
@@ -6073,7 +6151,9 @@ input[aria-invalid="true"] {
 .light-theme .notification-dropdown {
   background: #ffffff;
   border-color: #cbd5e1;
-  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 20px 48px -8px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .light-theme .notification-header {
@@ -6850,13 +6930,21 @@ input[aria-invalid="true"] {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .drawer-header {
@@ -7293,7 +7381,9 @@ input[aria-invalid="true"] {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   color: #0f172a !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
 .light-theme .atlas-modal h2,
@@ -7507,9 +7597,3 @@ input[aria-invalid="true"] {
   background: rgba(59, 130, 246, 0.15) !important;
   border: 1px solid rgba(59, 130, 246, 0.25) !important;
 }
-
-
-
-
-
-

@@ -52,13 +52,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
   if (!user) return null;
 
   // Derive dynamic initials from live typed name
-  const initials = (formName || user.name || 'User')
-    .trim()
-    .split(/\s+/)
-    .map((s: string) => s[0]?.toUpperCase())
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('') || 'U';
+  const initials =
+    (formName || user.name || 'User')
+      .trim()
+      .split(/\s+/)
+      .map((s: string) => s[0]?.toUpperCase())
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('') || 'U';
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -160,7 +161,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
       window.dispatchEvent(
         new CustomEvent('atlas-user-profile-updated', {
           detail: updatedUser,
-        })
+        }),
       );
       window.dispatchEvent(new CustomEvent('atlas-workflow-updated'));
 
@@ -192,7 +193,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
               {initials}
             </span>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="profile-display-name">
+              <span
+                className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate"
+                data-testid="profile-display-name"
+              >
                 {formName || user.name}
               </span>
               <div className="mt-0.5">
@@ -230,10 +234,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
           {/* Section A — Personal Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="profile-full-name"
-                className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-              >
+              <label htmlFor="profile-full-name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Full Name <span className="text-rose-500">*</span>
               </label>
               <input
@@ -242,17 +243,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 type="text"
                 required
                 value={formName}
-                onChange={(e) => setFormName(e.target.value)}
+                onChange={e => setFormName(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 placeholder="e.g. Alex Morgan"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="profile-email"
-                className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-              >
+              <label htmlFor="profile-email" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Email Address <span className="text-rose-500">*</span>
               </label>
               <input
@@ -261,7 +259,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 type="email"
                 required
                 value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
+                onChange={e => setFormEmail(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 placeholder="e.g. alex@apu.edu.my"
               />
@@ -274,9 +272,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Change Password
               </span>
-              <span className="text-[11px] text-slate-400">
-                Leave blank to keep current password
-              </span>
+              <span className="text-[11px] text-slate-400">Leave blank to keep current password</span>
             </div>
 
             {/* Row 1: Current Password */}
@@ -293,7 +289,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                   data-testid="profile-current-password-input"
                   type={showCurrent ? 'text' : 'password'}
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={e => setCurrentPassword(e.target.value)}
                   className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                   placeholder="Enter current password"
                   autoComplete="current-password"
@@ -325,7 +321,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                     data-testid="profile-new-password-input"
                     type={showNew ? 'text' : 'password'}
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={e => setNewPassword(e.target.value)}
                     className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                     placeholder="Min 6 characters"
                     autoComplete="new-password"
@@ -355,7 +351,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                     data-testid="profile-confirm-password-input"
                     type={showConfirm ? 'text' : 'password'}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={e => setConfirmPassword(e.target.value)}
                     className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                     placeholder="Re-enter new password"
                     autoComplete="new-password"

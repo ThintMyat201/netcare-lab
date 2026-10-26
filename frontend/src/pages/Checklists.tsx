@@ -1,13 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import {
-  Plus,
-  Check,
-  CheckCheck,
-  ArrowUpRight,
-  Sparkles,
-  AlertTriangle,
-} from 'lucide-react';
+import { Plus, Check, CheckCheck, ArrowUpRight, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText, time } from '../lib/api';
 import {
@@ -22,11 +15,36 @@ import {
 import { PageTitle, Button, Modal, Field, Select, ErrorBox, Loading, Empty, useData } from '../components/shared';
 
 const categories: [string, string, string, string][] = [
-  ['power', 'Power & Boot Sequence', 'Powers on smoothly and boots OS without errors', 'Hardware / Peripheral (Tier 1)'],
-  ['display', 'Monitor & Display', 'Screen is clear, properly colored, and responsive', 'Hardware / Peripheral (Tier 1)'],
-  ['peripherals', 'Keyboard & Mouse', 'All keys, wheel, and pointer buttons respond accurately', 'Hardware / Peripheral (Tier 1)'],
-  ['network', 'Campus Network & Connectivity', 'Successfully connects to campus network with valid IP', 'Network / Connectivity (Tier 2)'],
-  ['software', 'Required Applications', 'Required lab software packages launch and run normally', 'Hardware / Peripheral (Tier 1)'],
+  [
+    'power',
+    'Power & Boot Sequence',
+    'Powers on smoothly and boots OS without errors',
+    'Hardware / Peripheral (Tier 1)',
+  ],
+  [
+    'display',
+    'Monitor & Display',
+    'Screen is clear, properly colored, and responsive',
+    'Hardware / Peripheral (Tier 1)',
+  ],
+  [
+    'peripherals',
+    'Keyboard & Mouse',
+    'All keys, wheel, and pointer buttons respond accurately',
+    'Hardware / Peripheral (Tier 1)',
+  ],
+  [
+    'network',
+    'Campus Network & Connectivity',
+    'Successfully connects to campus network with valid IP',
+    'Network / Connectivity (Tier 2)',
+  ],
+  [
+    'software',
+    'Required Applications',
+    'Required lab software packages launch and run normally',
+    'Hardware / Peripheral (Tier 1)',
+  ],
 ];
 
 const LAB_NAMES: Record<string, string> = {
@@ -65,7 +83,7 @@ export default function Checklists() {
         checks: { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
         notes: '',
         request_id: crypto.randomUUID(),
-      }
+      },
   );
   const [sending, setSending] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -92,12 +110,12 @@ export default function Checklists() {
 
   const allChecklists = useMemo(
     () => mergeChecklists(data),
-    [data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const allTickets = useMemo(
     () => mergeTickets(ticketsData.data),
-    [ticketsData.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [ticketsData.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => {
@@ -121,8 +139,8 @@ export default function Checklists() {
   }, [assets.data, draft.asset_id]);
 
   const workstationTag = activeAsset?.tag || 'PC-CL-A-01';
-  const loc = activeAsset ? (findLocation(activeAsset.lab_id) || findLocation(activeAsset.lab_name)) : null;
-  const roomBadge = loc ? `${loc.code} · ${loc.name}` : (activeAsset?.lab_name || 'B-04-03 · Computing Lab A');
+  const loc = activeAsset ? findLocation(activeAsset.lab_id) || findLocation(activeAsset.lab_name) : null;
+  const roomBadge = loc ? `${loc.code} · ${loc.name}` : activeAsset?.lab_name || 'B-04-03 · Computing Lab A';
 
   const openTicketsForAsset = useMemo(() => {
     return allTickets.filter((t: any) => t.status !== 'resolved');
@@ -137,7 +155,6 @@ export default function Checklists() {
     }
     setOpen(nextOpen);
   };
-
 
   const submit = async (e: any) => {
     e.preventDefault();
@@ -172,25 +189,24 @@ export default function Checklists() {
       const r = await api.post('/checklists', payload);
       const saved = r.data;
       const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
-      const tierLabel = isNetworkFault
-        ? 'Tier 2 · Network / Connectivity'
-        : 'Tier 1 · Hardware / Peripheral';
+      const tierLabel = isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral';
       const assignedRole = isNetworkFault ? 'engineer' : 'assistant';
-      const assignedName = isNetworkFault
-        ? 'Daniel Reyes (Network Engineer)'
-        : 'Jamie Santos (Lab Support · Tier 1)';
+      const assignedName = isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)';
 
-      const rawTickets = Array.isArray(saved.tickets) && saved.tickets.length > 0
-        ? saved.tickets
-        : isFailed
-        ? [
-            {
-              id: `inc-${Date.now()}`,
-              number: linkedTicketChoice.startsWith('INC-') ? linkedTicketChoice : `INC-${1000 + Math.floor(Math.random() * 900)}`,
-              category: isNetworkFault ? 'network' : 'hardware',
-            },
-          ]
-        : [];
+      const rawTickets =
+        Array.isArray(saved.tickets) && saved.tickets.length > 0
+          ? saved.tickets
+          : isFailed
+            ? [
+                {
+                  id: `inc-${Date.now()}`,
+                  number: linkedTicketChoice.startsWith('INC-')
+                    ? linkedTicketChoice
+                    : `INC-${1000 + Math.floor(Math.random() * 900)}`,
+                  category: isNetworkFault ? 'network' : 'hardware',
+                },
+              ]
+            : [];
 
       const enrichedTickets = rawTickets.map((t: any) => {
         const isNetTicket = t.category === 'network' || isNetworkFault;
@@ -207,12 +223,8 @@ export default function Checklists() {
           tier: isNetTicket ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral',
           tier_code: isNetTicket ? 'tier2' : 'tier1',
           assigned_role: isNetTicket ? 'engineer' : 'assistant',
-          assigned_name: isNetTicket
-            ? 'Daniel Reyes (Network Engineer)'
-            : 'Jamie Santos (Lab Support · Tier 1)',
-          title: isNetTicket
-            ? `Network / NIC Connectivity fault on ${tag}`
-            : `Hardware check failed on ${tag}`,
+          assigned_name: isNetTicket ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)',
+          title: isNetTicket ? `Network / NIC Connectivity fault on ${tag}` : `Hardware check failed on ${tag}`,
           description:
             draft.notes ||
             (isNetTicket
@@ -253,7 +265,7 @@ export default function Checklists() {
 
       const enrichedChecklist = {
         ...saved,
-        lab_id: pcAsset?.lab_id || (params.get('lab') || undefined),
+        lab_id: pcAsset?.lab_id || params.get('lab') || undefined,
         fault_tier: isFailed ? tierLabel : 'All Checks Passed',
         assigned_role: isFailed ? assignedRole : null,
         assigned_name: isFailed ? assignedName : null,
@@ -273,39 +285,47 @@ export default function Checklists() {
         const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
         const tag = pcAsset?.tag || 'PC-CL-A-01';
         const lab = pcAsset?.lab_name || 'Computing Lab A';
-        const num = linkedTicketChoice.startsWith('INC-') ? linkedTicketChoice : `INC-${1000 + Math.floor(Math.random() * 900)}`;
-        const localTicket = isFailed ? {
-          id: `inc-local-${Date.now()}`,
-          number: num,
-          asset_id: draft.asset_id,
-          asset_tag: tag,
-          lab_name: lab,
-          category: isNetworkFault ? 'network' : 'hardware',
-          tier: isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral',
-          tier_code: isNetworkFault ? 'tier2' : 'tier1',
-          assigned_role: isNetworkFault ? 'engineer' : 'assistant',
-          assigned_name: isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)',
-          title: isNetworkFault ? `Network / NIC Connectivity fault on ${tag}` : `Hardware check failed on ${tag}`,
-          description: draft.notes || 'Reported during physical shift inspection.',
-          status: 'open',
-          priority: isNetworkFault ? 'high' : 'medium',
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          resolution_notes: '',
-          events: [
-            {
-              actor: user.name,
-              action: `Ticket opened via Shift Checklist (${isNetworkFault ? 'Tier 2 · Network' : 'Tier 1 · Hardware'})`,
-              timestamp: new Date().toISOString(),
-            },
-            ...(isNetworkFault ? [{
-              actor: 'Atlas Routing Engine',
-              action: 'Auto-routed to Network Engineer (Daniel Reyes)',
-              timestamp: new Date().toISOString(),
-            }] : []),
-          ],
-        } : null;
+        const num = linkedTicketChoice.startsWith('INC-')
+          ? linkedTicketChoice
+          : `INC-${1000 + Math.floor(Math.random() * 900)}`;
+        const localTicket = isFailed
+          ? {
+              id: `inc-local-${Date.now()}`,
+              number: num,
+              asset_id: draft.asset_id,
+              asset_tag: tag,
+              lab_name: lab,
+              category: isNetworkFault ? 'network' : 'hardware',
+              tier: isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral',
+              tier_code: isNetworkFault ? 'tier2' : 'tier1',
+              assigned_role: isNetworkFault ? 'engineer' : 'assistant',
+              assigned_name: isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)',
+              title: isNetworkFault ? `Network / NIC Connectivity fault on ${tag}` : `Hardware check failed on ${tag}`,
+              description: draft.notes || 'Reported during physical shift inspection.',
+              status: 'open',
+              priority: isNetworkFault ? 'high' : 'medium',
+              created_by: user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              resolution_notes: '',
+              events: [
+                {
+                  actor: user.name,
+                  action: `Ticket opened via Shift Checklist (${isNetworkFault ? 'Tier 2 · Network' : 'Tier 1 · Hardware'})`,
+                  timestamp: new Date().toISOString(),
+                },
+                ...(isNetworkFault
+                  ? [
+                      {
+                        actor: 'Atlas Routing Engine',
+                        action: 'Auto-routed to Network Engineer (Daniel Reyes)',
+                        timestamp: new Date().toISOString(),
+                      },
+                    ]
+                  : []),
+              ],
+            }
+          : null;
 
         if (localTicket) {
           saveLocalTicket(localTicket);
@@ -316,16 +336,30 @@ export default function Checklists() {
           request_id: draft.request_id,
           asset_id: draft.asset_id,
           asset_tag: tag,
-          lab_id: pcAsset?.lab_id || (params.get('lab') || 'lab-1'),
+          lab_id: pcAsset?.lab_id || params.get('lab') || 'lab-1',
           lab_name: lab,
           checks: isFailed
-            ? { power: 'pass', display: 'pass', peripherals: isNetworkFault ? 'pass' : 'fail', network: isNetworkFault ? 'fail' : 'pass', software: 'pass' }
+            ? {
+                power: 'pass',
+                display: 'pass',
+                peripherals: isNetworkFault ? 'pass' : 'fail',
+                network: isNetworkFault ? 'fail' : 'pass',
+                software: 'pass',
+              }
             : { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
           notes: draft.notes,
           result: isFailed ? 'failed' : 'passed',
-          fault_tier: isFailed ? (isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral') : 'All Checks Passed',
+          fault_tier: isFailed
+            ? isNetworkFault
+              ? 'Tier 2 · Network / Connectivity'
+              : 'Tier 1 · Hardware / Peripheral'
+            : 'All Checks Passed',
           assigned_role: isFailed ? (isNetworkFault ? 'engineer' : 'assistant') : null,
-          assigned_name: isFailed ? (isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)') : null,
+          assigned_name: isFailed
+            ? isNetworkFault
+              ? 'Daniel Reyes (Network Engineer)'
+              : 'Jamie Santos (Lab Support · Tier 1)'
+            : null,
           created_by: user.id,
           created_by_name: user.name,
           created_at: new Date().toISOString(),
@@ -378,10 +412,10 @@ export default function Checklists() {
     setBatchNotice('');
     const targetLabName = LAB_NAMES[mapLab] || 'Computing Lab A';
     const labPcs = (assets.data || []).filter(
-      (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === mapLab || a.lab_name === targetLabName)
+      (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === mapLab || a.lab_name === targetLabName),
     );
     const openFaultAssetIds = new Set(
-      allTickets.filter((t: any) => t.status !== 'resolved').map((t: any) => t.asset_id)
+      allTickets.filter((t: any) => t.status !== 'resolved').map((t: any) => t.asset_id),
     );
     const alreadyCheckedIds = new Set(allChecklists.map((c: any) => c.asset_id));
 
@@ -425,7 +459,7 @@ export default function Checklists() {
       setBatchNotice(
         toVerify.length
           ? `Batch verified ${toVerify.length} healthy workstation(s) in ${targetLabName}. Shift progress updated.`
-          : `All healthy workstations in ${targetLabName} are already verified for this shift.`
+          : `All healthy workstations in ${targetLabName} are already verified for this shift.`,
       );
       load();
     }
@@ -435,17 +469,16 @@ export default function Checklists() {
     const pcs = (assets.data || []).filter((a: any) => a.kind === 'PC' && !a.archived);
     return pcs.map((pc: any) => {
       const activeTicket = allTickets.find(
-        (t: any) => t.status !== 'resolved' && (t.asset_id === pc.id || t.asset_tag === pc.tag)
+        (t: any) => t.status !== 'resolved' && (t.asset_id === pc.id || t.asset_tag === pc.tag),
       );
-      const latestCheck = allChecklists.find(
-        (c: any) => c.asset_id === pc.id || c.asset_tag === pc.tag
-      );
+      const latestCheck = allChecklists.find((c: any) => c.asset_id === pc.id || c.asset_tag === pc.tag);
       const linkedTicket = activeTicket || (latestCheck?.tickets && latestCheck.tickets[0]) || null;
-      const outcomeKey = activeTicket || latestCheck?.result === 'failed'
-        ? 'failed'
-        : latestCheck?.result === 'passed'
-        ? 'passed'
-        : 'unchecked';
+      const outcomeKey =
+        activeTicket || latestCheck?.result === 'failed'
+          ? 'failed'
+          : latestCheck?.result === 'passed'
+            ? 'passed'
+            : 'unchecked';
       const loc = findLocation(pc.lab_name || pc.lab_id);
       const roomCode = loc?.code || pc.lab_id || '—';
 
@@ -469,9 +502,7 @@ export default function Checklists() {
         w.lab_id === labFilter ||
         w.lab_name === LAB_NAMES[labFilter] ||
         w.lab_name === labFilter;
-      const matchesOutcome =
-        outcomeFilter === 'all' ||
-        w.outcomeKey === outcomeFilter;
+      const matchesOutcome = outcomeFilter === 'all' || w.outcomeKey === outcomeFilter;
       return matchesLab && matchesOutcome;
     });
   }, [allWorkstations, labFilter, outcomeFilter]);
@@ -488,17 +519,13 @@ export default function Checklists() {
       <PageTitle title="Equipment Checklists">
         {isAssistant && (
           <div className="flex items-center gap-2">
-            <Button
-              id="batch-verify-lab"
-              variant="secondary"
-              disabled={batchBusy}
-              onClick={batchVerifyLab}
-            >
+            <Button id="batch-verify-lab" variant="secondary" disabled={batchBusy} onClick={batchVerifyLab}>
               <Sparkles size={14} className="mr-1" />
               {batchBusy ? 'Verifying…' : 'Batch Pass Lab'}
             </Button>
             <Button id="new-checklist" variant="primary" onClick={() => start()}>
-              <Plus size={16} className="mr-1" />Start Inspection
+              <Plus size={16} className="mr-1" />
+              Start Inspection
             </Button>
           </div>
         )}
@@ -597,8 +624,8 @@ export default function Checklists() {
                               w.outcomeKey === 'passed'
                                 ? 'bg-emerald-400'
                                 : w.outcomeKey === 'failed'
-                                ? 'bg-amber-400'
-                                : 'bg-slate-500'
+                                  ? 'bg-amber-400'
+                                  : 'bg-slate-500'
                             }`}
                           />
                           <span
@@ -606,15 +633,15 @@ export default function Checklists() {
                               w.outcomeKey === 'passed'
                                 ? 'text-emerald-400'
                                 : w.outcomeKey === 'failed'
-                                ? 'text-amber-400'
-                                : 'text-slate-400'
+                                  ? 'text-amber-400'
+                                  : 'text-slate-400'
                             }
                           >
                             {w.outcomeKey === 'passed'
                               ? 'Passed'
                               : w.outcomeKey === 'failed'
-                              ? 'Fault Reported'
-                              : 'Unchecked'}
+                                ? 'Fault Reported'
+                                : 'Unchecked'}
                           </span>
                         </span>
                       </td>
@@ -626,7 +653,8 @@ export default function Checklists() {
                               className="font-mono text-xs font-semibold text-sky-400 hover:underline cursor-pointer"
                               data-testid={`checklist-ticket-${w.latestCheck?.id || w.id}-${w.linkedTicket.id}`}
                               onClick={() => {
-                                const isNet = w.linkedTicket.category === 'network' || w.latestCheck?.checks?.network === 'fail';
+                                const isNet =
+                                  w.linkedTicket.category === 'network' || w.latestCheck?.checks?.network === 'fail';
                                 setViewTicket({
                                   ...w.linkedTicket,
                                   routingLabel: isNet ? 'Escalated to Network Eng' : 'Tier 1 Hardware Fault',
@@ -730,13 +758,10 @@ export default function Checklists() {
                   </p>
                   {success.tickets.map((t: any) =>
                     isAssistant ? (
-                      <div
-                        className="linked-ticket-readonly"
-                        data-testid={`success-ticket-${t.id}`}
-                        key={t.id}
-                      >
+                      <div className="linked-ticket-readonly" data-testid={`success-ticket-${t.id}`} key={t.id}>
                         <div>
-                          <strong>{t.number}</strong> · {t.category === 'network' ? 'Network Connectivity' : 'Tier 1 Hardware'}
+                          <strong>{t.number}</strong> ·{' '}
+                          {t.category === 'network' ? 'Network Connectivity' : 'Tier 1 Hardware'}
                           <small className="block-muted">
                             {t.category === 'network'
                               ? 'Auto-routed to Tier 2 Network Engineer'
@@ -758,7 +783,7 @@ export default function Checklists() {
                         </span>
                         <ArrowUpRight size={15} />
                       </Link>
-                    )
+                    ),
                   )}
                 </>
               ) : (
@@ -805,11 +830,19 @@ export default function Checklists() {
                       onClick={() => {
                         setInspectionStatus('passed');
                         update({
-                          checks: { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
+                          checks: {
+                            power: 'pass',
+                            display: 'pass',
+                            peripherals: 'pass',
+                            network: 'pass',
+                            software: 'pass',
+                          },
                         });
                       }}
                     >
-                      <span className={`w-2 h-2 rounded-full ${inspectionStatus === 'passed' ? 'bg-white' : 'bg-emerald-500'}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${inspectionStatus === 'passed' ? 'bg-white' : 'bg-emerald-500'}`}
+                      />
                       Passed
                     </button>
                     <button
@@ -833,7 +866,9 @@ export default function Checklists() {
                         });
                       }}
                     >
-                      <span className={`w-2 h-2 rounded-full ${inspectionStatus === 'failed' ? 'bg-white' : 'bg-amber-500'}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${inspectionStatus === 'failed' ? 'bg-white' : 'bg-amber-500'}`}
+                      />
                       Fault Reported
                     </button>
                   </div>
@@ -842,10 +877,15 @@ export default function Checklists() {
                 <Field label="Inspected By" id="checklist-inspector">
                   <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm h-[38px]">
                     <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                      {(user.name || 'Jamie Santos').split(' ').map((n: string) => n[0]).join('')}
+                      {(user.name || 'Jamie Santos')
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')}
                     </div>
                     <span className="font-medium text-xs truncate">{user.name || 'Jamie Santos'}</span>
-                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-auto uppercase tracking-wide flex-shrink-0">IT Assistant</span>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-auto uppercase tracking-wide flex-shrink-0">
+                      IT Assistant
+                    </span>
                   </div>
                 </Field>
 
@@ -875,7 +915,9 @@ export default function Checklists() {
                         }}
                       >
                         <option value="new-tier1">Auto-Trigger Quick Ticket · Tier 1 Hardware Support Queue</option>
-                        <option value="new-tier2">Auto-Trigger Quick Ticket · Tier 2 Network Connectivity Engineer</option>
+                        <option value="new-tier2">
+                          Auto-Trigger Quick Ticket · Tier 2 Network Connectivity Engineer
+                        </option>
                         {openTicketsForAsset.map((t: any) => (
                           <option key={t.id} value={t.number}>
                             Attach Existing Ticket · {t.number} ({t.title || t.category})
@@ -912,20 +954,10 @@ export default function Checklists() {
               )}
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={sending}
-                  onClick={() => setOpen(false)}
-                >
+                <Button type="button" variant="outline" disabled={sending} onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  id="submit-checklist"
-                  variant="primary"
-                  disabled={sending || !draft.asset_id}
-                >
+                <Button type="submit" id="submit-checklist" variant="primary" disabled={sending || !draft.asset_id}>
                   <Check size={14} />
                   {sending ? 'Saving…' : 'Save Inspection Record'}
                 </Button>
@@ -978,12 +1010,8 @@ export default function Checklists() {
                     key={key}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {label}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        ({tierBadge})
-                      </span>
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">({tierBadge})</span>
                     </div>
                     <div>
                       <span
@@ -1055,20 +1083,21 @@ export default function Checklists() {
               </div>
               <div>
                 <span>Ticket Status</span>
-                <strong>{viewTicket.statusLabel || (viewTicket.status === 'resolved' ? 'Resolved' : 'Open / In Progress')}</strong>
+                <strong>
+                  {viewTicket.statusLabel || (viewTicket.status === 'resolved' ? 'Resolved' : 'Open / In Progress')}
+                </strong>
               </div>
               <div>
                 <span>Assigned Routing</span>
                 <strong>
-                  {viewTicket.category === 'network'
-                    ? 'Network Engineer (Tier 2 NOC)'
-                    : 'Tier 1 Lab Support'}
+                  {viewTicket.category === 'network' ? 'Network Engineer (Tier 2 NOC)' : 'Tier 1 Lab Support'}
                 </strong>
               </div>
             </div>
 
             <div className="notice" data-testid="assistant-ticket-notice">
-              This incident ticket was automatically logged from your physical lab inspection. Incident investigation and ticket resolution are managed exclusively by Tier-2 Network Engineers and Administrators.
+              This incident ticket was automatically logged from your physical lab inspection. Incident investigation
+              and ticket resolution are managed exclusively by Tier-2 Network Engineers and Administrators.
             </div>
           </div>
         )}

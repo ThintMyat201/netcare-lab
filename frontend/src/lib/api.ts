@@ -1,21 +1,52 @@
 import axios from 'axios';
-export const api=axios.create({baseURL:`${process.env.REACT_APP_BACKEND_URL}/api`,withCredentials:true,timeout:12000,headers:{'X-Atlas-Request':'1'}});
-let refresh:Promise<any>|null=null;
-api.interceptors.response.use(r=>r,async error=>{
- const config=error.config;
- if(error.response?.status===401 && !config?._retry && !config?.url?.startsWith('/auth/')) {
-  config._retry=true;
-  try { refresh=refresh||api.post('/auth/refresh'); await refresh; refresh=null; return api(config); }
-  catch { refresh=null; window.dispatchEvent(new Event('session-expired')); }
- }
- return Promise.reject(error);
+export const api = axios.create({
+  baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
+  withCredentials: true,
+  timeout: 12000,
+  headers: { 'X-Atlas-Request': '1' },
 });
-export function errorText(e:any):string {
- const d=e.response?.data?.detail;
- return typeof d==='string'?d:Array.isArray(d)?d.map(x=>x.msg).join('. '):'The server is unavailable. Your unsent work is still here. Please try again.';
+let refresh: Promise<any> | null = null;
+api.interceptors.response.use(
+  r => r,
+  async error => {
+    const config = error.config;
+    if (error.response?.status === 401 && !config?._retry && !config?.url?.startsWith('/auth/')) {
+      config._retry = true;
+      try {
+        refresh = refresh || api.post('/auth/refresh');
+        await refresh;
+        refresh = null;
+        return api(config);
+      } catch {
+        refresh = null;
+        window.dispatchEvent(new Event('session-expired'));
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+export function errorText(e: any): string {
+  const d = e.response?.data?.detail;
+  return typeof d === 'string'
+    ? d
+    : Array.isArray(d)
+      ? d.map(x => x.msg).join('. ')
+      : 'The server is unavailable. Your unsent work is still here. Please try again.';
 }
-export const CAMPUS_TIMEZONE='Asia/Kuala_Lumpur';
-export const normalizeTimestamp=(value:string)=>/Z|[+-]\d{2}:?\d{2}$/.test(value.trim())?value.trim():`${value.trim()}Z`;
-export const time=(value?:string,full=false,withSeconds=false)=>value?new Intl.DateTimeFormat('en-MY',{timeZone:CAMPUS_TIMEZONE,...(full?{month:'short',day:'numeric'}:{}),hour:'2-digit',minute:'2-digit',...(withSeconds?{second:'2-digit'}:{}),hour12:false}).format(new Date(normalizeTimestamp(value))):'—';
-export const roleLabel=(r:string)=>({admin:'Administrator',engineer:'Network Engineer',assistant:'IT Assistant'}[r]||r);
-export type User={id:string;name:string;email:string;role:string;active:boolean};
+export const CAMPUS_TIMEZONE = 'Asia/Kuala_Lumpur';
+export const normalizeTimestamp = (value: string) =>
+  /Z|[+-]\d{2}:?\d{2}$/.test(value.trim()) ? value.trim() : `${value.trim()}Z`;
+export const time = (value?: string, full = false, withSeconds = false) =>
+  value
+    ? new Intl.DateTimeFormat('en-MY', {
+        timeZone: CAMPUS_TIMEZONE,
+        ...(full ? { month: 'short', day: 'numeric' } : {}),
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(withSeconds ? { second: '2-digit' } : {}),
+        hour12: false,
+      }).format(new Date(normalizeTimestamp(value)))
+    : '—';
+export const roleLabel = (r: string) =>
+  ({ admin: 'Administrator', engineer: 'Network Engineer', assistant: 'IT Assistant' })[r] || r;
+export type User = { id: string; name: string; email: string; role: string; active: boolean };

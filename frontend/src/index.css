@@ -43,15 +43,23 @@ body {
   color: #f0f3f8;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
 }
 
-button, a, input, select, textarea {
+button,
+a,
+input,
+select,
+textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-button, a {
+button,
+a {
   touch-action: manipulation;
 }
 
@@ -62,10 +70,11 @@ button {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: .5;
+  opacity: 0.5;
 }
 
-button:focus-visible, a:focus-visible {
+button:focus-visible,
+a:focus-visible {
   outline: 2px solid #649cfb;
   outline-offset: 4px;
 }
@@ -80,21 +89,40 @@ a {
   color: white;
 }
 
-h1, h2, h3, h4, h5, h6, p {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
   margin: 0;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Outfit', sans-serif;
   font-weight: 750;
   color: #f0f3f8;
 }
 
-button, a {
-  transition: background-color .18s, color .18s, border-color .18s, opacity .18s, transform .18s;
+button,
+a {
+  transition:
+    background-color 0.18s,
+    color 0.18s,
+    border-color 0.18s,
+    opacity 0.18s,
+    transform 0.18s;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   width: 100%;
   min-width: 0;
   outline: none;
@@ -105,16 +133,21 @@ input, textarea, select {
   padding: 9px 12px;
   font-size: 13px;
   font-weight: 550;
-  transition: border-color .18s, box-shadow .18s;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
   box-shadow: none;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: #649cfb;
   box-shadow: 0 0 0 1px #649cfb;
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: #8c99af;
   font-weight: 500;
 }
@@ -124,7 +157,7 @@ textarea {
   min-height: 80px;
 }
 
-input[type=datetime-local] {
+input[type='datetime-local'] {
   color-scheme: dark;
 }
 
@@ -169,7 +202,7 @@ button,
 input,
 select,
 textarea,
-[role="button"] {
+[role='button'] {
   border-width: 2px;
 }
 

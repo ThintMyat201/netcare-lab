@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Download,
-  FileText,
-  Search,
-  RefreshCw,
-} from 'lucide-react';
+import { Download, FileText, Search, RefreshCw } from 'lucide-react';
 import { PageTitle, Button, ErrorBox, Loading, Empty, useData } from '../components/shared';
 import { time } from '../lib/api';
 import { downloadCSV } from '../lib/csv';
@@ -23,7 +18,7 @@ export function Audit() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = data?.filter((a: any) =>
-    (a.action + ' ' + a.actor + ' ' + a.detail).toLowerCase().includes(search.toLowerCase())
+    (a.action + ' ' + a.actor + ' ' + a.detail).toLowerCase().includes(search.toLowerCase()),
   );
 
   const exportPDF = () => {
@@ -38,11 +33,7 @@ export function Audit() {
 
     const escapeHtml = (str: string) => {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     };
 
     const tableRows = rows
@@ -53,7 +44,7 @@ export function Audit() {
         <td class="font-medium">${escapeHtml(a.actor || 'System')}</td>
         <td><span class="action-badge">${escapeHtml(a.action || '')}</span></td>
         <td class="detail">${escapeHtml(a.detail || '')}</td>
-      </tr>`
+      </tr>`,
       )
       .join('');
 
@@ -214,7 +205,8 @@ export function Audit() {
     <>
       <PageTitle title="Activity Log">
         <Button id="refresh-audit" onClick={load}>
-          <RefreshCw size={15} />Refresh Log
+          <RefreshCw size={15} />
+          Refresh Log
         </Button>
         <button
           type="button"

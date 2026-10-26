@@ -14,7 +14,17 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { PageTitle, Button, Select, Status, Loading, ErrorBox, SectionHead, Modal, useData } from '../components/shared';
+import {
+  PageTitle,
+  Button,
+  Select,
+  Status,
+  Loading,
+  ErrorBox,
+  SectionHead,
+  Modal,
+  useData,
+} from '../components/shared';
 import { TrafficChart, APTable, Simulation } from '../components/Telemetry';
 import { useAuth } from '../context';
 import { api, time, errorText } from '../lib/api';
@@ -40,8 +50,6 @@ import {
   computeStats,
 } from '../lib/fleetSimulation';
 
-
-
 export default function Monitoring() {
   const { user } = useAuth();
   const [params] = useSearchParams();
@@ -62,7 +70,7 @@ export default function Monitoring() {
   const [busySimulation, setBusySimulation] = useState(false);
 
   const [liveAps, setLiveAps] = useState<any[] | null>(() =>
-    initialSimActive ? buildSimulationFleet() : buildHealthyFleet()
+    initialSimActive ? buildSimulationFleet() : buildHealthyFleet(),
   );
   const [liveSamples, setLiveSamples] = useState<any[]>([]);
   const [lastSampleAt, setLastSampleAt] = useState<string>(() => new Date().toISOString());
@@ -132,8 +140,8 @@ export default function Monitoring() {
       a.status === 'stale'
         ? 'Telemetry Feed Interrupted'
         : a.status === 'offline'
-        ? 'Hardware Outage / Unreachable'
-        : `High Bandwidth Congestion (${a.load ?? 90}%)`;
+          ? 'Hardware Outage / Unreachable'
+          : `High Bandwidth Congestion (${a.load ?? 90}%)`;
     setTicketForm({
       title: `${statusLabel} — ${a.tag}`,
       description: `Infrastructure telemetry escalation for ${a.tag} (${a.lab_name || a.lab_id}, IP ${a.ip}). Status: ${String(a.status).toUpperCase()}.`,
@@ -143,7 +151,11 @@ export default function Monitoring() {
       const res = await api.get(`/monitoring/${a.id}/history`);
       setDetail({
         ...res.data,
-        asset: { ...res.data.asset, ...a, last_seen: a.last_seen || res.data?.asset?.last_seen || new Date().toISOString() },
+        asset: {
+          ...res.data.asset,
+          ...a,
+          last_seen: a.last_seen || res.data?.asset?.last_seen || new Date().toISOString(),
+        },
       });
     } catch {
       const nowMs = Date.now();
@@ -176,7 +188,7 @@ export default function Monitoring() {
     } catch {
       const st = ap.status || 'online';
       const loss = st === 'offline' ? 100 : st === 'congested' ? 8 : st === 'stale' ? 20 : 0;
-      const avgRtt = st === 'offline' ? null : st === 'congested' ? (ap.latency || 126) : (ap.latency || 12);
+      const avgRtt = st === 'offline' ? null : st === 'congested' ? ap.latency || 126 : ap.latency || 12;
       setDiagResult({
         asset_id: ap.id,
         tag: ap.tag,
@@ -197,10 +209,10 @@ export default function Monitoring() {
           st === 'offline'
             ? '100% ICMP packet loss. Switch port reports PoE link down.'
             : st === 'congested'
-            ? 'Elevated airtime utilization and packet retransmissions on 5GHz radio.'
-            : st === 'stale'
-            ? 'ICMP reachable with intermittent SNMP/telemetry agent timeout.'
-            : '0% packet loss, healthy PoE power draw, and optimal SNR.',
+              ? 'Elevated airtime utilization and packet retransmissions on 5GHz radio.'
+              : st === 'stale'
+                ? 'ICMP reachable with intermittent SNMP/telemetry agent timeout.'
+                : '0% packet loss, healthy PoE power draw, and optimal SNR.',
       });
     } finally {
       setRunningDiag(false);
@@ -232,8 +244,16 @@ export default function Monitoring() {
         saveLocalTicket({ ...linkedTicket, status: 'resolved', updated_at: nowIso });
       }
       restoreDevice(ap.id);
-      const idx = Math.max(0, (liveAps || data?.aps || []).findIndex((x: any) => x.id === ap.id));
-      const healthyAp = baselineApMetrics({ ...ap, status: 'online', scenario: 'normal' }, idx, sampleTickRef.current + 1, nowIso);
+      const idx = Math.max(
+        0,
+        (liveAps || data?.aps || []).findIndex((x: any) => x.id === ap.id),
+      );
+      const healthyAp = baselineApMetrics(
+        { ...ap, status: 'online', scenario: 'normal' },
+        idx,
+        sampleTickRef.current + 1,
+        nowIso,
+      );
       setLiveAps(getSharedFleetAps());
       setSelected(healthyAp);
       setDetail((prev: any) =>
@@ -254,7 +274,7 @@ export default function Monitoring() {
                 },
               ],
             }
-          : prev
+          : prev,
       );
       setDiagResult(null);
       setRemediating(false);
@@ -305,15 +325,17 @@ export default function Monitoring() {
       Math.round(
         reportingAps.reduce(
           (sum: number, a: any) => sum + (typeof a.throughput === 'number' ? a.throughput : (a.clients || 0) * 0.96),
-          0
-        ) * 10
+          0,
+        ) * 10,
       ) / 10;
     const avgLoad = reportingAps.length
-      ? Math.round((reportingAps.reduce((sum: number, a: any) => sum + (a.load || 0), 0) / reportingAps.length) * 10) / 10
+      ? Math.round((reportingAps.reduce((sum: number, a: any) => sum + (a.load || 0), 0) / reportingAps.length) * 10) /
+        10
       : null;
     const latencyAps = reportingAps.filter((a: any) => typeof a.latency === 'number');
     const avgLatency = latencyAps.length
-      ? Math.round((latencyAps.reduce((sum: number, a: any) => sum + (a.latency || 0), 0) / latencyAps.length) * 10) / 10
+      ? Math.round((latencyAps.reduce((sum: number, a: any) => sum + (a.latency || 0), 0) / latencyAps.length) * 10) /
+        10
       : null;
 
     const newPoint = {
@@ -351,7 +373,7 @@ export default function Monitoring() {
                   },
                 ],
               }
-            : prev
+            : prev,
         );
       }
     }
@@ -434,7 +456,6 @@ export default function Monitoring() {
     }
   };
 
-
   const handlePollLiveMetrics = async () => {
     await handleSample();
   };
@@ -458,9 +479,13 @@ export default function Monitoring() {
     const reporting = updatedAps.filter((a: any) => typeof a.clients === 'number');
     const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
     const totalThroughput = Math.round(reporting.reduce((s: number, a: any) => s + (a.throughput || 0), 0) * 10) / 10;
-    const avgLoad = reporting.length ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10 : null;
+    const avgLoad = reporting.length
+      ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
+      : null;
     const latList = reporting.filter((a: any) => typeof a.latency === 'number');
-    const avgLatency = latList.length ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10 : null;
+    const avgLatency = latList.length
+      ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
+      : null;
 
     setLiveSamples(prev => [
       ...prev.slice(-24),
@@ -509,9 +534,13 @@ export default function Monitoring() {
     const reporting = restoredAps.filter((a: any) => typeof a.clients === 'number');
     const totalClients = reporting.reduce((s: number, a: any) => s + (a.clients || 0), 0);
     const totalThroughput = Math.round(reporting.reduce((s: number, a: any) => s + (a.throughput || 0), 0) * 10) / 10;
-    const avgLoad = reporting.length ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10 : null;
+    const avgLoad = reporting.length
+      ? Math.round((reporting.reduce((s: number, a: any) => s + (a.load || 0), 0) / reporting.length) * 10) / 10
+      : null;
     const latList = reporting.filter((a: any) => typeof a.latency === 'number');
-    const avgLatency = latList.length ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10 : null;
+    const avgLatency = latList.length
+      ? Math.round((latList.reduce((s: number, a: any) => s + (a.latency || 0), 0) / latList.length) * 10) / 10
+      : null;
 
     setLiveSamples(prev => [
       ...prev.slice(-24),
@@ -547,11 +576,11 @@ export default function Monitoring() {
 
   const activeAps = useMemo(
     () => (liveAps && liveAps.length > 0 ? liveAps : simulationActive ? buildSimulationFleet() : buildHealthyFleet()),
-    [liveAps, simulationActive]
+    [liveAps, simulationActive],
   );
   const labScopedAps = useMemo(
     () => (lab ? activeAps.filter((a: any) => a.lab_id === lab) : activeAps),
-    [activeAps, lab]
+    [activeAps, lab],
   );
   const stats = useMemo(() => computeStats(labScopedAps), [labScopedAps]);
 
@@ -584,16 +613,7 @@ export default function Monitoring() {
   const filteredAps = labScopedAps.filter((a: any) => {
     if (status !== 'all' && a.status !== status) return false;
     if (!query) return true;
-    const haystack = [
-      a.tag,
-      a.name,
-      a.lab_name,
-      a.placement,
-      a.ip,
-      a.model,
-      a.mac,
-      ZONE_GROUP_LABELS[zoneGroupOf(a)],
-    ]
+    const haystack = [a.tag, a.name, a.lab_name, a.placement, a.ip, a.model, a.mac, ZONE_GROUP_LABELS[zoneGroupOf(a)]]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
@@ -605,9 +625,7 @@ export default function Monitoring() {
 
   return (
     <div className="monitoring-page pt-4 sm:pt-6 px-4 sm:px-6 pb-12 w-full max-w-7xl mx-auto flex flex-col gap-4 flex-1 min-w-0">
-      <PageTitle
-        title="Network Monitoring"
-      />
+      <PageTitle title="Network Monitoring" />
 
       <ErrorBox error={error || (!selected && localError)} retry={load} />
 
@@ -633,7 +651,10 @@ export default function Monitoring() {
             <RadioIcon pulsing={sampling || pulseActive} active={isFeedActive} />
             LIVE TELEMETRY FEED
           </span>
-          <span data-testid="monitor-last-updated" className={`sample-timestamp ${pulseActive ? 'sample-timestamp-flash' : ''}`}>
+          <span
+            data-testid="monitor-last-updated"
+            className={`sample-timestamp ${pulseActive ? 'sample-timestamp-flash' : ''}`}
+          >
             Last sample: {time(displayedLastUpdated, true, true)} MYT
           </span>
           <span className="sample-retention-info">{activeAps.length || 28} Campus APs · 7-day retention</span>
@@ -751,12 +772,7 @@ export default function Monitoring() {
                 onChange={e => setSearch(e.target.value)}
               />
               {search && (
-                <button
-                  type="button"
-                  className="search-clear"
-                  aria-label="Clear search"
-                  onClick={() => setSearch('')}
-                >
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => setSearch('')}>
                   <X size={14} />
                 </button>
               )}
@@ -772,13 +788,11 @@ export default function Monitoring() {
               <option value="">All Campus Locations ({activeAps.length} APs)</option>
               {AP_LOCATION_GROUPS.map(group => (
                 <optgroup key={group.label} label={group.label}>
-                  {CAMPUS_LOCATIONS
-                    .filter(l => group.zones.includes(l.zone_group))
-                    .map(l => (
-                      <option key={l.id} value={l.id}>
-                        [{l.code}] {l.name} ({activeAps.filter((a: any) => a.lab_id === l.id).length} APs)
-                      </option>
-                    ))}
+                  {CAMPUS_LOCATIONS.filter(l => group.zones.includes(l.zone_group)).map(l => (
+                    <option key={l.id} value={l.id}>
+                      [{l.code}] {l.name} ({activeAps.filter((a: any) => a.lab_id === l.id).length} APs)
+                    </option>
+                  ))}
                 </optgroup>
               ))}
             </Select>
@@ -821,195 +835,225 @@ export default function Monitoring() {
         id="ap-detail-dialog"
       >
         <ErrorBox error={localError} />
-        {selected ? (
-          (() => {
-            const ap = detail?.asset || selected;
-            const linkedTicket = activeTicketsByAsset[ap.id] || activeTicketsByAsset[ap.tag] || ap.linked_ticket;
-            const isFaulted = ap.status === 'stale' || ap.status === 'congested' || ap.status === 'offline';
+        {selected
+          ? (() => {
+              const ap = detail?.asset || selected;
+              const linkedTicket = activeTicketsByAsset[ap.id] || activeTicketsByAsset[ap.tag] || ap.linked_ticket;
+              const isFaulted = ap.status === 'stale' || ap.status === 'congested' || ap.status === 'offline';
 
-            return (
-              <div className="flex flex-col gap-3.5">
-                {/* 2. Compact 3-Metric Strip */}
-                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Connected Devices</span>
-                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.clients ?? '—'}</strong>
+              return (
+                <div className="flex flex-col gap-3.5">
+                  {/* 2. Compact 3-Metric Strip */}
+                  <div className="grid grid-cols-3 gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-center">
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
+                        Connected Devices
+                      </span>
+                      <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">
+                        {ap.clients ?? '—'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
+                        Bandwidth Load
+                      </span>
+                      <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">
+                        {ap.load == null ? '—' : `${ap.load}%`}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
+                        Latency
+                      </span>
+                      <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">
+                        {ap.latency == null ? '—' : `${ap.latency} ms`}
+                      </strong>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Bandwidth Load</span>
-                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.load == null ? '—' : `${ap.load}%`}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Latency</span>
-                    <strong className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5 block">{ap.latency == null ? '—' : `${ap.latency} ms`}</strong>
-                  </div>
-                </div>
 
-                {ap.status === 'stale' && (
-                  <div className="notice text-xs py-2 px-3" data-testid="stale-explanation">
-                    Telemetry feed is interrupted or expired. Device status is unconfirmed.
-                  </div>
-                )}
+                  {ap.status === 'stale' && (
+                    <div className="notice text-xs py-2 px-3" data-testid="stale-explanation">
+                      Telemetry feed is interrupted or expired. Device status is unconfirmed.
+                    </div>
+                  )}
 
-                {/* 3. Remote Recovery Actions */}
-                {user.role !== 'assistant' && (
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        id="run-ap-diagnostic"
-                        disabled={runningDiag}
-                        onClick={() => runDiagnostics(ap)}
-                      >
-                        <Terminal size={13} />
-                        {runningDiag ? 'Probing…' : 'Run Ping Check'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={ap.status === 'congested' ? 'primary' : 'secondary'}
-                        id="remediate-ap-channel"
-                        disabled={remediating}
-                        onClick={() => runRemediation(ap, 'rebalance_channel')}
-                      >
-                        <Radio size={13} /> {remediating ? 'Applying…' : 'Rebalance 5GHz'}
-                      </Button>
-                      {ap.status === 'stale' && (
+                  {/* 3. Remote Recovery Actions */}
+                  {user.role !== 'assistant' && (
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           size="sm"
-                          variant="primary"
-                          id="remediate-ap-agent"
-                          disabled={remediating}
-                          onClick={() => runRemediation(ap, 'restart_agent')}
+                          id="run-ap-diagnostic"
+                          disabled={runningDiag}
+                          onClick={() => runDiagnostics(ap)}
                         >
-                          <Wrench size={13} /> Restart Agent
+                          <Terminal size={13} />
+                          {runningDiag ? 'Probing…' : 'Run Ping Check'}
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant={ap.status === 'offline' ? 'primary' : 'secondary'}
-                        id="remediate-ap-reboot"
-                        disabled={remediating}
-                        onClick={() => runRemediation(ap, 'reboot_poe')}
-                      >
-                        <Power size={13} /> {remediating ? 'Executing…' : 'Reboot AP'}
-                      </Button>
-                    </div>
-
-                    {remediationNote && (
-                      <div className="success-box text-xs py-2 px-3" data-testid="ap-remediation-banner">
-                        <CheckCheck size={15} />
-                        <span>{remediationNote}</span>
-                      </div>
-                    )}
-
-                    {diagResult && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs" data-testid="ap-diag-results">
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase block">ICMP Loss</span>
-                          <strong className={diagResult.packet_loss_pct > 0 ? 'text-amber-500' : 'text-emerald-500'}>
-                            {diagResult.packet_loss_pct}% ({diagResult.packets_received}/{diagResult.packets_sent})
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase block">RTT Avg</span>
-                          <strong className="mono">{diagResult.rtt_avg_ms == null ? 'Timeout' : `${diagResult.rtt_avg_ms} ms`}</strong>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase block">Port & PoE</span>
-                          <strong>{diagResult.switch_port} · {diagResult.poe_draw_watts}W</strong>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-500 uppercase block">5GHz Radio</span>
-                          <strong>{diagResult.channel_5ghz}</strong>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 4. Contextual Incident Ticket Section */}
-                {linkedTicket ? (
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Linked Ticket: {linkedTicket.number} ({linkedTicket.title || (isFaulted ? 'Congested / Offline' : 'Active')})
-                      </span>
-                      <span className="text-[11px] text-slate-500">Tier 2 Network Escalation · {linkedTicket.status}</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      id={`view-ticket-${ap.id}`}
-                      data-testid={`view-ticket-${ap.id}`}
-                      onClick={() => {
-                        setSelected(null);
-                        navigate(`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`);
-                      }}
-                    >
-                      Open Ticket {linkedTicket.number} →
-                    </Button>
-                  </div>
-                ) : !isFaulted || ap.status === 'online' ? (
-                  <div className="text-xs text-slate-400 py-1">
-                    No active incident tickets for this access point.
-                  </div>
-                ) : user.role !== 'assistant' ? (
-                  <form onSubmit={submitNetworkTicket} className="flex flex-col gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/60">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Escalate Issue to NOC (Tier 2)</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div className="sm:col-span-2">
-                        <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1" htmlFor="ap-ticket-title">
-                          Incident Title
-                        </label>
-                        <input
-                          id="ap-ticket-title"
-                          data-testid="ap-ticket-title"
-                          required
-                          className="w-full text-xs"
-                          value={ticketForm.title}
-                          onChange={e => setTicketForm({ ...ticketForm, title: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1" htmlFor="ap-ticket-priority">
-                          Priority
-                        </label>
-                        <Select
-                          id="ap-ticket-priority"
-                          value={ticketForm.priority}
-                          onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                        <Button
+                          size="sm"
+                          variant={ap.status === 'congested' ? 'primary' : 'secondary'}
+                          id="remediate-ap-channel"
+                          disabled={remediating}
+                          onClick={() => runRemediation(ap, 'rebalance_channel')}
                         >
-                          <option value="high">High Priority</option>
-                          <option value="medium">Medium Priority</option>
-                        </Select>
+                          <Radio size={13} /> {remediating ? 'Applying…' : 'Rebalance 5GHz'}
+                        </Button>
+                        {ap.status === 'stale' && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            id="remediate-ap-agent"
+                            disabled={remediating}
+                            onClick={() => runRemediation(ap, 'restart_agent')}
+                          >
+                            <Wrench size={13} /> Restart Agent
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={ap.status === 'offline' ? 'primary' : 'secondary'}
+                          id="remediate-ap-reboot"
+                          disabled={remediating}
+                          onClick={() => runRemediation(ap, 'reboot_poe')}
+                        >
+                          <Power size={13} /> {remediating ? 'Executing…' : 'Reboot AP'}
+                        </Button>
                       </div>
+
+                      {remediationNote && (
+                        <div className="success-box text-xs py-2 px-3" data-testid="ap-remediation-banner">
+                          <CheckCheck size={15} />
+                          <span>{remediationNote}</span>
+                        </div>
+                      )}
+
+                      {diagResult && (
+                        <div
+                          className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs"
+                          data-testid="ap-diag-results"
+                        >
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">ICMP Loss</span>
+                            <strong className={diagResult.packet_loss_pct > 0 ? 'text-amber-500' : 'text-emerald-500'}>
+                              {diagResult.packet_loss_pct}% ({diagResult.packets_received}/{diagResult.packets_sent})
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">RTT Avg</span>
+                            <strong className="mono">
+                              {diagResult.rtt_avg_ms == null ? 'Timeout' : `${diagResult.rtt_avg_ms} ms`}
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">Port & PoE</span>
+                            <strong>
+                              {diagResult.switch_port} · {diagResult.poe_draw_watts}W
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">5GHz Radio</span>
+                            <strong>{diagResult.channel_5ghz}</strong>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                  )}
+
+                  {/* 4. Contextual Incident Ticket Section */}
+                  {linkedTicket ? (
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          Linked Ticket: {linkedTicket.number} (
+                          {linkedTicket.title || (isFaulted ? 'Congested / Offline' : 'Active')})
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Tier 2 Network Escalation · {linkedTicket.status}
+                        </span>
+                      </div>
                       <Button
-                        type="submit"
-                        variant="primary"
-                        id="submit-ap-ticket"
-                        disabled={creatingTicket}
                         size="sm"
+                        variant="primary"
+                        id={`view-ticket-${ap.id}`}
+                        data-testid={`view-ticket-${ap.id}`}
+                        onClick={() => {
+                          setSelected(null);
+                          navigate(`/tickets?ticket=${linkedTicket.id || linkedTicket.number}`);
+                        }}
                       >
-                        <Send size={13} />
-                        {creatingTicket ? 'Creating Ticket…' : 'Create Network Ticket'}
+                        Open Ticket {linkedTicket.number} →
                       </Button>
                     </div>
-                  </form>
-                ) : null}
+                  ) : !isFaulted || ap.status === 'online' ? (
+                    <div className="text-xs text-slate-400 py-1">No active incident tickets for this access point.</div>
+                  ) : user.role !== 'assistant' ? (
+                    <form
+                      onSubmit={submitNetworkTicket}
+                      className="flex flex-col gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/60"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          Escalate Issue to NOC (Tier 2)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="sm:col-span-2">
+                          <label
+                            className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1"
+                            htmlFor="ap-ticket-title"
+                          >
+                            Incident Title
+                          </label>
+                          <input
+                            id="ap-ticket-title"
+                            data-testid="ap-ticket-title"
+                            required
+                            className="w-full text-xs"
+                            value={ticketForm.title}
+                            onChange={e => setTicketForm({ ...ticketForm, title: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block mb-1"
+                            htmlFor="ap-ticket-priority"
+                          >
+                            Priority
+                          </label>
+                          <Select
+                            id="ap-ticket-priority"
+                            value={ticketForm.priority}
+                            onChange={(e: any) => setTicketForm({ ...ticketForm, priority: e.target.value })}
+                          >
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 mt-1">
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          id="submit-ap-ticket"
+                          disabled={creatingTicket}
+                          size="sm"
+                        >
+                          <Send size={13} />
+                          {creatingTicket ? 'Creating Ticket…' : 'Create Network Ticket'}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : null}
 
-                <p className="muted small text-[11px] text-slate-400 mt-1" data-testid="ap-detail-last-seen">
-                  Last reported: {time(ap.last_seen || ap.updated_at || ap.last_updated || new Date().toISOString(), true, true)} MYT
-                </p>
-              </div>
-            );
-          })()
-        ) : (
-          !localError && <Loading />
-        )}
+                  <p className="muted small text-[11px] text-slate-400 mt-1" data-testid="ap-detail-last-seen">
+                    Last reported:{' '}
+                    {time(ap.last_seen || ap.updated_at || ap.last_updated || new Date().toISOString(), true, true)} MYT
+                  </p>
+                </div>
+              );
+            })()
+          : !localError && <Loading />}
       </Modal>
     </div>
   );

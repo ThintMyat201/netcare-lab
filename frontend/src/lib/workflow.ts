@@ -260,9 +260,8 @@ export function findLocation(labIdOrName?: string) {
         l.code === target ||
         l.short === target ||
         target.includes(l.code) ||
-        target.includes(l.name)
-    ) ||
-    CAMPUS_LOCATIONS.find(l => target.toLowerCase().includes(l.short.toLowerCase()))
+        target.includes(l.name),
+    ) || CAMPUS_LOCATIONS.find(l => target.toLowerCase().includes(l.short.toLowerCase()))
   );
 }
 
@@ -284,7 +283,7 @@ export function formatLocationBadge(labIdOrName?: string): { code: string; name:
 export function computeNextDevice(
   kind: 'PC' | 'AP' | string,
   labId: string,
-  existingAssets: any[] = []
+  existingAssets: any[] = [],
 ): { tag: string; name: string; model: string; placement: string } {
   const loc = findLocation(labId);
   const locId = loc?.id || labId;
@@ -318,9 +317,7 @@ export function computeNextDevice(
     prefix = `${kind}-${cleanCode}-`;
   }
 
-  const matching = existingAssets.filter((a: any) =>
-    (a.tag || '').toUpperCase().startsWith(prefix.toUpperCase())
-  );
+  const matching = existingAssets.filter((a: any) => (a.tag || '').toUpperCase().startsWith(prefix.toUpperCase()));
   let maxNum = 0;
   matching.forEach((a: any) => {
     const numPart = (a.tag || '').slice(prefix.length);
@@ -332,15 +329,14 @@ export function computeNextDevice(
   const padded = nextNum < 10 ? `0${nextNum}` : String(nextNum);
   const tag = `${prefix}${padded}`;
 
-  const name =
-    kind === 'PC' ? `Workstation ${padded}` : `${loc?.short || loc?.name || 'Campus'} · AP ${padded}`;
+  const name = kind === 'PC' ? `Workstation ${padded}` : `${loc?.short || loc?.name || 'Campus'} · AP ${padded}`;
 
   const model =
     kind === 'PC'
       ? 'Dell OptiPlex 7090'
       : loc?.zone_group === 'outdoor'
-      ? 'Aruba AP-575 (Outdoor IP67)'
-      : 'Aruba AP-515';
+        ? 'Aruba AP-575 (Outdoor IP67)'
+        : 'Aruba AP-515';
 
   let placement = '';
   if (kind === 'PC') {
@@ -389,7 +385,12 @@ export function computeAutoRoomCode(block: string, level: string, room: string):
 }
 
 export function zoneGroupOf(asset: any): ZoneGroup {
-  return (asset?.zone_group as ZoneGroup) || findLocation(asset?.lab_id)?.zone_group || findLocation(asset?.lab_name)?.zone_group || 'labs';
+  return (
+    (asset?.zone_group as ZoneGroup) ||
+    findLocation(asset?.lab_id)?.zone_group ||
+    findLocation(asset?.lab_name)?.zone_group ||
+    'labs'
+  );
 }
 
 export function matchesZone(asset: any, zone: string): boolean {
@@ -413,42 +414,518 @@ export function networkLabel(asset: any): { vlan: number; ip: string } {
 
 export const SIMULATION_FLEET_APS = [
   // Computing Lab A (6 APs: 3 Online, 1 Congested, 1 Offline, 1 Feed Interrupted)
-  { id: 'ap-01', tag: 'AP-CL-A-01', name: 'Computing Lab A · AP 01', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Ceiling Mount Grid 1', ip: '10.20.1.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 28, load: 38, latency: 12, throughput: 31.4 },
-  { id: 'ap-02', tag: 'AP-CL-A-02', name: 'Computing Lab A · AP 02', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Ceiling Mount Grid 2', ip: '10.20.1.12', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 32, load: 44, latency: 11, throughput: 34.8 },
-  { id: 'ap-03', tag: 'AP-CL-A-03', name: 'Computing Lab A · AP 03', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Ceiling Mount Grid 3', ip: '10.20.1.13', model: 'Aruba AP-515', status: 'congested', scenario: 'congestion', clients: 71, load: 87, latency: 119, throughput: 66.8 },
-  { id: 'ap-04', tag: 'AP-CL-A-04', name: 'Computing Lab A · AP 04', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Ceiling Mount Grid 4', ip: '10.20.1.14', model: 'Aruba AP-515', status: 'offline', scenario: 'outage', clients: 0, load: 0, latency: null, throughput: 0 },
-  { id: 'ap-13', tag: 'AP-CL-A-05', name: 'Computing Lab A · AP 05', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Rear Ceiling Grid R2', ip: '10.20.1.15', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 25, load: 35, latency: 9, throughput: 27.6 },
-  { id: 'ap-14', tag: 'AP-CL-A-06', name: 'Computing Lab A · AP 06', kind: 'AP', lab_id: 'lab-1', lab_name: 'Computing Lab A', zone_group: 'labs', placement: 'Lab A · Instructor Podium Ceiling', ip: '10.20.1.16', model: 'Aruba AP-515', status: 'stale', scenario: 'feed', clients: null, load: null, latency: null, throughput: null },
+  {
+    id: 'ap-01',
+    tag: 'AP-CL-A-01',
+    name: 'Computing Lab A · AP 01',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Ceiling Mount Grid 1',
+    ip: '10.20.1.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 28,
+    load: 38,
+    latency: 12,
+    throughput: 31.4,
+  },
+  {
+    id: 'ap-02',
+    tag: 'AP-CL-A-02',
+    name: 'Computing Lab A · AP 02',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Ceiling Mount Grid 2',
+    ip: '10.20.1.12',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 32,
+    load: 44,
+    latency: 11,
+    throughput: 34.8,
+  },
+  {
+    id: 'ap-03',
+    tag: 'AP-CL-A-03',
+    name: 'Computing Lab A · AP 03',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Ceiling Mount Grid 3',
+    ip: '10.20.1.13',
+    model: 'Aruba AP-515',
+    status: 'congested',
+    scenario: 'congestion',
+    clients: 71,
+    load: 87,
+    latency: 119,
+    throughput: 66.8,
+  },
+  {
+    id: 'ap-04',
+    tag: 'AP-CL-A-04',
+    name: 'Computing Lab A · AP 04',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Ceiling Mount Grid 4',
+    ip: '10.20.1.14',
+    model: 'Aruba AP-515',
+    status: 'offline',
+    scenario: 'outage',
+    clients: 0,
+    load: 0,
+    latency: null,
+    throughput: 0,
+  },
+  {
+    id: 'ap-13',
+    tag: 'AP-CL-A-05',
+    name: 'Computing Lab A · AP 05',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Rear Ceiling Grid R2',
+    ip: '10.20.1.15',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 25,
+    load: 35,
+    latency: 9,
+    throughput: 27.6,
+  },
+  {
+    id: 'ap-14',
+    tag: 'AP-CL-A-06',
+    name: 'Computing Lab A · AP 06',
+    kind: 'AP',
+    lab_id: 'lab-1',
+    lab_name: 'Computing Lab A',
+    zone_group: 'labs',
+    placement: 'Lab A · Instructor Podium Ceiling',
+    ip: '10.20.1.16',
+    model: 'Aruba AP-515',
+    status: 'stale',
+    scenario: 'feed',
+    clients: null,
+    load: null,
+    latency: null,
+    throughput: null,
+  },
 
   // Computing Lab B (5 APs: 2 Online, 1 Congested, 1 Offline, 1 Feed Interrupted)
-  { id: 'ap-05', tag: 'AP-CL-B-01', name: 'Computing Lab B · AP 01', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', zone_group: 'labs', placement: 'Lab B · Ceiling Mount Grid 1', ip: '10.20.2.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 29, load: 41, latency: 12, throughput: 29.5 },
-  { id: 'ap-06', tag: 'AP-CL-B-02', name: 'Computing Lab B · AP 02', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', zone_group: 'labs', placement: 'Lab B · Ceiling Mount Grid 2', ip: '10.20.2.12', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 34, load: 48, latency: 14, throughput: 35.2 },
-  { id: 'ap-07', tag: 'AP-CL-B-03', name: 'Computing Lab B · AP 03', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', zone_group: 'labs', placement: 'Lab B · Ceiling Mount Grid 3', ip: '10.20.2.13', model: 'Aruba AP-515', status: 'congested', scenario: 'congestion', clients: 84, load: 92, latency: 142, throughput: 79.4 },
-  { id: 'ap-08', tag: 'AP-CL-B-04', name: 'Computing Lab B · AP 04', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', zone_group: 'labs', placement: 'Lab B · Ceiling Mount Grid 4', ip: '10.20.2.14', model: 'Aruba AP-515', status: 'offline', scenario: 'outage', clients: 0, load: 0, latency: null, throughput: 0 },
-  { id: 'ap-15', tag: 'AP-CL-B-05', name: 'Computing Lab B · AP 05', kind: 'AP', lab_id: 'lab-2', lab_name: 'Computing Lab B', zone_group: 'labs', placement: 'Lab B · Server Rack Corner Wall Mount', ip: '10.20.2.15', model: 'Aruba AP-515', status: 'stale', scenario: 'feed', clients: null, load: null, latency: null, throughput: null },
+  {
+    id: 'ap-05',
+    tag: 'AP-CL-B-01',
+    name: 'Computing Lab B · AP 01',
+    kind: 'AP',
+    lab_id: 'lab-2',
+    lab_name: 'Computing Lab B',
+    zone_group: 'labs',
+    placement: 'Lab B · Ceiling Mount Grid 1',
+    ip: '10.20.2.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 29,
+    load: 41,
+    latency: 12,
+    throughput: 29.5,
+  },
+  {
+    id: 'ap-06',
+    tag: 'AP-CL-B-02',
+    name: 'Computing Lab B · AP 02',
+    kind: 'AP',
+    lab_id: 'lab-2',
+    lab_name: 'Computing Lab B',
+    zone_group: 'labs',
+    placement: 'Lab B · Ceiling Mount Grid 2',
+    ip: '10.20.2.12',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 34,
+    load: 48,
+    latency: 14,
+    throughput: 35.2,
+  },
+  {
+    id: 'ap-07',
+    tag: 'AP-CL-B-03',
+    name: 'Computing Lab B · AP 03',
+    kind: 'AP',
+    lab_id: 'lab-2',
+    lab_name: 'Computing Lab B',
+    zone_group: 'labs',
+    placement: 'Lab B · Ceiling Mount Grid 3',
+    ip: '10.20.2.13',
+    model: 'Aruba AP-515',
+    status: 'congested',
+    scenario: 'congestion',
+    clients: 84,
+    load: 92,
+    latency: 142,
+    throughput: 79.4,
+  },
+  {
+    id: 'ap-08',
+    tag: 'AP-CL-B-04',
+    name: 'Computing Lab B · AP 04',
+    kind: 'AP',
+    lab_id: 'lab-2',
+    lab_name: 'Computing Lab B',
+    zone_group: 'labs',
+    placement: 'Lab B · Ceiling Mount Grid 4',
+    ip: '10.20.2.14',
+    model: 'Aruba AP-515',
+    status: 'offline',
+    scenario: 'outage',
+    clients: 0,
+    load: 0,
+    latency: null,
+    throughput: 0,
+  },
+  {
+    id: 'ap-15',
+    tag: 'AP-CL-B-05',
+    name: 'Computing Lab B · AP 05',
+    kind: 'AP',
+    lab_id: 'lab-2',
+    lab_name: 'Computing Lab B',
+    zone_group: 'labs',
+    placement: 'Lab B · Server Rack Corner Wall Mount',
+    ip: '10.20.2.15',
+    model: 'Aruba AP-515',
+    status: 'stale',
+    scenario: 'feed',
+    clients: null,
+    load: null,
+    latency: null,
+    throughput: null,
+  },
 
   // Computing Lab C (5 APs: 2 Online, 1 Congested, 1 Offline, 1 Feed Interrupted)
-  { id: 'ap-16', tag: 'AP-CL-C-01', name: 'Computing Lab C · AP 01', kind: 'AP', lab_id: 'lab-4', lab_name: 'Computing Lab C', zone_group: 'labs', placement: 'Lab C · Entrance Ceiling Grid A1', ip: '10.20.4.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 26, load: 36, latency: 10, throughput: 28.4 },
-  { id: 'ap-17', tag: 'AP-CL-C-02', name: 'Computing Lab C · AP 02', kind: 'AP', lab_id: 'lab-4', lab_name: 'Computing Lab C', zone_group: 'labs', placement: 'Lab C · Centre Ceiling Grid B3', ip: '10.20.4.12', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 38, load: 52, latency: 13, throughput: 41.0 },
-  { id: 'ap-18', tag: 'AP-CL-C-03', name: 'Computing Lab C · AP 03', kind: 'AP', lab_id: 'lab-4', lab_name: 'Computing Lab C', zone_group: 'labs', placement: 'Lab C · Window Side Ceiling Grid C2', ip: '10.20.4.13', model: 'Aruba AP-515', status: 'congested', scenario: 'congestion', clients: 88, load: 94, latency: 156, throughput: 82.5 },
-  { id: 'ap-19', tag: 'AP-CL-C-04', name: 'Computing Lab C · AP 04', kind: 'AP', lab_id: 'lab-4', lab_name: 'Computing Lab C', zone_group: 'labs', placement: 'Lab C · Rear Ceiling Grid D4', ip: '10.20.4.14', model: 'Aruba AP-515', status: 'offline', scenario: 'outage', clients: 0, load: 0, latency: null, throughput: 0 },
-  { id: 'ap-20', tag: 'AP-CL-C-05', name: 'Computing Lab C · AP 05', kind: 'AP', lab_id: 'lab-4', lab_name: 'Computing Lab C', zone_group: 'labs', placement: 'Lab C · Project Room Wall Mount', ip: '10.20.4.15', model: 'Aruba AP-515', status: 'stale', scenario: 'feed', clients: null, load: null, latency: null, throughput: null },
+  {
+    id: 'ap-16',
+    tag: 'AP-CL-C-01',
+    name: 'Computing Lab C · AP 01',
+    kind: 'AP',
+    lab_id: 'lab-4',
+    lab_name: 'Computing Lab C',
+    zone_group: 'labs',
+    placement: 'Lab C · Entrance Ceiling Grid A1',
+    ip: '10.20.4.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 26,
+    load: 36,
+    latency: 10,
+    throughput: 28.4,
+  },
+  {
+    id: 'ap-17',
+    tag: 'AP-CL-C-02',
+    name: 'Computing Lab C · AP 02',
+    kind: 'AP',
+    lab_id: 'lab-4',
+    lab_name: 'Computing Lab C',
+    zone_group: 'labs',
+    placement: 'Lab C · Centre Ceiling Grid B3',
+    ip: '10.20.4.12',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 38,
+    load: 52,
+    latency: 13,
+    throughput: 41.0,
+  },
+  {
+    id: 'ap-18',
+    tag: 'AP-CL-C-03',
+    name: 'Computing Lab C · AP 03',
+    kind: 'AP',
+    lab_id: 'lab-4',
+    lab_name: 'Computing Lab C',
+    zone_group: 'labs',
+    placement: 'Lab C · Window Side Ceiling Grid C2',
+    ip: '10.20.4.13',
+    model: 'Aruba AP-515',
+    status: 'congested',
+    scenario: 'congestion',
+    clients: 88,
+    load: 94,
+    latency: 156,
+    throughput: 82.5,
+  },
+  {
+    id: 'ap-19',
+    tag: 'AP-CL-C-04',
+    name: 'Computing Lab C · AP 04',
+    kind: 'AP',
+    lab_id: 'lab-4',
+    lab_name: 'Computing Lab C',
+    zone_group: 'labs',
+    placement: 'Lab C · Rear Ceiling Grid D4',
+    ip: '10.20.4.14',
+    model: 'Aruba AP-515',
+    status: 'offline',
+    scenario: 'outage',
+    clients: 0,
+    load: 0,
+    latency: null,
+    throughput: 0,
+  },
+  {
+    id: 'ap-20',
+    tag: 'AP-CL-C-05',
+    name: 'Computing Lab C · AP 05',
+    kind: 'AP',
+    lab_id: 'lab-4',
+    lab_name: 'Computing Lab C',
+    zone_group: 'labs',
+    placement: 'Lab C · Project Room Wall Mount',
+    ip: '10.20.4.15',
+    model: 'Aruba AP-515',
+    status: 'stale',
+    scenario: 'feed',
+    clients: null,
+    load: null,
+    latency: null,
+    throughput: null,
+  },
 
   // Innovation Lab (5 APs: 2 Online, 2 Congested, 1 Offline)
-  { id: 'ap-09', tag: 'AP-IL-01', name: 'Innovation Lab · AP 01', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', zone_group: 'labs', placement: 'Innovation Lab · Ceiling Mount Grid 1', ip: '10.20.3.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 44, load: 56, latency: 12, throughput: 51.8 },
-  { id: 'ap-10', tag: 'AP-IL-02', name: 'Innovation Lab · AP 02', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', zone_group: 'labs', placement: 'Innovation Lab · Ceiling Mount Grid 2', ip: '10.20.3.12', model: 'Aruba AP-515', status: 'congested', scenario: 'congestion', clients: 76, load: 89, latency: 128, throughput: 71.2 },
-  { id: 'ap-11', tag: 'AP-IL-03', name: 'Innovation Lab · AP 03', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', zone_group: 'labs', placement: 'Innovation Lab · Ceiling Mount Grid 3', ip: '10.20.3.13', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 39, load: 49, latency: 11, throughput: 45.6 },
-  { id: 'ap-12', tag: 'AP-IL-04', name: 'Innovation Lab · AP 04', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', zone_group: 'labs', placement: 'Innovation Lab · Ceiling Mount Grid 4', ip: '10.20.3.14', model: 'Aruba AP-515', status: 'congested', scenario: 'congestion', clients: 69, load: 86, latency: 115, throughput: 64.9 },
-  { id: 'ap-21', tag: 'AP-IL-05', name: 'Innovation Lab · AP 05', kind: 'AP', lab_id: 'lab-3', lab_name: 'Innovation Lab', zone_group: 'labs', placement: 'Innovation Lab · Maker Bench Ceiling', ip: '10.20.3.15', model: 'Aruba AP-515', status: 'offline', scenario: 'outage', clients: 0, load: 0, latency: null, throughput: 0 },
+  {
+    id: 'ap-09',
+    tag: 'AP-IL-01',
+    name: 'Innovation Lab · AP 01',
+    kind: 'AP',
+    lab_id: 'lab-3',
+    lab_name: 'Innovation Lab',
+    zone_group: 'labs',
+    placement: 'Innovation Lab · Ceiling Mount Grid 1',
+    ip: '10.20.3.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 44,
+    load: 56,
+    latency: 12,
+    throughput: 51.8,
+  },
+  {
+    id: 'ap-10',
+    tag: 'AP-IL-02',
+    name: 'Innovation Lab · AP 02',
+    kind: 'AP',
+    lab_id: 'lab-3',
+    lab_name: 'Innovation Lab',
+    zone_group: 'labs',
+    placement: 'Innovation Lab · Ceiling Mount Grid 2',
+    ip: '10.20.3.12',
+    model: 'Aruba AP-515',
+    status: 'congested',
+    scenario: 'congestion',
+    clients: 76,
+    load: 89,
+    latency: 128,
+    throughput: 71.2,
+  },
+  {
+    id: 'ap-11',
+    tag: 'AP-IL-03',
+    name: 'Innovation Lab · AP 03',
+    kind: 'AP',
+    lab_id: 'lab-3',
+    lab_name: 'Innovation Lab',
+    zone_group: 'labs',
+    placement: 'Innovation Lab · Ceiling Mount Grid 3',
+    ip: '10.20.3.13',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 39,
+    load: 49,
+    latency: 11,
+    throughput: 45.6,
+  },
+  {
+    id: 'ap-12',
+    tag: 'AP-IL-04',
+    name: 'Innovation Lab · AP 04',
+    kind: 'AP',
+    lab_id: 'lab-3',
+    lab_name: 'Innovation Lab',
+    zone_group: 'labs',
+    placement: 'Innovation Lab · Ceiling Mount Grid 4',
+    ip: '10.20.3.14',
+    model: 'Aruba AP-515',
+    status: 'congested',
+    scenario: 'congestion',
+    clients: 69,
+    load: 86,
+    latency: 115,
+    throughput: 64.9,
+  },
+  {
+    id: 'ap-21',
+    tag: 'AP-IL-05',
+    name: 'Innovation Lab · AP 05',
+    kind: 'AP',
+    lab_id: 'lab-3',
+    lab_name: 'Innovation Lab',
+    zone_group: 'labs',
+    placement: 'Innovation Lab · Maker Bench Ceiling',
+    ip: '10.20.3.15',
+    model: 'Aruba AP-515',
+    status: 'offline',
+    scenario: 'outage',
+    clients: 0,
+    load: 0,
+    latency: null,
+    throughput: 0,
+  },
 
   // Campus-wide coverage beyond the labs (7 APs · healthy in every demo state)
-  { id: 'ap-22', tag: 'AP-CLASS-B2', name: 'Classroom Block B · AP B2', kind: 'AP', lab_id: 'zone-classroom-a', lab_name: 'Lecture Classroom A-04-05', zone_group: 'academic', placement: 'Classroom A-04-05 · Front Wall Mount above Whiteboard', ip: '10.20.11.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 36, load: 41, latency: 11, throughput: 29.8 },
-  { id: 'ap-23', tag: 'AP-LT1-01', name: 'Auditorium 7 @ Block A · AP 01', kind: 'AP', lab_id: 'zone-lt1', lab_name: 'Auditorium 7 @ Block A Level 3', zone_group: 'academic', placement: 'Auditorium 7 · Rear Projection Booth', ip: '10.20.12.11', model: 'Aruba AP-535', status: 'online', scenario: 'normal', clients: 54, load: 52, latency: 13, throughput: 38.6 },
-  { id: 'ap-24', tag: 'AP-LIB-01', name: 'Campus Library L1 · AP 01', kind: 'AP', lab_id: 'zone-library', lab_name: 'Campus Library (L1)', zone_group: 'academic', placement: 'Library L1 · Quiet Study Zone Ceiling Grid D5', ip: '10.20.13.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 40, load: 39, latency: 10, throughput: 35.1 },
-  { id: 'ap-25', tag: 'AP-CANTEEN-01', name: 'Campus Canteen · AP 01', kind: 'AP', lab_id: 'zone-canteen', lab_name: 'Main Campus Canteen / Atrium', zone_group: 'common', placement: 'Main Canteen · Ceiling Pillar C3 near Cashier', ip: '10.20.21.11', model: 'Aruba AP-535', status: 'online', scenario: 'normal', clients: 52, load: 57, latency: 14, throughput: 31.2 },
-  { id: 'ap-26', tag: 'AP-CANTEEN-02', name: 'Campus Canteen · AP 02', kind: 'AP', lab_id: 'zone-canteen', lab_name: 'Main Campus Canteen / Atrium', zone_group: 'common', placement: 'Food Court Seating · East Wall near Drinks Stall', ip: '10.20.21.12', model: 'Aruba AP-535', status: 'online', scenario: 'normal', clients: 47, load: 53, latency: 13, throughput: 28.4 },
-  { id: 'ap-27', tag: 'AP-LOUNGE-01', name: 'Student Lounge & Atrium · AP 01', kind: 'AP', lab_id: 'zone-lounge', lab_name: 'Student Lounge & Atrium', zone_group: 'common', placement: 'Student Lounge · Atrium Mezzanine Railing', ip: '10.20.22.11', model: 'Aruba AP-515', status: 'online', scenario: 'normal', clients: 30, load: 34, latency: 11, throughput: 22.5 },
-  { id: 'ap-28', tag: 'AP-BUS-01', name: 'School Bus Stop · Outdoor AP 01', kind: 'AP', lab_id: 'zone-busstop', lab_name: 'Campus Transit & Bus Stop', zone_group: 'outdoor', placement: 'Bus Stop · Covered Waiting Bay North (Pole Mount)', ip: '10.20.31.11', model: 'Aruba AP-575 (Outdoor IP67)', status: 'online', scenario: 'normal', clients: 16, load: 24, latency: 15, throughput: 8.8 },
+  {
+    id: 'ap-22',
+    tag: 'AP-CLASS-B2',
+    name: 'Classroom Block B · AP B2',
+    kind: 'AP',
+    lab_id: 'zone-classroom-a',
+    lab_name: 'Lecture Classroom A-04-05',
+    zone_group: 'academic',
+    placement: 'Classroom A-04-05 · Front Wall Mount above Whiteboard',
+    ip: '10.20.11.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 36,
+    load: 41,
+    latency: 11,
+    throughput: 29.8,
+  },
+  {
+    id: 'ap-23',
+    tag: 'AP-LT1-01',
+    name: 'Auditorium 7 @ Block A · AP 01',
+    kind: 'AP',
+    lab_id: 'zone-lt1',
+    lab_name: 'Auditorium 7 @ Block A Level 3',
+    zone_group: 'academic',
+    placement: 'Auditorium 7 · Rear Projection Booth',
+    ip: '10.20.12.11',
+    model: 'Aruba AP-535',
+    status: 'online',
+    scenario: 'normal',
+    clients: 54,
+    load: 52,
+    latency: 13,
+    throughput: 38.6,
+  },
+  {
+    id: 'ap-24',
+    tag: 'AP-LIB-01',
+    name: 'Campus Library L1 · AP 01',
+    kind: 'AP',
+    lab_id: 'zone-library',
+    lab_name: 'Campus Library (L1)',
+    zone_group: 'academic',
+    placement: 'Library L1 · Quiet Study Zone Ceiling Grid D5',
+    ip: '10.20.13.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 40,
+    load: 39,
+    latency: 10,
+    throughput: 35.1,
+  },
+  {
+    id: 'ap-25',
+    tag: 'AP-CANTEEN-01',
+    name: 'Campus Canteen · AP 01',
+    kind: 'AP',
+    lab_id: 'zone-canteen',
+    lab_name: 'Main Campus Canteen / Atrium',
+    zone_group: 'common',
+    placement: 'Main Canteen · Ceiling Pillar C3 near Cashier',
+    ip: '10.20.21.11',
+    model: 'Aruba AP-535',
+    status: 'online',
+    scenario: 'normal',
+    clients: 52,
+    load: 57,
+    latency: 14,
+    throughput: 31.2,
+  },
+  {
+    id: 'ap-26',
+    tag: 'AP-CANTEEN-02',
+    name: 'Campus Canteen · AP 02',
+    kind: 'AP',
+    lab_id: 'zone-canteen',
+    lab_name: 'Main Campus Canteen / Atrium',
+    zone_group: 'common',
+    placement: 'Food Court Seating · East Wall near Drinks Stall',
+    ip: '10.20.21.12',
+    model: 'Aruba AP-535',
+    status: 'online',
+    scenario: 'normal',
+    clients: 47,
+    load: 53,
+    latency: 13,
+    throughput: 28.4,
+  },
+  {
+    id: 'ap-27',
+    tag: 'AP-LOUNGE-01',
+    name: 'Student Lounge & Atrium · AP 01',
+    kind: 'AP',
+    lab_id: 'zone-lounge',
+    lab_name: 'Student Lounge & Atrium',
+    zone_group: 'common',
+    placement: 'Student Lounge · Atrium Mezzanine Railing',
+    ip: '10.20.22.11',
+    model: 'Aruba AP-515',
+    status: 'online',
+    scenario: 'normal',
+    clients: 30,
+    load: 34,
+    latency: 11,
+    throughput: 22.5,
+  },
+  {
+    id: 'ap-28',
+    tag: 'AP-BUS-01',
+    name: 'School Bus Stop · Outdoor AP 01',
+    kind: 'AP',
+    lab_id: 'zone-busstop',
+    lab_name: 'Campus Transit & Bus Stop',
+    zone_group: 'outdoor',
+    placement: 'Bus Stop · Covered Waiting Bay North (Pole Mount)',
+    ip: '10.20.31.11',
+    model: 'Aruba AP-575 (Outdoor IP67)',
+    status: 'online',
+    scenario: 'normal',
+    clients: 16,
+    load: 24,
+    latency: 15,
+    throughput: 8.8,
+  },
 ];
 
 export function getSharedFleetAps(): any[] {
@@ -469,7 +946,7 @@ export function getSharedFleetAps(): any[] {
         scenario: 'normal',
         clients: 28 + ((parseInt(ap.id.replace(/\D/g, '') || '1', 10) * 3) % 15),
         load: 34 + ((parseInt(ap.id.replace(/\D/g, '') || '1', 10) * 5) % 20),
-        latency: 11 + ((parseInt(ap.id.replace(/\D/g, '') || '1', 10)) % 4),
+        latency: 11 + (parseInt(ap.id.replace(/\D/g, '') || '1', 10) % 4),
         throughput: 32.5,
         ...override,
       };
@@ -561,7 +1038,8 @@ export const SIMULATION_LINKED_TICKETS = [
     priority: 'high',
     status: 'in_progress',
     title: 'High Bandwidth Congestion (92%) — AP-CL-B-03',
-    description: 'Automated NOC escalation: Sustained 92% airtime utilization and 142ms RTT on AP-CL-B-03 (10.20.2.13).',
+    description:
+      'Automated NOC escalation: Sustained 92% airtime utilization and 142ms RTT on AP-CL-B-03 (10.20.2.13).',
     created_at: '2026-10-21T09:15:00+08:00',
     updated_at: '2026-10-21T09:30:00+08:00',
     synthetic: true,
@@ -579,7 +1057,8 @@ export const SIMULATION_LINKED_TICKETS = [
     priority: 'high',
     status: 'open',
     title: 'Hardware Link Outage / Unreachable — AP-CL-A-04',
-    description: '100% ICMP packet loss detected on AP-CL-A-04 (10.20.1.14). Upstream PoE switch port Gi1/0/4 link down.',
+    description:
+      '100% ICMP packet loss detected on AP-CL-A-04 (10.20.1.14). Upstream PoE switch port Gi1/0/4 link down.',
     created_at: '2026-10-21T09:42:00+08:00',
     updated_at: '2026-10-21T09:42:00+08:00',
     synthetic: true,
@@ -615,7 +1094,8 @@ export const SIMULATION_LINKED_TICKETS = [
     priority: 'high',
     status: 'open',
     title: 'Hardware Link Outage / Unreachable — AP-CL-C-04',
-    description: 'Hardware link outage on AP-CL-C-04 (10.20.4.14) in Computing Lab C. Device unreachable from core router.',
+    description:
+      'Hardware link outage on AP-CL-C-04 (10.20.4.14) in Computing Lab C. Device unreachable from core router.',
     created_at: '2026-10-21T09:48:00+08:00',
     updated_at: '2026-10-21T09:48:00+08:00',
     synthetic: true,
@@ -704,7 +1184,7 @@ export function getAssistantUnacknowledgedShifts(user: any): any[] {
         !s.cancelled &&
         !s.acknowledged_at &&
         !s.completed_at &&
-        (s.assistant_id === user?.id || s.assistant_name === user?.name || user?.role === 'assistant')
+        (s.assistant_id === user?.id || s.assistant_name === user?.name || user?.role === 'assistant'),
     );
   } catch {
     return [];
@@ -778,20 +1258,28 @@ export function enrichTicket(t: any) {
     (tag.includes('-CL-A') || tag.includes('CL-A')
       ? 'Computing Lab A'
       : tag.includes('-CL-B') || tag.includes('CL-B')
-      ? 'Computing Lab B'
-      : tag.includes('-CL-C') || tag.includes('CL-C')
-      ? 'Computing Lab C'
-      : tag.includes('-IL') || tag.includes('IL')
-      ? 'Innovation Lab'
-      : 'Computing Lab A');
+        ? 'Computing Lab B'
+        : tag.includes('-CL-C') || tag.includes('CL-C')
+          ? 'Computing Lab C'
+          : tag.includes('-IL') || tag.includes('IL')
+            ? 'Innovation Lab'
+            : 'Computing Lab A');
 
   const isNetwork =
     t.category === 'network' ||
     tag.startsWith('AP-') ||
-    String(t.tier || '').toLowerCase().includes('tier 2') ||
-    String(t.title || '').toLowerCase().includes('network') ||
-    String(t.title || '').toLowerCase().includes('connectivity') ||
-    String(t.title || '').toLowerCase().includes('nic');
+    String(t.tier || '')
+      .toLowerCase()
+      .includes('tier 2') ||
+    String(t.title || '')
+      .toLowerCase()
+      .includes('network') ||
+    String(t.title || '')
+      .toLowerCase()
+      .includes('connectivity') ||
+    String(t.title || '')
+      .toLowerCase()
+      .includes('nic');
 
   return {
     ...t,
@@ -800,8 +1288,7 @@ export function enrichTicket(t: any) {
     tier_code: isNetwork ? 'tier2' : 'tier1',
     assigned_role: t.assigned_role || (isNetwork ? 'engineer' : 'assistant'),
     assigned_name:
-      t.assigned_name ||
-      (isNetwork ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)'),
+      t.assigned_name || (isNetwork ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)'),
   };
 }
 
@@ -829,7 +1316,7 @@ export function mergeTickets(apiTickets: any[] | null | undefined): any[] {
     if (idKey) seenIds.add(idKey);
   }
   return Array.from(byKey.values()).sort(
-    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
   );
 }
 
@@ -843,7 +1330,7 @@ export function mergeChecklists(apiChecklists: any[] | null | undefined): any[] 
     }
   }
   return Array.from(byId.values()).sort(
-    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
   );
 }
 
@@ -864,27 +1351,12 @@ export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[
     const endIso = `${today}T${block.endHour}+08:00`;
 
     // By default, keep Morning Shift On Duty (acknowledged) and Afternoon/Evening shifts Pending Acknowledgement unless overridden
-    const ackAt =
-      ov.acknowledged_at !== undefined
-        ? ov.acknowledged_at
-        : existing?.acknowledged_at || null;
-    const compAt =
-      ov.completed_at !== undefined
-        ? ov.completed_at
-        : existing?.completed_at || null;
-    const handoverNotes =
-      ov.handover_notes !== undefined
-        ? ov.handover_notes
-        : existing?.handover_notes || '';
+    const ackAt = ov.acknowledged_at !== undefined ? ov.acknowledged_at : existing?.acknowledged_at || null;
+    const compAt = ov.completed_at !== undefined ? ov.completed_at : existing?.completed_at || null;
+    const handoverNotes = ov.handover_notes !== undefined ? ov.handover_notes : existing?.handover_notes || '';
     const cancelled = ov.cancelled !== undefined ? ov.cancelled : Boolean(existing?.cancelled);
 
-    const lifecycle = cancelled
-      ? 'cancelled'
-      : compAt
-      ? 'completed'
-      : ackAt
-      ? 'in_progress'
-      : 'pending_ack';
+    const lifecycle = cancelled ? 'cancelled' : compAt ? 'completed' : ackAt ? 'in_progress' : 'pending_ack';
 
     return {
       ...(existing || {}),
@@ -906,10 +1378,10 @@ export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[
         lifecycle === 'completed'
           ? 'completed'
           : lifecycle === 'in_progress'
-          ? 'in_progress'
-          : lifecycle === 'cancelled'
-          ? 'cancelled'
-          : 'pending',
+            ? 'in_progress'
+            : lifecycle === 'cancelled'
+              ? 'cancelled'
+              : 'pending',
     };
   });
 
@@ -939,13 +1411,7 @@ export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[
     const handoverNotes = ov.handover_notes !== undefined ? ov.handover_notes : extra.handover_notes || '';
     const cancelled = ov.cancelled !== undefined ? ov.cancelled : Boolean(extra.cancelled);
 
-    const lifecycle = cancelled
-      ? 'cancelled'
-      : compAt
-      ? 'completed'
-      : ackAt
-      ? 'in_progress'
-      : 'pending_ack';
+    const lifecycle = cancelled ? 'cancelled' : compAt ? 'completed' : ackAt ? 'in_progress' : 'pending_ack';
 
     normalized.push({
       ...extra,
@@ -962,10 +1428,10 @@ export function normalizeCampusShifts(rawShifts: any[] | null | undefined): any[
         lifecycle === 'completed'
           ? 'completed'
           : lifecycle === 'in_progress'
-          ? 'in_progress'
-          : lifecycle === 'cancelled'
-          ? 'cancelled'
-          : 'pending',
+            ? 'in_progress'
+            : lifecycle === 'cancelled'
+              ? 'cancelled'
+              : 'pending',
     });
   }
 
@@ -976,18 +1442,16 @@ export function getLabInspectionProgress(
   labId: string,
   labName: string,
   checklists: any[] | null | undefined,
-  assets: any[] | null | undefined
+  assets: any[] | null | undefined,
 ) {
   const required = 4;
   const allChecks = mergeChecklists(checklists);
-  const labChecks = allChecks.filter(
-    (c: any) => c.lab_id === labId || c.lab_name === labName
-  );
+  const labChecks = allChecks.filter((c: any) => c.lab_id === labId || c.lab_name === labName);
   const checkedAssetTags = new Set(labChecks.map((c: any) => c.asset_tag).filter(Boolean));
   const checkedAssetIds = new Set(labChecks.map((c: any) => c.asset_id).filter(Boolean));
 
   const labWorkstations = (Array.isArray(assets) ? assets : []).filter(
-    (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === labId || a.lab_name === labName)
+    (a: any) => a.kind === 'PC' && !a.archived && (a.lab_id === labId || a.lab_name === labName),
   );
 
   const nextUnchecked =
@@ -1008,4 +1472,3 @@ export function getLabInspectionProgress(
     labChecks,
   };
 }
-

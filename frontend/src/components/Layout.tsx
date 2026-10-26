@@ -40,10 +40,30 @@ import {
 } from '../lib/workflow';
 
 const QUICK_JUMP_ITEMS = [
-  { label: 'AP-CL-B-03 · Computing Lab B (10.20.2.13)', type: 'Access Point', to: '/monitoring?ap=ap-07', roles: ['admin', 'engineer'] },
-  { label: 'AP-CL-A-01 · Computing Lab A (10.20.1.11)', type: 'Access Point', to: '/monitoring?ap=ap-01', roles: ['admin', 'engineer'] },
-  { label: 'AP-IL-C-01 · Innovation Lab (10.20.3.11)', type: 'Access Point', to: '/monitoring?ap=ap-09', roles: ['admin', 'engineer'] },
-  { label: 'Computing Lab A · 2D Workstation Map', type: 'Lab Floor Map', to: '/checklists', roles: ['admin', 'assistant'] },
+  {
+    label: 'AP-CL-B-03 · Computing Lab B (10.20.2.13)',
+    type: 'Access Point',
+    to: '/monitoring?ap=ap-07',
+    roles: ['admin', 'engineer'],
+  },
+  {
+    label: 'AP-CL-A-01 · Computing Lab A (10.20.1.11)',
+    type: 'Access Point',
+    to: '/monitoring?ap=ap-01',
+    roles: ['admin', 'engineer'],
+  },
+  {
+    label: 'AP-IL-C-01 · Innovation Lab (10.20.3.11)',
+    type: 'Access Point',
+    to: '/monitoring?ap=ap-09',
+    roles: ['admin', 'engineer'],
+  },
+  {
+    label: 'Computing Lab A · 2D Workstation Map',
+    type: 'Lab Floor Map',
+    to: '/checklists',
+    roles: ['admin', 'assistant'],
+  },
   { label: 'Incident Tickets · Kanban Triage Board', type: 'Operations', to: '/tickets', roles: ['admin', 'engineer'] },
   { label: 'Campus Locations & Room Codes', type: 'Administration', to: '/locations', roles: ['admin'] },
   { label: 'Shift Handover & Compliance', type: 'Operations', to: '/shifts', roles: ['admin', 'assistant'] },
@@ -184,16 +204,18 @@ export const Layout = ({ children }: any) => {
   const links = getNavigation(user.role);
   const activeGroup = links.find(g => g.items.some(x => x[0] === location.pathname));
   const sectionLabel =
-    activeGroup?.label === 'ADMINISTRATION' || ['/assets', '/inventory', '/locations', '/users', '/reports', '/audit'].includes(location.pathname)
+    activeGroup?.label === 'ADMINISTRATION' ||
+    ['/assets', '/inventory', '/locations', '/users', '/reports', '/audit'].includes(location.pathname)
       ? 'Administration'
       : 'Operations';
   const current = String(
     links.flatMap(g => g.items).find(x => x[0] === location.pathname)?.[1] ||
-      (location.pathname === '/alerts' ? 'System Alerts' : 'Dashboard')
+      (location.pathname === '/alerts' ? 'System Alerts' : 'Dashboard'),
   );
 
   const quickItems = QUICK_JUMP_ITEMS.filter(
-    item => item.roles.includes(user.role) && (item.label + ' ' + item.type).toLowerCase().includes(cmdQuery.toLowerCase())
+    item =>
+      item.roles.includes(user.role) && (item.label + ' ' + item.type).toLowerCase().includes(cmdQuery.toLowerCase()),
   );
 
   useEffect(() => {
@@ -215,8 +237,12 @@ export const Layout = ({ children }: any) => {
             <img src={logoNewApu} alt="APU University Logo" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0 flex-1">
-            <strong className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block leading-tight">APU University</strong>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5 leading-tight">Main Campus</span>
+            <strong className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block leading-tight">
+              APU University
+            </strong>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5 leading-tight">
+              Main Campus
+            </span>
           </div>
           <span className="campus-dot shrink-0" />
         </div>
@@ -241,7 +267,7 @@ export const Layout = ({ children }: any) => {
                     </NavLink>
                   ))}
                 </div>
-              )
+              ),
           )}
         </nav>
         <div className="sidebar-bottom">
@@ -324,15 +350,15 @@ export const Layout = ({ children }: any) => {
                       ? `${assistantUnackShifts.length} Shift Reminder${assistantUnackShifts.length > 1 ? 's' : ''} (Click to view)`
                       : 'Shift Reminders'
                     : activeApAnomalies.length > 0
-                    ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected (Click to view)`
-                    : 'System Alerts'
+                      ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected (Click to view)`
+                      : 'System Alerts'
                 }
                 aria-label={
                   isAssistant
                     ? `${assistantUnackShifts.length} Shift Reminders`
                     : activeApAnomalies.length > 0
-                    ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected`
-                    : 'System Alerts'
+                      ? `Active Fleet Alerts: ${activeApAnomalies.length} Anomalies Detected`
+                      : 'System Alerts'
                 }
                 aria-expanded={bellOpen}
                 onClick={() => setBellOpen(v => !v)}
@@ -370,7 +396,9 @@ export const Layout = ({ children }: any) => {
                           <Bell size={15} />
                           <strong>Shift Schedule Reminders</strong>
                         </div>
-                        <span className={`notification-status-badge ${assistantUnackShifts.length ? 'alert' : 'nominal'}`}>
+                        <span
+                          className={`notification-status-badge ${assistantUnackShifts.length ? 'alert' : 'nominal'}`}
+                        >
                           {assistantUnackShifts.length
                             ? `${assistantUnackShifts.length} Shift${assistantUnackShifts.length > 1 ? 's' : ''} Pending Ack`
                             : 'All Shifts Acknowledged'}
@@ -394,11 +422,7 @@ export const Layout = ({ children }: any) => {
                                 </div>
                                 <div className="notif-item-body">
                                   <span>{s.shift_window}</span>
-                                  <Link
-                                    to="/shifts"
-                                    onClick={() => setBellOpen(false)}
-                                    className="notif-link"
-                                  >
+                                  <Link to="/shifts" onClick={() => setBellOpen(false)} className="notif-link">
                                     Acknowledge Shift <ArrowUpRight size={12} />
                                   </Link>
                                 </div>
@@ -407,11 +431,7 @@ export const Layout = ({ children }: any) => {
                           </div>
 
                           <div className="notification-footer">
-                            <Link
-                              to="/shifts"
-                              className="notif-footer-link"
-                              onClick={() => setBellOpen(false)}
-                            >
+                            <Link to="/shifts" className="notif-footer-link" onClick={() => setBellOpen(false)}>
                               Open Shift Schedule <ArrowUpRight size={13} />
                             </Link>
                           </div>
@@ -421,11 +441,7 @@ export const Layout = ({ children }: any) => {
                           <CheckCircle2 size={26} className="text-green" />
                           <strong>All Shifts Acknowledged</strong>
                           <p>You have acknowledged your active shift. Ready for equipment inspections.</p>
-                          <Link
-                            to="/checklists"
-                            className="notif-link-center"
-                            onClick={() => setBellOpen(false)}
-                          >
+                          <Link to="/checklists" className="notif-link-center" onClick={() => setBellOpen(false)}>
                             Go to Equipment Checklists <ArrowUpRight size={13} />
                           </Link>
                         </div>
@@ -439,7 +455,9 @@ export const Layout = ({ children }: any) => {
                           <strong>Fleet Alerts &amp; Telemetry</strong>
                         </div>
                         {activeApAnomalies.length > 0 ? (
-                          <span className="notification-status-badge alert">{activeApAnomalies.length} Anomalies Active</span>
+                          <span className="notification-status-badge alert">
+                            {activeApAnomalies.length} Anomalies Active
+                          </span>
                         ) : (
                           <span className="notification-status-badge nominal">All Systems Nominal</span>
                         )}
@@ -449,13 +467,16 @@ export const Layout = ({ children }: any) => {
                         <>
                           <div className="notification-summary-chips">
                             <span className="chip congested">
-                              <Activity size={12} /> {liveFleetAps.filter((a: any) => a.status === 'congested').length} Congested
+                              <Activity size={12} /> {liveFleetAps.filter((a: any) => a.status === 'congested').length}{' '}
+                              Congested
                             </span>
                             <span className="chip offline">
-                              <Power size={12} /> {liveFleetAps.filter((a: any) => a.status === 'offline').length} Offline
+                              <Power size={12} /> {liveFleetAps.filter((a: any) => a.status === 'offline').length}{' '}
+                              Offline
                             </span>
                             <span className="chip stale">
-                              <Radio size={12} /> {liveFleetAps.filter((a: any) => a.status === 'stale').length} Interrupted
+                              <Radio size={12} /> {liveFleetAps.filter((a: any) => a.status === 'stale').length}{' '}
+                              Interrupted
                             </span>
                           </div>
 
@@ -464,9 +485,13 @@ export const Layout = ({ children }: any) => {
                               const isCongested = ap.status === 'congested';
                               const isOffline = ap.status === 'offline';
                               const badgeClass = isCongested ? 'congested' : isOffline ? 'offline' : 'stale';
-                              const badgeText = isCongested ? `${ap.load}% Load` : isOffline ? 'Offline' : 'Feed Interrupted';
+                              const badgeText = isCongested
+                                ? `${ap.load}% Load`
+                                : isOffline
+                                  ? 'Offline'
+                                  : 'Feed Interrupted';
                               const simTicket = activeTickets.find(
-                                (t: any) => t.asset_id === ap.id || t.asset_tag === ap.tag
+                                (t: any) => t.asset_id === ap.id || t.asset_tag === ap.tag,
                               );
 
                               return (
@@ -481,10 +506,13 @@ export const Layout = ({ children }: any) => {
                                       {isCongested
                                         ? `Airtime load (${ap.load}%) · ${ap.clients} clients`
                                         : isOffline
-                                        ? 'Hardware / PoE link outage detected'
-                                        : 'Telemetry daemon timeout / interrupted'}
+                                          ? 'Hardware / PoE link outage detected'
+                                          : 'Telemetry daemon timeout / interrupted'}
                                       {simTicket ? (
-                                        <> · Linked to <strong>{simTicket.number}</strong></>
+                                        <>
+                                          {' '}
+                                          · Linked to <strong>{simTicket.number}</strong>
+                                        </>
                                       ) : null}
                                     </span>
                                     <Link
@@ -513,11 +541,7 @@ export const Layout = ({ children }: any) => {
                             >
                               <RotateCcw size={13} /> Reset Fleet to Healthy
                             </button>
-                            <Link
-                              to="/monitoring"
-                              className="notif-footer-link"
-                              onClick={() => setBellOpen(false)}
-                            >
+                            <Link to="/monitoring" className="notif-footer-link" onClick={() => setBellOpen(false)}>
                               Network Monitoring <ArrowUpRight size={13} />
                             </Link>
                           </div>
@@ -527,11 +551,7 @@ export const Layout = ({ children }: any) => {
                           <CheckCircle2 size={26} className="text-green" />
                           <strong>All Systems Nominal</strong>
                           <p>All campus Access Points reporting healthy telemetry. Zero active fleet anomalies.</p>
-                          <Link
-                            to="/monitoring"
-                            className="notif-link-center"
-                            onClick={() => setBellOpen(false)}
-                          >
+                          <Link to="/monitoring" className="notif-link-center" onClick={() => setBellOpen(false)}>
                             Open Network Monitoring <ArrowUpRight size={13} />
                           </Link>
                         </div>
@@ -551,7 +571,8 @@ export const Layout = ({ children }: any) => {
             <span className="tiny-dot" /> Campus Network Operations Portal
           </span>
           <span>
-            Atlas NetCare <span className="footer-version">v1.0</span> <span className="footer-sep">/</span> Timezone: Asia/Kuala Lumpur (MYT)
+            Atlas NetCare <span className="footer-version">v1.0</span> <span className="footer-sep">/</span> Timezone:
+            Asia/Kuala Lumpur (MYT)
           </span>
         </footer>
       </div>
@@ -589,10 +610,7 @@ export const Layout = ({ children }: any) => {
         </div>
       </Modal>
 
-      <UserProfileModal
-        open={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
-      />
+      <UserProfileModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </div>
   );
 };

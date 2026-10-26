@@ -66,7 +66,7 @@ export default function Shifts() {
 
   const normalizedShifts = useMemo(
     () => normalizeCampusShifts(list.data),
-    [list.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [list.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const rows = useMemo(() => {
@@ -159,7 +159,7 @@ export default function Shifts() {
     setHandoverShift(s);
     setHandoverNotes(
       s.handover_notes ||
-        `Completed ${progress.checked}/${progress.required} scheduled workstation checks in ${s.lab_name}. All reported faults linked to incident tickets.`
+        `Completed ${progress.checked}/${progress.required} scheduled workstation checks in ${s.lab_name}. All reported faults linked to incident tickets.`,
     );
   };
 
@@ -169,8 +169,7 @@ export default function Shifts() {
     setBusy(true);
     const nowIso = new Date().toISOString();
     const notesText =
-      handoverNotes.trim() ||
-      `All scheduled lab workstation inspections completed in ${handoverShift.lab_name}.`;
+      handoverNotes.trim() || `All scheduled lab workstation inspections completed in ${handoverShift.lab_name}.`;
 
     saveShiftOverride(handoverShift.id, {
       acknowledged_at: handoverShift.acknowledged_at || nowIso,
@@ -205,7 +204,10 @@ export default function Shifts() {
     if (match) {
       return match[1].replace('-', '–');
     }
-    return windowStr.replace(/^(Morning|Afternoon|Evening|Night)\s*Shift:\s*/i, '').replace(/\s*MYT\s*$/i, '').trim();
+    return windowStr
+      .replace(/^(Morning|Afternoon|Evening|Night)\s*Shift:\s*/i, '')
+      .replace(/\s*MYT\s*$/i, '')
+      .trim();
   };
 
   const formatDetailedShiftWindow = (windowStr: string) => {
@@ -245,14 +247,17 @@ export default function Shifts() {
       <PageTitle title={user.role === 'admin' ? 'Staff Schedule' : 'Your Shift Schedule'}>
         {user.role === 'admin' && (
           <Button id="assign-shift" variant="primary" onClick={add}>
-            <Plus size={16} className="mr-1" />Assign Shift
+            <Plus size={16} className="mr-1" />
+            Assign Shift
           </Button>
         )}
       </PageTitle>
 
       <ErrorBox error={list.error || (!open && error)} retry={list.load} />
 
-      <div className={`listing-toolbar mb-4 flex items-center ${user.role === 'assistant' ? 'justify-between' : 'justify-end'} gap-3`}>
+      <div
+        className={`listing-toolbar mb-4 flex items-center ${user.role === 'assistant' ? 'justify-between' : 'justify-end'} gap-3`}
+      >
         {user.role === 'assistant' && (
           <div className="segmented shift-scope-segmented" role="tablist">
             <button
@@ -298,11 +303,21 @@ export default function Shifts() {
             <table className="w-full text-left text-sm border-collapse clean-shifts-table">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4" style={{ width: '34%' }}>ROOM</th>
-                  <th className="px-5 py-4" style={{ width: '22%' }}>ASSISTANT</th>
-                  <th className="px-5 py-4" style={{ width: '18%' }}>SHIFT TIME</th>
-                  <th className="px-5 py-4" style={{ width: '14%' }}>STATUS</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '12%' }}>ACTION</th>
+                  <th className="px-5 py-4" style={{ width: '34%' }}>
+                    ROOM
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '22%' }}>
+                    ASSISTANT
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '18%' }}>
+                    SHIFT TIME
+                  </th>
+                  <th className="px-5 py-4" style={{ width: '14%' }}>
+                    STATUS
+                  </th>
+                  <th className="px-5 py-4 text-right" style={{ width: '12%' }}>
+                    ACTION
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -315,24 +330,22 @@ export default function Shifts() {
                     s.lifecycle === 'cancelled'
                       ? 'cancelled'
                       : isCompleted
-                      ? 'completed'
-                      : isAcknowledged
-                      ? 'on_duty'
-                      : 'pending_ack';
+                        ? 'completed'
+                        : isAcknowledged
+                          ? 'on_duty'
+                          : 'pending_ack';
 
                   const statusLabel =
                     s.lifecycle === 'cancelled'
                       ? 'Cancelled'
                       : isCompleted
-                      ? 'Completed'
-                      : isAcknowledged
-                      ? 'On Duty'
-                      : 'Pending';
+                        ? 'Completed'
+                        : isAcknowledged
+                          ? 'On Duty'
+                          : 'Pending';
 
                   const loc = findLocation(s.lab_name || s.lab_id);
-                  const labRoomText = loc?.code
-                    ? `${loc.code} · ${loc.name || s.lab_name}`
-                    : s.lab_name;
+                  const labRoomText = loc?.code ? `${loc.code} · ${loc.name || s.lab_name}` : s.lab_name;
 
                   return (
                     <tr
@@ -398,244 +411,246 @@ export default function Shifts() {
       <Modal
         open={!!selectedShift}
         onClose={() => setSelectedShift(null)}
-        title={
-          (() => {
-            const s = selectedShift?.shift;
-            if (!s) return 'Shift Details';
-            const loc = selectedLabLoc;
-            const isAcknowledged = Boolean(s.acknowledged_at);
-            const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
-            const statusKey =
-              s.lifecycle === 'cancelled'
-                ? 'cancelled'
-                : isCompleted
-                ? 'completed'
-                : isAcknowledged
-                ? 'on_duty'
-                : 'pending_ack';
-            const statusLabel =
-              s.lifecycle === 'cancelled'
-                ? 'Cancelled'
-                : isCompleted
-                ? 'Completed'
-                : isAcknowledged
-                ? 'On Duty'
-                : 'Pending Acknowledgement';
-
-            return (
-              <div className="flex flex-wrap items-center gap-2.5">
-                {loc?.code && (
-                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-                    {loc.code}
-                  </span>
-                )}
-                <span className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  {loc?.name || s.lab_name}
-                </span>
-                <span className={`status ${statusKey} text-[11px]`}>
-                  <i />
-                  {statusLabel}
-                </span>
-              </div>
-            );
-          })()
-        }
-        id="shift-detail-dialog"
-      >
-        {selectedShift && (() => {
-          const s = selectedShift.shift;
-          const progress = selectedShift.progress;
+        title={(() => {
+          const s = selectedShift?.shift;
+          if (!s) return 'Shift Details';
+          const loc = selectedLabLoc;
           const isAcknowledged = Boolean(s.acknowledged_at);
           const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
-          const displayChecked = isAcknowledged ? progress.checked : 0;
-          const percent = isAcknowledged ? progress.percent : 0;
-          const isAllChecked = isAcknowledged && progress.checked >= progress.required;
-          const checkedAssetTags = new Set((progress.labChecks || []).map((c: any) => c.asset_tag).filter(Boolean));
-          const checkedAssetIds = new Set((progress.labChecks || []).map((c: any) => c.asset_id).filter(Boolean));
+          const statusKey =
+            s.lifecycle === 'cancelled'
+              ? 'cancelled'
+              : isCompleted
+                ? 'completed'
+                : isAcknowledged
+                  ? 'on_duty'
+                  : 'pending_ack';
+          const statusLabel =
+            s.lifecycle === 'cancelled'
+              ? 'Cancelled'
+              : isCompleted
+                ? 'Completed'
+                : isAcknowledged
+                  ? 'On Duty'
+                  : 'Pending Acknowledgement';
 
           return (
-            <div className="flex flex-col gap-3.5">
-              {/* 1. Compact 3-Column Summary Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Assigned Assistant
-                  </span>
-                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
-                    <UserRound size={14} className="text-slate-400" />
-                    {s.assistant_name || 'Unassigned'}
-                  </span>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Shift Window
-                  </span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
-                    <Clock3 size={14} className="text-slate-400" />
-                    <span className="font-mono text-xs">{formatDetailedShiftWindow(s.shift_window)}</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Inspection Progress
-                  </span>
-                  <div className="mt-1">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
-                        {displayChecked} / {progress.required} Checked
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-500">{percent}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Shift Inspection Scope (2x2 Grid) */}
-              <div className="flex flex-col gap-2 mt-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <ClipboardCheck size={14} className="text-slate-400" />
-                    Shift Inspection Scope ({displayChecked} / 4 Workstations)
-                  </span>
-                  {isAcknowledged && !isCompleted && user.role === 'assistant' && (
-                    <span className="text-[11px] text-slate-400">
-                      Requires 4 workstations verified
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {targetWorkstations.map((pc: any) => {
-                    const isVerified = isCompleted || (isAcknowledged && (checkedAssetIds.has(pc.id) || checkedAssetTags.has(pc.tag)));
-                    return (
-                      <div
-                        key={pc.id || pc.tag}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors ${
-                          isVerified
-                            ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20'
-                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Monitor size={14} className={isVerified ? 'text-emerald-500 flex-shrink-0' : 'text-slate-400 flex-shrink-0'} />
-                          <div className="min-w-0 truncate">
-                            <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 block truncate">
-                              {pc.tag}
-                            </span>
-                            <span className="text-[11px] text-slate-500 block truncate">
-                              {pc.name || 'Workstation'}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-                            isVerified
-                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                          }`}
-                        >
-                          {isVerified ? (
-                            <>
-                              <CheckCircle2 size={11} className="text-emerald-500" />
-                              Verified
-                            </>
-                          ) : (
-                            'Unchecked'
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. Handover Notes if present */}
-              {s.handover_notes && (
-                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-xs mt-1" data-testid={`shift-handover-${s.id}`}>
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                    <FileCheck2 size={14} className="text-emerald-500" />
-                    Handover Summary
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{s.handover_notes}</p>
-                </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {loc?.code && (
+                <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                  {loc.code}
+                </span>
               )}
-
-              {/* 4. Clean Action Footer (Single Top Border) */}
-              <div className="flex items-center justify-end gap-2.5 mt-3 pt-3.5 border-t border-slate-200 dark:border-slate-800/80">
-                {user.role === 'admin' && !s.cancelled && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    id={`cancel-shift-modal-${s.id}`}
-                    disabled={busy}
-                    onClick={() => {
-                      setSelectedShift(null);
-                      cancelShift(s);
-                    }}
-                  >
-                    Cancel Shift
-                  </Button>
-                )}
-
-                {user.role === 'assistant' && !isAcknowledged && !s.cancelled && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    id={`ack-shift-modal-${s.id}`}
-                    disabled={busy}
-                    onClick={() => {
-                      setSelectedShift(null);
-                      acknowledgeShift(s);
-                    }}
-                  >
-                    <CheckCheck size={14} className="mr-1" /> Acknowledge Shift
-                  </Button>
-                )}
-
-                {user.role === 'assistant' && isAcknowledged && !isCompleted && !s.cancelled && (
-                  <>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      id={`run-shift-inspection-modal-${s.id}`}
-                      onClick={() => {
-                        setSelectedShift(null);
-                        runLabInspection(s, progress);
-                      }}
-                    >
-                      Run Lab Inspection <ArrowRight size={13} className="ml-1 inline" />
-                    </Button>
-                    {isAllChecked && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        id={`complete-shift-modal-${s.id}`}
-                        onClick={() => {
-                          setSelectedShift(null);
-                          openHandoverModal(s, progress);
-                        }}
-                      >
-                        Complete Handover
-                      </Button>
-                    )}
-                  </>
-                )}
-
-                <Button variant="outline" size="sm" onClick={() => setSelectedShift(null)}>
-                  Close
-                </Button>
-              </div>
+              <span className="text-base font-bold text-slate-900 dark:text-slate-100">{loc?.name || s.lab_name}</span>
+              <span className={`status ${statusKey} text-[11px]`}>
+                <i />
+                {statusLabel}
+              </span>
             </div>
           );
         })()}
+        id="shift-detail-dialog"
+      >
+        {selectedShift &&
+          (() => {
+            const s = selectedShift.shift;
+            const progress = selectedShift.progress;
+            const isAcknowledged = Boolean(s.acknowledged_at);
+            const isCompleted = s.lifecycle === 'completed' || Boolean(s.completed_at);
+            const displayChecked = isAcknowledged ? progress.checked : 0;
+            const percent = isAcknowledged ? progress.percent : 0;
+            const isAllChecked = isAcknowledged && progress.checked >= progress.required;
+            const checkedAssetTags = new Set((progress.labChecks || []).map((c: any) => c.asset_tag).filter(Boolean));
+            const checkedAssetIds = new Set((progress.labChecks || []).map((c: any) => c.asset_id).filter(Boolean));
+
+            return (
+              <div className="flex flex-col gap-3.5">
+                {/* 1. Compact 3-Column Summary Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Assigned Assistant
+                    </span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
+                      <UserRound size={14} className="text-slate-400" />
+                      {s.assistant_name || 'Unassigned'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Shift Window
+                    </span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-1.5">
+                      <Clock3 size={14} className="text-slate-400" />
+                      <span className="font-mono text-xs">{formatDetailedShiftWindow(s.shift_window)}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Inspection Progress
+                    </span>
+                    <div className="mt-1">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                          {displayChecked} / {progress.required} Checked
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-500">{percent}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Shift Inspection Scope (2x2 Grid) */}
+                <div className="flex flex-col gap-2 mt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <ClipboardCheck size={14} className="text-slate-400" />
+                      Shift Inspection Scope ({displayChecked} / 4 Workstations)
+                    </span>
+                    {isAcknowledged && !isCompleted && user.role === 'assistant' && (
+                      <span className="text-[11px] text-slate-400">Requires 4 workstations verified</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {targetWorkstations.map((pc: any) => {
+                      const isVerified =
+                        isCompleted || (isAcknowledged && (checkedAssetIds.has(pc.id) || checkedAssetTags.has(pc.tag)));
+                      return (
+                        <div
+                          key={pc.id || pc.tag}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors ${
+                            isVerified
+                              ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20'
+                              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Monitor
+                              size={14}
+                              className={isVerified ? 'text-emerald-500 flex-shrink-0' : 'text-slate-400 flex-shrink-0'}
+                            />
+                            <div className="min-w-0 truncate">
+                              <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 block truncate">
+                                {pc.tag}
+                              </span>
+                              <span className="text-[11px] text-slate-500 block truncate">
+                                {pc.name || 'Workstation'}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                              isVerified
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {isVerified ? (
+                              <>
+                                <CheckCircle2 size={11} className="text-emerald-500" />
+                                Verified
+                              </>
+                            ) : (
+                              'Unchecked'
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Handover Notes if present */}
+                {s.handover_notes && (
+                  <div
+                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-xs mt-1"
+                    data-testid={`shift-handover-${s.id}`}
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                      <FileCheck2 size={14} className="text-emerald-500" />
+                      Handover Summary
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{s.handover_notes}</p>
+                  </div>
+                )}
+
+                {/* 4. Clean Action Footer (Single Top Border) */}
+                <div className="flex items-center justify-end gap-2.5 mt-3 pt-3.5 border-t border-slate-200 dark:border-slate-800/80">
+                  {user.role === 'admin' && !s.cancelled && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      id={`cancel-shift-modal-${s.id}`}
+                      disabled={busy}
+                      onClick={() => {
+                        setSelectedShift(null);
+                        cancelShift(s);
+                      }}
+                    >
+                      Cancel Shift
+                    </Button>
+                  )}
+
+                  {user.role === 'assistant' && !isAcknowledged && !s.cancelled && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      id={`ack-shift-modal-${s.id}`}
+                      disabled={busy}
+                      onClick={() => {
+                        setSelectedShift(null);
+                        acknowledgeShift(s);
+                      }}
+                    >
+                      <CheckCheck size={14} className="mr-1" /> Acknowledge Shift
+                    </Button>
+                  )}
+
+                  {user.role === 'assistant' && isAcknowledged && !isCompleted && !s.cancelled && (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        id={`run-shift-inspection-modal-${s.id}`}
+                        onClick={() => {
+                          setSelectedShift(null);
+                          runLabInspection(s, progress);
+                        }}
+                      >
+                        Run Lab Inspection <ArrowRight size={13} className="ml-1 inline" />
+                      </Button>
+                      {isAllChecked && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          id={`complete-shift-modal-${s.id}`}
+                          onClick={() => {
+                            setSelectedShift(null);
+                            openHandoverModal(s, progress);
+                          }}
+                        >
+                          Complete Handover
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  <Button variant="outline" size="sm" onClick={() => setSelectedShift(null)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
       </Modal>
 
       <Modal
@@ -666,12 +681,7 @@ export default function Shifts() {
         </form>
       </Modal>
 
-      <Modal
-        open={open}
-        onClose={setOpen}
-        title="Assign Lab Shift"
-        id="shift-dialog"
-      >
+      <Modal open={open} onClose={setOpen} title="Assign Lab Shift" id="shift-dialog">
         <form onSubmit={submit}>
           <Field label="Lab Assistant" id="shift-assistant">
             <Select

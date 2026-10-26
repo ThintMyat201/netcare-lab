@@ -1,17 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Download,
-  FileText,
-} from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { ErrorBox, Loading, SectionHead, useData } from '../components/shared';
 import { time } from '../lib/api';
-import {
-  mergeTickets,
-  mergeChecklists,
-} from '../lib/workflow';
+import { mergeTickets, mergeChecklists } from '../lib/workflow';
 import { downloadCSV } from '../lib/csv';
-
 
 function pct(part: number, total: number): number {
   if (!total || total <= 0) return 0;
@@ -37,14 +30,13 @@ export function Reports() {
 
   const allTickets = useMemo(
     () => mergeTickets(ticketsData.data),
-    [ticketsData.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [ticketsData.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const allChecklists = useMemo(
     () => mergeChecklists(checklistsData.data),
-    [checklistsData.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [checklistsData.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
-
 
   const hardwareStats = useMemo(() => {
     const assets = assetsData.data || [];
@@ -88,8 +80,10 @@ export function Reports() {
     const liveResolved = allTickets.filter((t: any) => t.status === 'resolved').length;
 
     const open = is7d && liveOpen <= 3 ? 15 : Math.max(baseOpen, baseOpen + (liveOpen > 3 ? liveOpen - 3 : 0));
-    const inProgress = is7d && liveInProg <= 2 ? 14 : Math.max(baseInProg, baseInProg + (liveInProg > 2 ? liveInProg - 2 : 0));
-    const resolved = is7d && liveResolved <= 6 ? 50 : Math.max(baseResolved, baseResolved + (liveResolved > 6 ? liveResolved - 6 : 0));
+    const inProgress =
+      is7d && liveInProg <= 2 ? 14 : Math.max(baseInProg, baseInProg + (liveInProg > 2 ? liveInProg - 2 : 0));
+    const resolved =
+      is7d && liveResolved <= 6 ? 50 : Math.max(baseResolved, baseResolved + (liveResolved > 6 ? liveResolved - 6 : 0));
     const ticketsTotal = open + inProgress + resolved;
 
     const openPct = Math.round((open / ticketsTotal) * 100);
@@ -204,11 +198,27 @@ export function Reports() {
       [],
       ['EXECUTIVE KPI SUMMARY'],
       ['Metric', 'Value', 'Details'],
-      ['Total Incidents', computedReport.ticketsTotal, `${computedReport.resolved} Resolved (${computedReport.resolvedPct}%) · ${computedReport.open + computedReport.inProgress} Active`],
-      ['Resolution Rate', `${computedReport.resolvedPct}%`, `${computedReport.resolved} of ${computedReport.ticketsTotal} incidents resolved`],
+      [
+        'Total Incidents',
+        computedReport.ticketsTotal,
+        `${computedReport.resolved} Resolved (${computedReport.resolvedPct}%) · ${computedReport.open + computedReport.inProgress} Active`,
+      ],
+      [
+        'Resolution Rate',
+        `${computedReport.resolvedPct}%`,
+        `${computedReport.resolved} of ${computedReport.ticketsTotal} incidents resolved`,
+      ],
       ['Average Resolution Time', computedReport.resolution.formatted, 'SLA Target: < 4h 00m (96% within SLA)'],
-      ['Inspections Completed', computedReport.checklistsTotal, `${computedReport.passed} Passed (${computedReport.passedPct}%) · ${computedReport.failed} Faults Reported (${computedReport.failedPct}%)`],
-      ['Hardware Fleet Health', `${hardwareStats.totalHealthy} / ${hardwareStats.total}`, `${hardwareStats.onlineAps}/${hardwareStats.totalAps} APs online · ${hardwareStats.healthyPcs}/${hardwareStats.totalPcs} PCs healthy`],
+      [
+        'Inspections Completed',
+        computedReport.checklistsTotal,
+        `${computedReport.passed} Passed (${computedReport.passedPct}%) · ${computedReport.failed} Faults Reported (${computedReport.failedPct}%)`,
+      ],
+      [
+        'Hardware Fleet Health',
+        `${hardwareStats.totalHealthy} / ${hardwareStats.total}`,
+        `${hardwareStats.onlineAps}/${hardwareStats.totalAps} APs online · ${hardwareStats.healthyPcs}/${hardwareStats.totalPcs} PCs healthy`,
+      ],
       [],
       ['INCIDENT BREAKDOWN BY TIER & STATUS'],
       ['Tier / Status', 'Count', 'Percentage of Total'],
@@ -219,7 +229,15 @@ export function Reports() {
       ['Resolved Incidents', computedReport.resolved, `${computedReport.resolvedPct}%`],
       [],
       ['LAB PERFORMANCE & HEALTH'],
-      ['Room Code', 'Lab Name', 'Active Hardware', 'Inspections Completed', 'Pass Rate', 'Active Incidents', 'Health Status'],
+      [
+        'Room Code',
+        'Lab Name',
+        'Active Hardware',
+        'Inspections Completed',
+        'Pass Rate',
+        'Active Incidents',
+        'Health Status',
+      ],
       ...computedReport.labs.map((l: any) => [
         l.code,
         l.name,
@@ -481,10 +499,11 @@ export function Reports() {
       </tr>
     </thead>
     <tbody>
-      ${computedReport.labs.map((l: any) => {
-        const statusClass = l.healthStatus === 'healthy' ? 'badge-healthy' : 'badge-degraded';
-        const statusText = l.healthStatus === 'healthy' ? '● Healthy' : '● Degraded';
-        return `
+      ${computedReport.labs
+        .map((l: any) => {
+          const statusClass = l.healthStatus === 'healthy' ? 'badge-healthy' : 'badge-degraded';
+          const statusText = l.healthStatus === 'healthy' ? '● Healthy' : '● Degraded';
+          return `
           <tr>
             <td><strong>${l.fullName}</strong></td>
             <td>${l.healthyAssets} / ${l.totalAssets} Healthy</td>
@@ -493,7 +512,8 @@ export function Reports() {
             <td style="text-align: right;" class="${statusClass}">${statusText}</td>
           </tr>
         `;
-      }).join('')}
+        })
+        .join('')}
     </tbody>
   </table>
 
@@ -531,14 +551,20 @@ export function Reports() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 w-full mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight" data-testid="page-title">
+          <h1
+            className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight"
+            data-testid="page-title"
+          >
             Operational Reports
           </h1>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Timeframe Buttons */}
-          <div className="inline-flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0" data-testid="report-period-selector">
+          <div
+            className="inline-flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0"
+            data-testid="report-period-selector"
+          >
             {[
               ['today', 'Today'],
               ['7d', 'Last 7 Days'],
@@ -602,7 +628,10 @@ export function Reports() {
           <>
             {/* Section 1: 4 Core KPI Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between" data-testid="report-stat-0">
+              <div
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between"
+                data-testid="report-stat-0"
+              >
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Total Incidents
                 </span>
@@ -610,11 +639,15 @@ export function Reports() {
                   {computedReport.ticketsTotal}
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {computedReport.resolved} resolved ({computedReport.resolvedPct}%) · {computedReport.open + computedReport.inProgress} active
+                  {computedReport.resolved} resolved ({computedReport.resolvedPct}%) ·{' '}
+                  {computedReport.open + computedReport.inProgress} active
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between" data-testid="report-stat-1">
+              <div
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between"
+                data-testid="report-stat-1"
+              >
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Avg Resolution Time
                 </span>
@@ -626,7 +659,10 @@ export function Reports() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between" data-testid="report-stat-2">
+              <div
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between"
+                data-testid="report-stat-2"
+              >
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Lab Inspections
                 </span>
@@ -638,7 +674,10 @@ export function Reports() {
                 </p>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between" data-testid="report-stat-3">
+              <div
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between"
+                data-testid="report-stat-3"
+              >
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Hardware Fleet Health
                 </span>
@@ -646,7 +685,8 @@ export function Reports() {
                   {hardwareStats.totalHealthy} / {hardwareStats.total}
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {hardwareStats.onlineAps}/{hardwareStats.totalAps} APs online · {hardwareStats.healthyPcs}/{hardwareStats.totalPcs} PCs healthy
+                  {hardwareStats.onlineAps}/{hardwareStats.totalAps} APs online · {hardwareStats.healthyPcs}/
+                  {hardwareStats.totalPcs} PCs healthy
                 </p>
               </div>
             </div>
@@ -677,11 +717,13 @@ export function Reports() {
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      In Progress: <strong className="text-slate-900 dark:text-slate-100">{computedReport.inProgress}</strong>
+                      In Progress:{' '}
+                      <strong className="text-slate-900 dark:text-slate-100">{computedReport.inProgress}</strong>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Resolved: <strong className="text-slate-900 dark:text-slate-100">{computedReport.resolved}</strong>
+                      Resolved:{' '}
+                      <strong className="text-slate-900 dark:text-slate-100">{computedReport.resolved}</strong>
                     </span>
                   </div>
                 </div>
@@ -694,7 +736,9 @@ export function Reports() {
                     </strong>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Tier 1 · Lab Workstations &amp; Peripherals</span>
+                    <span className="text-slate-600 dark:text-slate-400">
+                      Tier 1 · Lab Workstations &amp; Peripherals
+                    </span>
                     <strong className="text-slate-900 dark:text-slate-100 font-mono">
                       {computedReport.tier1Count} incidents ({computedReport.tier1Pct}%)
                     </strong>
@@ -721,14 +765,21 @@ export function Reports() {
                   <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mt-2">
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Passed: <strong className="text-slate-900 dark:text-slate-100">{computedReport.passed} ({computedReport.passedPct}%)</strong>
+                      Passed:{' '}
+                      <strong className="text-slate-900 dark:text-slate-100">
+                        {computedReport.passed} ({computedReport.passedPct}%)
+                      </strong>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      Faults Found: <strong className="text-slate-900 dark:text-slate-100">{computedReport.failed} ({computedReport.failedPct}%)</strong>
+                      Faults Found:{' '}
+                      <strong className="text-slate-900 dark:text-slate-100">
+                        {computedReport.failed} ({computedReport.failedPct}%)
+                      </strong>
                     </span>
                     <span className="text-slate-500 dark:text-slate-400">
-                      Total: <strong className="text-slate-900 dark:text-slate-100">{computedReport.checklistsTotal}</strong>
+                      Total:{' '}
+                      <strong className="text-slate-900 dark:text-slate-100">{computedReport.checklistsTotal}</strong>
                     </span>
                   </div>
                 </div>
@@ -813,7 +864,8 @@ export function Reports() {
             </div>
 
             <span className="sr-only" data-testid="report-scope">
-              Resolution times and metrics describe campus network operations and lab equipment management in Asia/Kuala Lumpur (MYT).
+              Resolution times and metrics describe campus network operations and lab equipment management in Asia/Kuala
+              Lumpur (MYT).
             </span>
           </>
         )

@@ -117,20 +117,24 @@ export function Team() {
       engineer: all.filter(u => u.role === 'engineer').length,
       assistant: all.filter(u => u.role === 'assistant').length,
     }),
-    [all]
+    [all],
   );
   const activeCount = all.filter(u => u.active).length;
 
   const rows = all.filter(
     u =>
       (roleFilter === 'all' || u.role === roleFilter) &&
-      `${u.name} ${u.email} ${u.role} ${roleLabel(u.role)} ${u.scope || ''}`.toLowerCase().includes(search.trim().toLowerCase())
+      `${u.name} ${u.email} ${u.role} ${roleLabel(u.role)} ${u.scope || ''}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
   );
 
   const upsertLocal = (row: any) =>
     setMembers(prev => {
       const current = prev || [];
-      return current.some(u => u.id === row.id) ? current.map(u => (u.id === row.id ? { ...u, ...row } : u)) : [...current, row];
+      return current.some(u => u.id === row.id)
+        ? current.map(u => (u.id === row.id ? { ...u, ...row } : u))
+        : [...current, row];
     });
 
   const openCreate = () => {
@@ -168,7 +172,8 @@ export function Team() {
     }));
 
   const emailTrimmed = form.email.trim().toLowerCase();
-  const emailFormatError = emailTrimmed && !EMAIL_PATTERN.test(emailTrimmed) ? 'Enter a valid email address (e.g. name@apu.edu.my).' : '';
+  const emailFormatError =
+    emailTrimmed && !EMAIL_PATTERN.test(emailTrimmed) ? 'Enter a valid email address (e.g. name@apu.edu.my).' : '';
   const emailTaken =
     emailTrimmed && all.some(u => u.email?.toLowerCase() === emailTrimmed && u.id !== selected?.id)
       ? 'Another team member already uses this email address.'
@@ -347,7 +352,10 @@ export function Team() {
                       </td>
                       <td className="px-5 py-4 scope-cell">{u.scope || ROLE_DEFAULT_SCOPE[u.role]}</td>
                       <td className="px-5 py-4">
-                        <span className={`member-status ${u.active ? 'active' : 'suspended'}`} data-testid={`user-status-${u.id}`}>
+                        <span
+                          className={`member-status ${u.active ? 'active' : 'suspended'}`}
+                          data-testid={`user-status-${u.id}`}
+                        >
                           <i />
                           {u.active ? 'Active' : 'Suspended'}
                         </span>
@@ -362,78 +370,78 @@ export function Team() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                      <DropdownMenu.Root modal={false}>
-                        <DropdownMenu.Trigger asChild>
-                          <button
-                            className="icon-button"
-                            title="Manage member"
-                            aria-label={`Manage ${u.name}`}
-                            data-testid={`edit-user-${u.id}`}
-                          >
-                            <UserRoundCog size={17} />
-                          </button>
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Portal>
-                          <DropdownMenu.Content
-                            className="member-menu z-50 min-w-[220px] p-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xl rounded-xl opacity-100"
-                            side={isNearBottom ? 'top' : 'bottom'}
-                            align="end"
-                            sideOffset={6}
-                            collisionPadding={16}
-                            avoidCollisions
-                          >
-                            <DropdownMenu.Label className="member-menu-label px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                              {u.name}
-                            </DropdownMenu.Label>
-                            <DropdownMenu.Item
-                              className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors"
-                              data-testid={`menu-edit-${u.id}`}
-                              onSelect={() => openEdit(u)}
+                        <DropdownMenu.Root modal={false}>
+                          <DropdownMenu.Trigger asChild>
+                            <button
+                              className="icon-button"
+                              title="Manage member"
+                              aria-label={`Manage ${u.name}`}
+                              data-testid={`edit-user-${u.id}`}
                             >
-                              <Pencil size={14} /> Edit Member
-                            </DropdownMenu.Item>
-                            <DropdownMenu.Item
-                              className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              data-testid={`menu-status-${u.id}`}
-                              disabled={locked}
-                              title={locked ? protectedReason(u) : undefined}
-                              onSelect={() => toggleStatus(u)}
+                              <UserRoundCog size={17} />
+                            </button>
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.Content
+                              className="member-menu z-50 min-w-[220px] p-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xl rounded-xl opacity-100"
+                              side={isNearBottom ? 'top' : 'bottom'}
+                              align="end"
+                              sideOffset={6}
+                              collisionPadding={16}
+                              avoidCollisions
                             >
-                              {u.active ? <UserX size={14} /> : <UserCheck size={14} />}
-                              {u.active ? 'Suspend Access' : 'Reactivate Access'}
-                              {locked && (
-                                <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
-                                  <Lock size={11} /> Protected
-                                </span>
-                              )}
-                            </DropdownMenu.Item>
-                            <DropdownMenu.Separator className="member-menu-sep h-px my-1 bg-slate-100 dark:bg-slate-800" />
-                            <DropdownMenu.Item
-                              className="member-menu-item danger flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              data-testid={`menu-remove-${u.id}`}
-                              disabled={locked}
-                              title={locked ? protectedReason(u) : undefined}
-                              onSelect={() => {
-                                setError('');
-                                setRemoving(u);
-                              }}
-                            >
-                              <Trash2 size={14} /> Remove Member
-                              {locked && (
-                                <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
-                                  <Lock size={11} /> Protected
-                                </span>
-                              )}
-                            </DropdownMenu.Item>
-                          </DropdownMenu.Content>
-                        </DropdownMenu.Portal>
-                      </DropdownMenu.Root>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                              <DropdownMenu.Label className="member-menu-label px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {u.name}
+                              </DropdownMenu.Label>
+                              <DropdownMenu.Item
+                                className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors"
+                                data-testid={`menu-edit-${u.id}`}
+                                onSelect={() => openEdit(u)}
+                              >
+                                <Pencil size={14} /> Edit Member
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item
+                                className="member-menu-item flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                data-testid={`menu-status-${u.id}`}
+                                disabled={locked}
+                                title={locked ? protectedReason(u) : undefined}
+                                onSelect={() => toggleStatus(u)}
+                              >
+                                {u.active ? <UserX size={14} /> : <UserCheck size={14} />}
+                                {u.active ? 'Suspend Access' : 'Reactivate Access'}
+                                {locked && (
+                                  <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
+                                    <Lock size={11} /> Protected
+                                  </span>
+                                )}
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Separator className="member-menu-sep h-px my-1 bg-slate-100 dark:bg-slate-800" />
+                              <DropdownMenu.Item
+                                className="member-menu-item danger flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                data-testid={`menu-remove-${u.id}`}
+                                disabled={locked}
+                                title={locked ? protectedReason(u) : undefined}
+                                onSelect={() => {
+                                  setError('');
+                                  setRemoving(u);
+                                }}
+                              >
+                                <Trash2 size={14} /> Remove Member
+                                {locked && (
+                                  <span className="menu-protected ml-auto inline-flex items-center gap-1 text-[10px] font-bold text-amber-500">
+                                    <Lock size={11} /> Protected
+                                  </span>
+                                )}
+                              </DropdownMenu.Item>
+                            </DropdownMenu.Content>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Root>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : (
@@ -461,7 +469,9 @@ export function Team() {
                   {form.email.trim() || 'No email provided'}
                 </span>
               </div>
-              <span className={`role-badge role-${form.role} text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0`}>
+              <span
+                className={`role-badge role-${form.role} text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0`}
+              >
                 {roleLabel(form.role)}
               </span>
             </div>
@@ -502,7 +512,11 @@ export function Team() {
                 />
               </Field>
               {emailError && (
-                <p className="field-error text-xs text-red-500 mt-1" id="user-email-error" data-testid="user-email-error">
+                <p
+                  className="field-error text-xs text-red-500 mt-1"
+                  id="user-email-error"
+                  data-testid="user-email-error"
+                >
                   {emailError}
                 </p>
               )}
@@ -549,12 +563,19 @@ export function Team() {
                 onChange={(e: any) => setForm({ ...form, active: e.target.value === 'true' })}
                 className="w-full rounded-lg px-3.5 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
               >
-                <option value="true" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Active</option>
-                <option value="false" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Inactive / Suspended</option>
+                <option value="true" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                  Active
+                </option>
+                <option value="false" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                  Inactive / Suspended
+                </option>
               </Select>
             </Field>
 
-            <Field label={mode === 'edit' ? 'Reset Password (optional)' : 'Initial Password (optional)'} id="user-password">
+            <Field
+              label={mode === 'edit' ? 'Reset Password (optional)' : 'Initial Password (optional)'}
+              id="user-password"
+            >
               <input
                 type="password"
                 id="user-password"
@@ -571,33 +592,30 @@ export function Team() {
           </div>
 
           {(lockRole || lockStatus) && (
-            <p className="protected-note flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20" data-testid="user-protected-note">
-              <Lock size={13} className="flex-shrink-0" /> {protectedReason(selected)}. Name, email, and scope can still be edited.
+            <p
+              className="protected-note flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+              data-testid="user-protected-note"
+            >
+              <Lock size={13} className="flex-shrink-0" /> {protectedReason(selected)}. Name, email, and scope can still
+              be edited.
             </p>
           )}
 
           {/* Security Notice Callout */}
           <div className="flex items-center gap-2.5 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
             <ShieldCheck size={16} className="flex-shrink-0 text-slate-500 dark:text-slate-400" />
-            <span>Suspending an account or resetting its password signs the member out immediately. All changes are logged.</span>
+            <span>
+              Suspending an account or resetting its password signs the member out immediately. All changes are logged.
+            </span>
           </div>
 
           <ErrorBox error={error} />
 
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => closeForm()}
-            >
+            <Button type="button" variant="outline" onClick={() => closeForm()}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              id="save-user"
-              disabled={busy || !!emailError}
-              type="submit"
-            >
+            <Button variant="primary" id="save-user" disabled={busy || !!emailError} type="submit">
               <Save size={14} />
               {busy ? 'Saving…' : mode === 'edit' ? 'Save Member Changes' : 'Add Team Member'}
             </Button>
@@ -613,9 +631,14 @@ export function Team() {
       >
         {removing && (
           <div className="flex flex-col gap-4">
-            <p className="remove-confirm text-sm text-slate-600 dark:text-slate-300" data-testid="remove-user-confirm-text">
-              Are you sure you want to remove <strong className="font-semibold text-slate-900 dark:text-slate-100">{removing.name}</strong> ({roleLabel(removing.role)} · {removing.scope})? Their
-              upcoming shifts will be cancelled; past tickets and inspection records are kept for audit.
+            <p
+              className="remove-confirm text-sm text-slate-600 dark:text-slate-300"
+              data-testid="remove-user-confirm-text"
+            >
+              Are you sure you want to remove{' '}
+              <strong className="font-semibold text-slate-900 dark:text-slate-100">{removing.name}</strong> (
+              {roleLabel(removing.role)} · {removing.scope})? Their upcoming shifts will be cancelled; past tickets and
+              inspection records are kept for audit.
             </p>
             <ErrorBox error={error} />
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">

@@ -1,17 +1,28 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  Plus,
-  Search,
-  ArrowUpRight,
-  ArrowRight,
-  CheckCircle2,
-  Send,
-} from 'lucide-react';
+import { Plus, Search, ArrowUpRight, ArrowRight, CheckCircle2, Send } from 'lucide-react';
 import { useAuth } from '../context';
 import { api, errorText } from '../lib/api';
-import { mergeTickets, saveLocalTicket, enrichTicket, restoreDevice, formatLocationWithCode, formatLocationBadge } from '../lib/workflow';
-import { PageTitle, Button, Modal, Field, Select, Status, ErrorBox, Loading, Empty, useData } from '../components/shared';
+import {
+  mergeTickets,
+  saveLocalTicket,
+  enrichTicket,
+  restoreDevice,
+  formatLocationWithCode,
+  formatLocationBadge,
+} from '../lib/workflow';
+import {
+  PageTitle,
+  Button,
+  Modal,
+  Field,
+  Select,
+  Status,
+  ErrorBox,
+  Loading,
+  Empty,
+  useData,
+} from '../components/shared';
 
 function getSlaBadge(ticket: any): { label: string; tone: 'green' | 'amber' | 'slate' } {
   if (ticket.status === 'resolved') {
@@ -60,12 +71,14 @@ export default function Tickets() {
 
   const allTickets = useMemo(
     () => mergeTickets(list.data),
-    [list.data, version] // eslint-disable-line react-hooks/exhaustive-deps
+    [list.data, version], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => {
     if (allTickets.length && params.get('ticket')) {
-      setSelected(allTickets.find((t: any) => t.id === params.get('ticket') || t.number === params.get('ticket')) || null);
+      setSelected(
+        allTickets.find((t: any) => t.id === params.get('ticket') || t.number === params.get('ticket')) || null,
+      );
     }
   }, [allTickets, params]);
 
@@ -77,9 +90,7 @@ export default function Tickets() {
       const r = await api.post('/incidents', form);
       const enriched = enrichTicket(r.data);
       saveLocalTicket(enriched);
-      setCreated(
-        `Issue reported and linked to ticket ${enriched.number} (${enriched.tier}).`
-      );
+      setCreated(`Issue reported and linked to ticket ${enriched.number} (${enriched.tier}).`);
       setOpen(false);
       setSelected(enriched);
       setForm({ asset_id: '', category: 'network', title: '', description: '', priority: 'medium' });
@@ -151,7 +162,9 @@ export default function Tickets() {
   const rows = allTickets.filter(
     (t: any) =>
       (filter === 'all' || t.status === filter) &&
-      (t.number + ' ' + t.title + ' ' + t.asset_tag + ' ' + (t.tier || '')).toLowerCase().includes(search.toLowerCase())
+      (t.number + ' ' + t.title + ' ' + t.asset_tag + ' ' + (t.tier || ''))
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
 
   return (
@@ -165,7 +178,8 @@ export default function Tickets() {
             setOpen(true);
           }}
         >
-          <Plus size={16} />Report Issue
+          <Plus size={16} />
+          Report Issue
         </Button>
       </PageTitle>
 
@@ -230,17 +244,17 @@ export default function Tickets() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {rows.map((t: any) => {
                   const sla = getSlaBadge(t);
-                  const cleanAssignee = t.assigned_name
-                    ? t.assigned_name.replace(/\s*\([^)]*\)/g, '').trim()
-                    : '—';
+                  const cleanAssignee = t.assigned_name ? t.assigned_name.replace(/\s*\([^)]*\)/g, '').trim() : '—';
                   const priorityLabel =
-                    t.priority === 'high' ? 'High' : t.priority === 'medium' ? 'Medium' : t.priority === 'low' ? 'Low' : t.priority;
-                  const priorityDotColor =
                     t.priority === 'high'
-                      ? 'bg-rose-500'
+                      ? 'High'
                       : t.priority === 'medium'
-                      ? 'bg-amber-500'
-                      : 'bg-sky-500';
+                        ? 'Medium'
+                        : t.priority === 'low'
+                          ? 'Low'
+                          : t.priority;
+                  const priorityDotColor =
+                    t.priority === 'high' ? 'bg-rose-500' : t.priority === 'medium' ? 'bg-amber-500' : 'bg-sky-500';
 
                   return (
                     <tr
@@ -291,7 +305,10 @@ export default function Tickets() {
                       <td className="px-4 py-3.5 whitespace-nowrap text-xs">
                         <Status value={t.status} id={`ticket-status-${t.id}`} />
                       </td>
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap text-xs" onClick={e => e.stopPropagation()}>
+                      <td
+                        className="px-4 py-3.5 text-right whitespace-nowrap text-xs"
+                        onClick={e => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
@@ -320,12 +337,7 @@ export default function Tickets() {
         <Empty text="No tickets match the selected filter." />
       )}
 
-      <Modal
-        open={open}
-        onClose={setOpen}
-        title="Report an Issue"
-        id="incident-dialog"
-      >
+      <Modal open={open} onClose={setOpen} title="Report an Issue" id="incident-dialog">
         <form onSubmit={report} className="flex flex-col gap-4">
           {/* Row 1: Equipment & Category (2-Column Grid) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -414,22 +426,10 @@ export default function Tickets() {
 
           {/* Row 5: Action Footer */}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setOpen(false)}
-              disabled={busy}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} disabled={busy}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              id="submit-incident"
-              disabled={busy}
-            >
+            <Button type="submit" variant="primary" size="sm" id="submit-incident" disabled={busy}>
               <Send size={14} className="mr-1 inline" />
               {busy ? 'Submitting…' : 'Submit Ticket'}
             </Button>
@@ -451,12 +451,18 @@ export default function Tickets() {
                 <Status value={selected.status} id="detail-ticket-status" />
               </div>
               {/* Main Heading (mt-2): Issue Title */}
-              <h3 data-testid="detail-ticket-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug mt-2">
+              <h3
+                data-testid="detail-ticket-title"
+                className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug mt-2"
+              >
                 {selected.title}
               </h3>
               {/* Subtitle (mt-1): 1-line diagnostic description */}
               {selected.description && (
-                <p data-testid="detail-ticket-description" className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed mt-1">
+                <p
+                  data-testid="detail-ticket-description"
+                  className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed mt-1"
+                >
                   {selected.description}
                 </p>
               )}
@@ -467,127 +473,141 @@ export default function Tickets() {
         }
         id="ticket-detail-dialog"
       >
-        {selected && (() => {
-          const loc = formatLocationBadge(selected.lab_name || selected.lab_id);
-          const locationRoomText = loc.code
-            ? `${loc.code} · ${loc.name || selected.lab_name}`
-            : selected.lab_name || 'Campus';
-          const assigneeText = selected.assigned_name?.replace(/\s*\(.*?\)/, '').trim() || 'Daniel Reyes';
-          const categoryText =
-            selected.category === 'network' || String(selected.asset_tag).startsWith('AP-')
-              ? 'Network'
-              : selected.category === 'workstation' || String(selected.asset_tag).startsWith('PC-')
-              ? 'Workstation'
-              : selected.category
-              ? selected.category.charAt(0).toUpperCase() + selected.category.slice(1)
-              : 'Network';
+        {selected &&
+          (() => {
+            const loc = formatLocationBadge(selected.lab_name || selected.lab_id);
+            const locationRoomText = loc.code
+              ? `${loc.code} · ${loc.name || selected.lab_name}`
+              : selected.lab_name || 'Campus';
+            const assigneeText = selected.assigned_name?.replace(/\s*\(.*?\)/, '').trim() || 'Daniel Reyes';
+            const categoryText =
+              selected.category === 'network' || String(selected.asset_tag).startsWith('AP-')
+                ? 'Network'
+                : selected.category === 'workstation' || String(selected.asset_tag).startsWith('PC-')
+                  ? 'Workstation'
+                  : selected.category
+                    ? selected.category.charAt(0).toUpperCase() + selected.category.slice(1)
+                    : 'Network';
 
-          return (
-            <div className="flex flex-col gap-4">
-              {/* 2. Compact 4-Item Context Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Location / Room</span>
-                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1" title={locationRoomText}>
-                    {locationRoomText}
-                  </strong>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Device</span>
-                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-mono block truncate mt-1" title={selected.asset_tag}>
-                    {selected.asset_tag || '—'}
-                  </strong>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Category</span>
-                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1">
-                    {categoryText}
-                  </strong>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Assignee</span>
-                  <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1" title={assigneeText}>
-                    {assigneeText}
-                  </strong>
-                </div>
-              </div>
-
-              {/* 3. Action / Resolution Footer by State */}
-              {selected.status === 'resolved' ? (
-                <div className="flex flex-col gap-3">
-                  <div
-                    className="p-3.5 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20 text-xs"
-                    data-testid="resolution-notes"
-                  >
-                    <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
-                      <CheckCircle2 size={15} className="text-emerald-500" />
-                      Resolution Notes
-                    </div>
-                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                      {selected.resolution_notes || 'Resolved and verified operational.'}
-                    </p>
+            return (
+              <div className="flex flex-col gap-4">
+                {/* 2. Compact 4-Item Context Strip */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Location / Room
+                    </span>
+                    <strong
+                      className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1"
+                      title={locationRoomText}
+                    >
+                      {locationRoomText}
+                    </strong>
                   </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Device</span>
+                    <strong
+                      className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-mono block truncate mt-1"
+                      title={selected.asset_tag}
+                    >
+                      {selected.asset_tag || '—'}
+                    </strong>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Category</span>
+                    <strong className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1">
+                      {categoryText}
+                    </strong>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Assignee</span>
+                    <strong
+                      className="text-xs font-semibold text-slate-900 dark:text-slate-100 block truncate mt-1"
+                      title={assigneeText}
+                    >
+                      {assigneeText}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* 3. Action / Resolution Footer by State */}
+                {selected.status === 'resolved' ? (
+                  <div className="flex flex-col gap-3">
+                    <div
+                      className="p-3.5 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20 text-xs"
+                      data-testid="resolution-notes"
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+                        <CheckCircle2 size={15} className="text-emerald-500" />
+                        Resolution Notes
+                      </div>
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {selected.resolution_notes || 'Resolved and verified operational.'}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                ) : user.role !== 'assistant' ? (
+                  <div className="flex flex-col gap-3">
+                    <Field label="Resolution Notes" id="resolution-notes-input">
+                      <textarea
+                        data-testid="resolution-notes-input"
+                        id="resolution-notes-input"
+                        rows={2}
+                        value={notes}
+                        maxLength={3000}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder={
+                          selected.status === 'open'
+                            ? 'Optional notes or observations regarding this incident…'
+                            : 'Describe what was investigated, repaired, and verified…'
+                        }
+                        className="resize-none"
+                      />
+                    </Field>
+                    <ErrorBox error={error} />
+                    <div className="flex items-center justify-end gap-2.5 mt-1 pt-3 border-t border-slate-200 dark:border-slate-800">
+                      {selected.status === 'open' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          id="start-investigation"
+                          disabled={busy}
+                          onClick={() => progress('in_progress')}
+                        >
+                          <ArrowRight size={14} className="mr-1 inline" />
+                          Begin Investigation
+                        </Button>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        id="resolve-ticket"
+                        disabled={busy}
+                        onClick={() => progress('resolved')}
+                      >
+                        <CheckCircle2 size={14} className="mr-1 inline" />
+                        Mark as Resolved
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
                   <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
                     <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
                       Close
                     </Button>
                   </div>
-                </div>
-              ) : user.role !== 'assistant' ? (
-                <div className="flex flex-col gap-3">
-                  <Field label="Resolution Notes" id="resolution-notes-input">
-                    <textarea
-                      data-testid="resolution-notes-input"
-                      id="resolution-notes-input"
-                      rows={2}
-                      value={notes}
-                      maxLength={3000}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder={
-                        selected.status === 'open'
-                          ? 'Optional notes or observations regarding this incident…'
-                          : 'Describe what was investigated, repaired, and verified…'
-                      }
-                      className="resize-none"
-                    />
-                  </Field>
-                  <ErrorBox error={error} />
-                  <div className="flex items-center justify-end gap-2.5 mt-1 pt-3 border-t border-slate-200 dark:border-slate-800">
-                    {selected.status === 'open' && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        id="start-investigation"
-                        disabled={busy}
-                        onClick={() => progress('in_progress')}
-                      >
-                        <ArrowRight size={14} className="mr-1 inline" />Begin Investigation
-                      </Button>
-                    )}
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      id="resolve-ticket"
-                      disabled={busy}
-                      onClick={() => progress('resolved')}
-                    >
-                      <CheckCircle2 size={14} className="mr-1 inline" />Mark as Resolved
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
-                  <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
-                    Close
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+                )}
+              </div>
+            );
+          })()}
       </Modal>
     </>
   );
