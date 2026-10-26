@@ -133,6 +133,30 @@ def test_network_faults_route_to_tier_2_with_high_priority(client, login):
     assert ticket["priority"] == "high"
 
 
+# Reports
+
+
+def test_mean_resolution_time_is_measured_not_invented(client, login):
+    login(ADMIN)
+    assert client.get("/api/reports").json()["mean_resolution_minutes"] is None
+
+    login(ASSISTANT)
+    ticket = client.post("/api/incidents", json=incident()).json()
+    login(ENGINEER)
+    client.patch(f"/api/tickets/{ticket['id']}", json={"status": "in_progress"})
+    client.patch(
+        f"/api/tickets/{ticket['id']}", json={"status": "resolved", "resolution_notes": "Fixed within the test."}
+    )
+
+    login(ADMIN)
+    report = client.get("/api/reports").json()
+    assert report["resolved"] == 1
+    # Resolved seconds after opening; the old code replaced anything under 5 minutes with a made-up 48+ minutes.
+    assert report["mean_resolution_minutes"] < 1
+    lab_a = next(lab for lab in report["labs"] if lab["id"] == "lab-1")
+    assert lab_a["assets"] > 0
+
+
 # Shifts
 
 
