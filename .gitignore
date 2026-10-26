@@ -19,21 +19,20 @@ node_modules/
 # Testing
 /coverage
 
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
 # Production builds
+*.tsbuildinfo
 /build
 dist/
 dist
 
-# Environment files (comprehensive coverage)
-
+# Environment files and secrets
+.env
+.env.*
+*.env
 *token.json*
 *credentials.json*
+*.key
+.credentials
 
 # Logs and debug files
 npm-debug.log*
@@ -52,18 +51,6 @@ __pycache__/
 venv/
 .venv/
 
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
-
-# Deployment
-.vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
 # Archive files and large assets
 **/*.zip
 **/*.tar.gz
@@ -75,17 +62,3 @@ agenthub/agents/youtube/db
 
 # Build caches
 .cache/
-
-memory/test_credentials.md
-
-# Mobile development
-android-sdk/
-
-# overlay black-box crash/user-report dumps — session data, never history
-.env
-.env.*
-*.env
-credentials.json
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/0.pack
