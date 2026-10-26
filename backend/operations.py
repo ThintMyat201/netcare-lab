@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
-from core import db, uid, stamp, now, audit, authorize, lease, Document
+from core import db, uid, stamp, now, audit, authorize, lease, Document, DEMO
 from auth import current, hash_password, public
 import campus
 
@@ -307,11 +307,6 @@ async def delete_asset(id: str, user=Depends(current)):
 async def get_locations(user=Depends(current)):
     await authorize(user, 'view')
     locations = await db.labs.find({}, {'_id': 0}).to_list(200)
-    if not locations or any(
-        not loc.get('code') or not loc.get('category') or not loc.get('block') for loc in locations
-    ):
-        await campus.ensure_locations()
-        locations = await db.labs.find({}, {'_id': 0}).to_list(200)
     assets = await db.assets.find({'archived': False}, {'_id': 0, 'id': 1, 'lab_id': 1, 'kind': 1}).to_list(5000)
     counts = {}
     for a in assets:
@@ -649,7 +644,10 @@ def shift_status(s):
     return 'upcoming'
 
 
-async def _normalize_campus_shifts():
+async def normalize_campus_shifts():
+    """Move the three seeded demo shifts onto today's campus day. Runs at startup and from the maintenance loop."""
+    if not DEMO:
+        return
     day_base = now().replace(hour=0, minute=0, second=0, microsecond=0)
     windows = [
         ('shift-seed-0', 'lab-1', 'Computing Lab A', 'assistant', 'Jamie Santos', 8, 12, 'Morning Shift'),
@@ -688,8 +686,6 @@ async def _normalize_campus_shifts():
 @router.get('/shifts', response_model=list[Document])
 async def shifts(user=Depends(current)):
     await authorize(user, 'view')
-    await _normalize_campus_shifts()
-    await make_reminders()
     rows = await db.shifts.find({}, {'_id': 0}).sort('start', 1).to_list(500)
     return [{**s, 'status': shift_status(s)} for s in rows]
 
@@ -893,9 +889,6 @@ async def submit_checklist(body: ChecklistInput, user=Depends(current)):
 @router.get('/checklists', response_model=list[Document])
 async def checklists(user=Depends(current)):
     await authorize(user, 'view')
-    await db.checklists.update_many(
-        {'created_by_name': 'Alex Morgan'}, {'$set': {'created_by': 'assistant', 'created_by_name': 'Jamie Santos'}}
-    )
     return (
         await db.checklists.find(checklist_scope(user), {'_id': 0, 'fingerprint': 0})
         .sort('created_at', -1)

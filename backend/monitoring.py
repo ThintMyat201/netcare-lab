@@ -557,8 +557,6 @@ async def sync_simulation_tickets(assets, scenario: str, user: dict):
 @router.get('/monitoring')
 async def monitoring(lab_id: str = '', user=Depends(current)):
     await authorize(user, 'view')
-    await ensure_telemetry_history()
-    await sync_alerts()
     query = {'kind': 'AP', 'archived': False}
     if lab_id:
         query['lab_id'] = lab_id
@@ -625,7 +623,6 @@ async def monitoring(lab_id: str = '', user=Depends(current)):
 @router.get('/monitoring/{id}/history')
 async def ap_history(id: str, user=Depends(current)):
     await authorize(user, 'view')
-    await ensure_telemetry_history()
     asset = await db.assets.find_one({'id': id, 'kind': 'AP'}, {'_id': 0})
     if not asset:
         raise HTTPException(404, 'Access point not found.')
@@ -713,7 +710,6 @@ async def sample(user=Depends(current)):
 @router.get('/alerts', response_model=list[Document])
 async def alerts(user=Depends(current)):
     await authorize(user, 'view')
-    await sync_alerts()
     return await db.alerts.find({}, {'_id': 0}).sort('created_at', -1).to_list(500)
 
 

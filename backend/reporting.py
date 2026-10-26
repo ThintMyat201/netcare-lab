@@ -14,7 +14,6 @@ router = APIRouter(prefix='/api')
 @router.get('/overview')
 async def overview(user=Depends(current)):
     await authorize(user, 'view')
-    await make_reminders()
     tickets = await db.tickets.find(ticket_scope(user), {'_id': 0}).sort('created_at', -1).to_list(500)
     shifts = (
         await db.shifts.find(

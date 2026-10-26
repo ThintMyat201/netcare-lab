@@ -1,38 +1,53 @@
-from core import db, client
-import os
 import asyncio
+import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from core import db, client
 from seed import seed
 from auth import router as auth_router
-from operations import router as operations_router, make_reminders
-from monitoring import router as monitoring_router, generate_sample, sync_alerts
+from operations import router as operations_router, make_reminders, normalize_campus_shifts
+from monitoring import router as monitoring_router, generate_sample, sync_alerts, ensure_telemetry_history
 from reporting import router as reporting_router
 
+log = logging.getLogger('atlas.maintenance')
+TICK_SECONDS = 15
+# Gap-filling the 15-minute history scans every stored timestamp, so it runs once per 15 minutes, not every tick.
+HISTORY_EVERY_TICKS = 60
 
-async def _background_telemetry_loop():
+
+async def maintenance_tick(tick):
+    """All background writes live here so that GET endpoints stay read-only."""
+    if tick % HISTORY_EVERY_TICKS == 0:
+        await ensure_telemetry_history()
+        await normalize_campus_shifts()
+    await generate_sample(overwrite=True)
+    await sync_alerts()
+    await make_reminders()
+
+
+async def maintenance_loop():
+    tick = 1
     while True:
+        await asyncio.sleep(TICK_SECONDS)
         try:
-            await asyncio.sleep(15)
-            await generate_sample(overwrite=True)
-            await sync_alerts()
-            await make_reminders()
-        except asyncio.CancelledError:
-            break
+            await maintenance_tick(tick)
         except Exception:
-            await asyncio.sleep(15)
+            log.exception('Maintenance tick %s failed; retrying on the next tick.', tick)
+        tick += 1
 
 
 @asynccontextmanager
 async def lifespan(app):
     await seed()
-    bg_task = asyncio.create_task(_background_telemetry_loop())
+    await maintenance_tick(0)
+    task = asyncio.create_task(maintenance_loop())
     try:
         yield
     finally:
-        bg_task.cancel()
+        task.cancel()
         client.close()
 
 
