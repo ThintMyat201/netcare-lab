@@ -56,6 +56,8 @@ export default function Checklists() {
   const [mapLab, setMapLab] = useState(initialLabParam === 'all' ? 'lab-1' : initialLabParam);
   const [outcomeFilter, setOutcomeFilter] = useState('all');
   const [faultTier, setFaultTier] = useState<'tier1' | 'tier2'>('tier1');
+  const [inspectionStatus, setInspectionStatus] = useState<'passed' | 'failed'>('passed');
+  const [linkedTicketChoice, setLinkedTicketChoice] = useState<string>('new-tier1');
   const [version, setVersion] = useState(0);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchNotice, setBatchNotice] = useState('');
@@ -65,7 +67,7 @@ export default function Checklists() {
     () =>
       drafts[user.id] || {
         asset_id: params.get('asset') || '',
-        checks: {},
+        checks: { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
         notes: '',
         request_id: crypto.randomUUID(),
       }
@@ -119,13 +121,17 @@ export default function Checklists() {
     }
   }, [isAssistant, assets.data, params, allChecklists, draft.asset_id]);
 
-  useEffect(() => {
-    if (draft.checks?.network === 'fail') {
-      setFaultTier('tier2');
-    } else if (Object.entries(draft.checks || {}).some(([k, v]) => k !== 'network' && v === 'fail')) {
-      setFaultTier('tier1');
-    }
-  }, [draft.checks]);
+  const activeAsset = useMemo(() => {
+    return assets.data?.find((a: any) => a.id === draft.asset_id);
+  }, [assets.data, draft.asset_id]);
+
+  const workstationTag = activeAsset?.tag || 'PC-CL-A-01';
+  const loc = activeAsset ? (findLocation(activeAsset.lab_id) || findLocation(activeAsset.lab_name)) : null;
+  const roomBadge = loc ? `${loc.code} · ${loc.name}` : (activeAsset?.lab_name || 'B-04-03 · Computing Lab A');
+
+  const openTicketsForAsset = useMemo(() => {
+    return allTickets.filter((t: any) => t.status !== 'resolved');
+  }, [allTickets]);
 
   const update = (value: any) => setDraft({ ...draft, ...value });
 
@@ -137,7 +143,7 @@ export default function Checklists() {
     setOpen(nextOpen);
   };
 
-  const hasFailedCheck = Object.values(draft.checks || {}).includes('fail');
+  const hasFailedCheck = inspectionStatus === 'failed';
 
   const submit = async (e: any) => {
     e.preventDefault();
@@ -146,10 +152,32 @@ export default function Checklists() {
     setLocked(true);
     setFormError('');
     try {
-      const r = await api.post('/checklists', draft);
+      const isFailed = inspectionStatus === 'failed';
+      const isNetworkFault = isFailed && (faultTier === 'tier2' || linkedTicketChoice === 'new-tier2');
+      const checksPayload = isFailed
+        ? {
+            power: 'pass',
+            display: 'pass',
+            peripherals: isNetworkFault ? 'pass' : 'fail',
+            network: isNetworkFault ? 'fail' : 'pass',
+            software: 'pass',
+          }
+        : {
+            power: 'pass',
+            display: 'pass',
+            peripherals: 'pass',
+            network: 'pass',
+            software: 'pass',
+          };
+
+      const payload = {
+        ...draft,
+        checks: checksPayload,
+      };
+
+      const r = await api.post('/checklists', payload);
       const saved = r.data;
       const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
-      const isNetworkFault = draft.checks?.network === 'fail' || (hasFailedCheck && faultTier === 'tier2');
       const tierLabel = isNetworkFault
         ? 'Tier 2 · Network / Connectivity'
         : 'Tier 1 · Hardware / Peripheral';
@@ -160,11 +188,11 @@ export default function Checklists() {
 
       const rawTickets = Array.isArray(saved.tickets) && saved.tickets.length > 0
         ? saved.tickets
-        : hasFailedCheck
+        : isFailed
         ? [
             {
               id: `inc-${Date.now()}`,
-              number: `INC-${1000 + Math.floor(Math.random() * 900)}`,
+              number: linkedTicketChoice.startsWith('INC-') ? linkedTicketChoice : `INC-${1000 + Math.floor(Math.random() * 900)}`,
               category: isNetworkFault ? 'network' : 'hardware',
             },
           ]
@@ -174,9 +202,10 @@ export default function Checklists() {
         const isNetTicket = t.category === 'network' || isNetworkFault;
         const tag = saved.asset_tag || pcAsset?.tag || 'PC-CL-A-01';
         const lab = saved.lab_name || pcAsset?.lab_name || 'Computing Lab A';
+        const ticketNumber = linkedTicketChoice.startsWith('INC-') ? linkedTicketChoice : t.number;
         const ticketRecord = {
           id: t.id,
-          number: t.number,
+          number: ticketNumber,
           asset_id: draft.asset_id,
           asset_tag: tag,
           lab_name: lab,
@@ -189,7 +218,7 @@ export default function Checklists() {
             : 'Jamie Santos (Lab Support · Tier 1)',
           title: isNetTicket
             ? `Network / NIC Connectivity fault on ${tag}`
-            : `${String(t.category).charAt(0).toUpperCase() + String(t.category).slice(1)} check failed on ${tag}`,
+            : `Hardware check failed on ${tag}`,
           description:
             draft.notes ||
             (isNetTicket
@@ -231,9 +260,9 @@ export default function Checklists() {
       const enrichedChecklist = {
         ...saved,
         lab_id: pcAsset?.lab_id || (params.get('lab') || undefined),
-        fault_tier: hasFailedCheck ? tierLabel : 'All Checks Passed',
-        assigned_role: hasFailedCheck ? assignedRole : null,
-        assigned_name: hasFailedCheck ? assignedName : null,
+        fault_tier: isFailed ? tierLabel : 'All Checks Passed',
+        assigned_role: isFailed ? assignedRole : null,
+        assigned_name: isFailed ? assignedName : null,
         tickets: enrichedTickets,
       };
 
@@ -245,12 +274,13 @@ export default function Checklists() {
     } catch (e: any) {
       const isNetworkError = !e.response || e.response.status >= 500;
       if (isNetworkError) {
+        const isFailed = inspectionStatus === 'failed';
+        const isNetworkFault = isFailed && (faultTier === 'tier2' || linkedTicketChoice === 'new-tier2');
         const pcAsset = assets.data?.find((a: any) => a.id === draft.asset_id);
         const tag = pcAsset?.tag || 'PC-CL-A-01';
         const lab = pcAsset?.lab_name || 'Computing Lab A';
-        const isNetworkFault = draft.checks?.network === 'fail' || (hasFailedCheck && faultTier === 'tier2');
-        const num = `INC-${1000 + Math.floor(Math.random() * 900)}`;
-        const localTicket = hasFailedCheck ? {
+        const num = linkedTicketChoice.startsWith('INC-') ? linkedTicketChoice : `INC-${1000 + Math.floor(Math.random() * 900)}`;
+        const localTicket = isFailed ? {
           id: `inc-local-${Date.now()}`,
           number: num,
           asset_id: draft.asset_id,
@@ -294,12 +324,14 @@ export default function Checklists() {
           asset_tag: tag,
           lab_id: pcAsset?.lab_id || (params.get('lab') || 'lab-1'),
           lab_name: lab,
-          checks: draft.checks,
+          checks: isFailed
+            ? { power: 'pass', display: 'pass', peripherals: isNetworkFault ? 'pass' : 'fail', network: isNetworkFault ? 'fail' : 'pass', software: 'pass' }
+            : { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
           notes: draft.notes,
-          result: hasFailedCheck ? 'failed' : 'passed',
-          fault_tier: hasFailedCheck ? (isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral') : 'All Checks Passed',
-          assigned_role: hasFailedCheck ? (isNetworkFault ? 'engineer' : 'assistant') : null,
-          assigned_name: hasFailedCheck ? (isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)') : null,
+          result: isFailed ? 'failed' : 'passed',
+          fault_tier: isFailed ? (isNetworkFault ? 'Tier 2 · Network / Connectivity' : 'Tier 1 · Hardware / Peripheral') : 'All Checks Passed',
+          assigned_role: isFailed ? (isNetworkFault ? 'engineer' : 'assistant') : null,
+          assigned_name: isFailed ? (isNetworkFault ? 'Daniel Reyes (Network Engineer)' : 'Jamie Santos (Lab Support · Tier 1)') : null,
           created_by: user.id,
           created_by_name: user.name,
           created_at: new Date().toISOString(),
@@ -324,19 +356,25 @@ export default function Checklists() {
   const start = (preselectedAssetId?: string) => {
     if (!isAssistant) return;
     setSuccess(null);
-    if (preselectedAssetId) {
-      setDraft({
-        asset_id: preselectedAssetId,
-        checks: {},
-        notes: '',
-        request_id: crypto.randomUUID(),
-      });
-    } else if (labFilter !== 'all' && assets.data) {
-      const prog = getLabInspectionProgress(labFilter, LAB_NAMES[labFilter] || '', allChecklists, assets.data);
-      if (prog.nextUnchecked) {
-        setDraft((prev: any) => ({ ...prev, asset_id: prog.nextUnchecked.id }));
+    let targetAssetId = preselectedAssetId;
+    if (!targetAssetId) {
+      if (labFilter !== 'all' && assets.data) {
+        const prog = getLabInspectionProgress(labFilter, LAB_NAMES[labFilter] || '', allChecklists, assets.data);
+        if (prog.nextUnchecked) targetAssetId = prog.nextUnchecked.id;
+      }
+      if (!targetAssetId && selectableWorkstations.length > 0) {
+        targetAssetId = selectableWorkstations[0].id;
       }
     }
+    setDraft({
+      asset_id: targetAssetId || '',
+      checks: { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
+      notes: '',
+      request_id: crypto.randomUUID(),
+    });
+    setInspectionStatus('passed');
+    setLinkedTicketChoice('new-tier1');
+    setFaultTier('tier1');
     setOpen(true);
   };
 
@@ -527,15 +565,15 @@ export default function Checklists() {
       ) : filteredWorkstations.length ? (
         <div className="checklists-table-card-wrapper w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse clean-checklists-table" style={{ minWidth: '780px' }}>
+            <table className="w-full text-left text-sm border-collapse clean-checklists-table">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/50 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  <th className="px-5 py-4" style={{ width: '18%' }}>WORKSTATION</th>
-                  <th className="px-5 py-4" style={{ width: '13%' }}>ROOM</th>
-                  <th className="px-5 py-4" style={{ width: '18%' }}>INSPECTED BY</th>
-                  <th className="px-5 py-4" style={{ width: '17%' }}>OUTCOME</th>
-                  <th className="px-5 py-4" style={{ width: '14%' }}>TICKET</th>
-                  <th className="px-5 py-4 text-right" style={{ width: '20%' }}>SUBMITTED / ACTION</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">WORKSTATION</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">ROOM</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">INSPECTED BY</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">OUTCOME</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">TICKET</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">SUBMITTED / ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -546,16 +584,16 @@ export default function Checklists() {
                       data-testid={`checklist-row-${w.latestCheck?.id || w.id}`}
                       className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="px-5 py-4 font-mono font-bold text-slate-100 whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                         {w.tag}
                       </td>
-                      <td className="px-5 py-4 font-mono text-xs text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {w.roomCode}
                       </td>
-                      <td className="px-5 py-4 text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">
                         {w.inspectedBy}
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
                           className="inline-flex items-center gap-1.5 text-xs font-medium"
                           data-testid={`checklist-result-${w.latestCheck?.id || w.id}`}
@@ -586,7 +624,7 @@ export default function Checklists() {
                           </span>
                         </span>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {w.linkedTicket ? (
                           isAssistant ? (
                             <button
@@ -619,7 +657,7 @@ export default function Checklists() {
                           <span className="text-slate-500">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <span className="font-mono text-xs text-slate-400 whitespace-nowrap">
                             {w.submittedAt ? time(w.submittedAt, true) : '—'}
@@ -628,7 +666,7 @@ export default function Checklists() {
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="btn-inspect-workstation text-xs py-1 px-2.5 h-7"
+                              className="btn-inspect-workstation text-xs py-1 px-2.5 h-7 whitespace-nowrap"
                               data-testid={`inspect-asset-${w.id}`}
                               onClick={() => start(w.id)}
                             >
@@ -664,8 +702,21 @@ export default function Checklists() {
         <Modal
           open={isAssistant && open}
           onClose={handleModalChange}
-          title={success ? 'Inspection Confirmed' : 'New Equipment Inspection'}
-          description="Workstation inspection · Connected to Shift Progress & Tiered Incident Routing"
+          title={
+            success ? (
+              'Inspection Confirmed'
+            ) : (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="font-mono font-bold text-base text-slate-900 dark:text-slate-100">
+                  {workstationTag}
+                </span>
+                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  {roomBadge}
+                </span>
+              </div>
+            )
+          }
+          description="Equipment Inspection · Workstation Physical & Network Audit"
           id="checklist-dialog"
         >
           {success ? (
@@ -718,102 +769,146 @@ export default function Checklists() {
                   )}
                 </>
               ) : (
-                <p>All five verification checks passed.</p>
+                <p>All verification checks passed.</p>
               )}
               <Button id="checklist-done" variant="primary" onClick={() => setOpen(false)}>
                 Done
               </Button>
             </div>
           ) : (
-            <form onSubmit={submit}>
-              <Field label="Workstation" id="checklist-asset">
-                <Select
-                  id="checklist-asset"
-                  value={draft.asset_id}
-                  required
-                  disabled={locked || sending}
-                  onChange={(e: any) => update({ asset_id: e.target.value })}
-                >
-                  <option value="">Select a workstation…</option>
-                  {selectableWorkstations.map((a: any) => (
-                    <option value={a.id} key={a.id}>
-                      {a.tag} · {formatLocationWithCode(a.lab_name || a.lab_id)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              <input type="hidden" id="checklist-asset" value={draft.asset_id} readOnly />
 
-              <div className="checklist-subhead">
-                <span>INSPECTION CHECKLIST (TIER 1 HARDWARE &amp; TIER 2 NETWORK)</span>
-                <button
-                  type="button"
-                  className="text-button"
-                  data-testid="mark-all-passed"
-                  disabled={locked || sending}
-                  onClick={() => update({ checks: Object.fromEntries(categories.map(([c]) => [c, 'pass'])) })}
-                >
-                  <CheckCheck size={14} />Pass All Checks
-                </button>
-              </div>
-
-              <div className="checklist-items">
-                {categories.map(([key, label, sub, tierBadge]) => (
-                  <div className="checklist-item" key={key}>
-                    <div>
-                      <strong>
-                        {label}{' '}
-                        <span className={`tier-pill ${key === 'network' ? 'tier2' : 'tier1'}`}>
-                          {tierBadge}
-                        </span>
-                      </strong>
-                      <small>{sub}</small>
-                    </div>
-                    <div className="check-choices">
-                      {['pass', 'fail'].map(v => (
-                        <button
-                          type="button"
-                          disabled={locked || sending}
-                          key={v}
-                          className={draft.checks[key] === v ? `selected ${v}` : ''}
-                          aria-pressed={draft.checks[key] === v}
-                          data-testid={`check-${key}-${v}`}
-                          onClick={() => update({ checks: { ...draft.checks, [key]: v } })}
-                        >
-                          {v === 'pass' ? <Check size={15} /> : <X size={15} />}
-                          <span>{v === 'pass' ? 'Pass' : 'Fail'}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {hasFailedCheck && (
-                <Field label="Fault Escalation & Routing Category" id="checklist-fault-tier">
+              {!activeAsset && (
+                <Field label="Select Workstation" id="checklist-asset-select">
                   <Select
-                    id="checklist-fault-tier"
-                    value={faultTier}
+                    id="checklist-asset-select"
+                    value={draft.asset_id}
+                    required
                     disabled={locked || sending}
-                    onChange={(e: any) => setFaultTier(e.target.value)}
+                    onChange={(e: any) => update({ asset_id: e.target.value })}
                   >
-                    <option value="tier1">Hardware / Peripheral (Tier 1 — Lab Support Queue)</option>
-                    <option value="tier2">Network / Connectivity (Tier 2 — Auto-Route to Network Engineer)</option>
+                    <option value="">Select a workstation…</option>
+                    {selectableWorkstations.map((a: any) => (
+                      <option value={a.id} key={a.id}>
+                        {a.tag} · {formatLocationWithCode(a.lab_name || a.lab_id)}
+                      </option>
+                    ))}
                   </Select>
                 </Field>
               )}
 
-              <Field label="Inspection Notes (Optional)" id="checklist-notes">
-                <textarea
-                  data-testid="checklist-notes"
-                  id="checklist-notes"
-                  maxLength={2000}
-                  value={draft.notes}
-                  disabled={locked || sending}
-                  onChange={e => update({ notes: e.target.value })}
-                  placeholder="Add observations, hardware issues, or network connectivity symptoms…"
-                  rows={3}
-                />
-              </Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Row 1: Inspection Status | Inspected By */}
+                <Field label="Inspection Status" id="checklist-status">
+                  <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700/80 h-[38px]">
+                    <button
+                      type="button"
+                      className={`flex-1 h-full rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        inspectionStatus === 'passed'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                      onClick={() => {
+                        setInspectionStatus('passed');
+                        update({
+                          checks: { power: 'pass', display: 'pass', peripherals: 'pass', network: 'pass', software: 'pass' },
+                        });
+                      }}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${inspectionStatus === 'passed' ? 'bg-white' : 'bg-emerald-500'}`} />
+                      Passed
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 h-full rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        inspectionStatus === 'failed'
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                      onClick={() => {
+                        setInspectionStatus('failed');
+                        const isNet = linkedTicketChoice === 'new-tier2';
+                        update({
+                          checks: {
+                            power: 'pass',
+                            display: 'pass',
+                            peripherals: isNet ? 'pass' : 'fail',
+                            network: isNet ? 'fail' : 'pass',
+                            software: 'pass',
+                          },
+                        });
+                      }}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${inspectionStatus === 'failed' ? 'bg-white' : 'bg-amber-500'}`} />
+                      Fault Reported
+                    </button>
+                  </div>
+                </Field>
+
+                <Field label="Inspected By" id="checklist-inspector">
+                  <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm h-[38px]">
+                    <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                      {(user.name || 'Jamie Santos').split(' ').map((n: string) => n[0]).join('')}
+                    </div>
+                    <span className="font-medium text-xs truncate">{user.name || 'Jamie Santos'}</span>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-auto uppercase tracking-wide flex-shrink-0">IT Assistant</span>
+                  </div>
+                </Field>
+
+                {/* Row 2 (Full Width if Fault Reported): Link Incident Ticket */}
+                {inspectionStatus === 'failed' && (
+                  <div className="sm:col-span-2">
+                    <Field label="Link Incident Ticket" id="checklist-fault-tier">
+                      <Select
+                        id="checklist-fault-tier"
+                        value={linkedTicketChoice}
+                        disabled={locked || sending}
+                        onChange={(e: any) => {
+                          const val = e.target.value;
+                          setLinkedTicketChoice(val);
+                          const isNet = val === 'new-tier2' || val.toLowerCase().includes('network');
+                          const tier = isNet ? 'tier2' : 'tier1';
+                          setFaultTier(tier);
+                          update({
+                            checks: {
+                              power: 'pass',
+                              display: 'pass',
+                              peripherals: tier === 'tier1' ? 'fail' : 'pass',
+                              network: tier === 'tier2' ? 'fail' : 'pass',
+                              software: 'pass',
+                            },
+                          });
+                        }}
+                      >
+                        <option value="new-tier1">Auto-Trigger Quick Ticket · Tier 1 Hardware Support Queue</option>
+                        <option value="new-tier2">Auto-Trigger Quick Ticket · Tier 2 Network Connectivity Engineer</option>
+                        {openTicketsForAsset.map((t: any) => (
+                          <option key={t.id} value={t.number}>
+                            Attach Existing Ticket · {t.number} ({t.title || t.category})
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                )}
+
+                {/* Row 3 (Full Width): Audit Notes / Observations */}
+                <div className="sm:col-span-2">
+                  <Field label="Audit Notes / Observations" id="checklist-notes">
+                    <textarea
+                      data-testid="checklist-notes"
+                      id="checklist-notes"
+                      maxLength={2000}
+                      value={draft.notes}
+                      disabled={locked || sending}
+                      onChange={e => update({ notes: e.target.value })}
+                      placeholder="Peripherals verified, power supply stable…"
+                      rows={2}
+                    />
+                  </Field>
+                </div>
+              </div>
 
               <ErrorBox error={formError || assets.error} />
 
@@ -823,16 +918,23 @@ export default function Checklists() {
                 </p>
               )}
 
-              <div className="form-footer">
-                <span>{Object.keys(draft.checks).length} / 5 checks completed</span>
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={sending}
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
                   id="submit-checklist"
                   variant="primary"
-                  disabled={sending || !draft.asset_id || Object.keys(draft.checks).length !== 5}
+                  disabled={sending || !draft.asset_id}
                 >
-                  <Send size={15} />
-                  {sending ? 'Saving…' : locked ? 'Retry Submission' : 'Submit Inspection'}
+                  <Check size={14} />
+                  {sending ? 'Saving…' : 'Save Inspection Record'}
                 </Button>
               </div>
             </form>
