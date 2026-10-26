@@ -758,6 +758,8 @@ async def complete_shift(id: str, body: ShiftCompleteInput, user=Depends(current
     row = await db.shifts.find_one({'id': id, 'cancelled': False}, {'_id': 0})
     if not row:
         raise HTTPException(404, 'Shift not found.')
+    if row.get('completed_at'):
+        return {**row, 'status': shift_status(row)}
     at = stamp()
     notes = body.handover_notes.strip() or 'All scheduled lab workstation inspections completed. Handover verified.'
     ack_at = row.get('acknowledged_at') or at
@@ -776,8 +778,11 @@ async def cancel_shift(id: str, user=Depends(current)):
     row = await db.shifts.find_one({'id': id}, {'_id': 0})
     if not row:
         raise HTTPException(404, 'Shift not found.')
-    await db.shifts.update_one({'id': id}, {'$set': {'cancelled': True}})
-    await audit(user, 'Shift cancelled', row['assistant_name'], id)
+    if row.get('completed_at'):
+        raise HTTPException(409, 'Completed shifts cannot be cancelled.')
+    result = await db.shifts.update_one({'id': id, 'cancelled': False}, {'$set': {'cancelled': True}})
+    if result.modified_count:
+        await audit(user, 'Shift cancelled', row['assistant_name'], id)
     return {'message': 'Shift cancelled. History retained.'}
 
 

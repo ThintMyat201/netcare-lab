@@ -175,6 +175,32 @@ def test_roster_rejects_overlaps_including_across_midnight(client, login):
     assert add_shift(client, day(4, 0), day(5, 1)).status_code == 422
 
 
+def test_acknowledge_complete_and_cancel_are_safe_to_repeat(client, login):
+    login(ADMIN)
+    shift = add_shift(client, day(2, 8), day(2, 12)).json()
+    login(NINA)
+    first_ack = client.post(f"/api/shifts/{shift['id']}/acknowledge").json()
+    assert first_ack["status"] == "acknowledged"
+    assert (
+        client.post(f"/api/shifts/{shift['id']}/acknowledge").json()["acknowledged_at"] == first_ack["acknowledged_at"]
+    )
+
+    done = client.post(f"/api/shifts/{shift['id']}/complete", json={"handover_notes": "All good"}).json()
+    again = client.post(f"/api/shifts/{shift['id']}/complete", json={"handover_notes": "Second try"}).json()
+    assert again["completed_at"] == done["completed_at"] and again["handover_notes"] == "All good"
+
+    login(ADMIN)
+    assert client.post(f"/api/shifts/{shift['id']}/cancel").status_code == 409
+
+
+def test_cancelling_twice_writes_one_audit_entry(client, login, mock_db):
+    login(ADMIN)
+    shift = add_shift(client, day(2, 13), day(2, 17)).json()
+    assert client.post(f"/api/shifts/{shift['id']}/cancel").status_code == 200
+    assert client.post(f"/api/shifts/{shift['id']}/cancel").status_code == 200
+    assert run(mock_db.audit.count_documents({"action": "Shift cancelled", "resource_id": shift["id"]})) == 1
+
+
 # Inventory
 
 
