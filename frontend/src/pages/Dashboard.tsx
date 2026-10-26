@@ -545,7 +545,7 @@ export default function Dashboard() {
   };
 
   return (
-    <>
+    <div className="dashboard-page w-full max-w-full overflow-x-hidden">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100" data-testid="page-title">
@@ -766,39 +766,50 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="dashboard-mid flex flex-col gap-6">
-            <TrafficChart history={m.history} />
-            <section className="lab-health w-full">
-              <SectionHead title="Lab Operational Health">
-                <Link
-                  to="/monitoring"
-                  data-testid="view-labs-link"
-                  className="icon-button"
-                  title="View device monitoring"
-                >
-                  <ArrowUpRight size={17} />
-                </Link>
-              </SectionHead>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div className="health-summary lg:col-span-1">
-                  <div
-                    className="health-ring"
-                    style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
-                  >
-                    <span>
-                      {Math.round((apStats.online / apStats.total) * 100)}
-                      <small>%</small>
-                    </span>
-                  </div>
-                  <div>
-                    <strong data-testid="network-health-label">Network Health</strong>
-                    <span>
-                      {apStats.online} of {apStats.total} access points operational
-                    </span>
-                    <small>Real-time telemetry snapshot</small>
+          <div className="dashboard-mid grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6 w-full max-w-full">
+            {/* Left Column: Network Traffic & Load (lg:col-span-8) */}
+            <div className="lg:col-span-8 w-full max-w-full overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+              <TrafficChart history={m.history} />
+            </div>
+
+            {/* Right Column: Lab Operational Health (lg:col-span-4) */}
+            <section className="lab-health lg:col-span-4 w-full max-w-full overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm justify-between">
+              <div className="flex flex-col flex-1 justify-between">
+                <div>
+                  <SectionHead title="Lab Operational Health">
+                    <Link
+                      to="/monitoring"
+                      data-testid="view-labs-link"
+                      className="icon-button"
+                      title="View device monitoring"
+                    >
+                      <ArrowUpRight size={17} />
+                    </Link>
+                  </SectionHead>
+
+                  <div className="health-summary flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 !m-0 mb-3.5">
+                    <div
+                      className="health-ring shrink-0"
+                      style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
+                    >
+                      <span>
+                        {Math.round((apStats.online / apStats.total) * 100)}
+                        <small>%</small>
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <strong className="block text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="network-health-label">
+                        Network Health
+                      </strong>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        {apStats.online} of {apStats.total} access points operational
+                      </span>
+                      <small className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Real-time telemetry snapshot</small>
+                    </div>
                   </div>
                 </div>
-                <div className="lab-list lg:col-span-2">
+
+                <div className="lab-list flex flex-col gap-2 my-auto py-2">
                   {[
                     { id: 'lab-1', name: 'Computing Lab A' },
                     { id: 'lab-2', name: 'Computing Lab B' },
@@ -811,32 +822,37 @@ export default function Dashboard() {
                       <Link
                         key={l.id}
                         to={`/monitoring?lab=${l.id}`}
-                        className="lab-row"
+                        className="lab-row flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors"
                         data-testid={`lab-health-${i}`}
                       >
-                        <span className="lab-icon">
-                          <Building2 size={16} />
-                        </span>
-                        <span>
-                          <strong>{l.name}</strong>
-                          <small>{rows.length} access points</small>
-                        </span>
-                        <span className={`lab-state ${issues ? 'warn' : ''}`}>
-                          {issues ? `${issues} alert(s) active` : 'Operational'}
-                        </span>
-                        <ChevronRight size={13} />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="lab-icon shrink-0 p-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0">
+                            <Building2 size={15} />
+                          </span>
+                          <div className="min-w-0">
+                            <strong className="block text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{l.name}</strong>
+                            <small className="block text-[10px] text-slate-400">{rows.length} access points</small>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                          <span className={`lab-state text-[11px] font-semibold px-2 py-0.5 rounded-full ${issues ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                            {issues ? `${issues} alert(s)` : 'Operational'}
+                          </span>
+                          <ChevronRight size={13} className="text-slate-400" />
+                        </div>
                       </Link>
                     );
                   })}
                 </div>
-              </div>
-              <div className="lab-foot">
-                <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
+
+                <div className="lab-foot pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center gap-2 mt-3.5">
+                  <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
+                </div>
               </div>
             </section>
           </div>
 
-          <div className="dashboard-bottom">
+          <div className="dashboard-bottom mt-6">
             <section className="access-section">
               <SectionHead title="Access Point Status">
                 <div className="section-actions flex flex-wrap items-center gap-2 sm:gap-3">
@@ -936,6 +952,6 @@ export default function Dashboard() {
       )}
 
       <Simulation open={simulation} onClose={setSimulation} aps={normalizedAps} onDone={refresh} />
-    </>
+    </div>
   );
 }

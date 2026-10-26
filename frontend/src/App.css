@@ -675,13 +675,7 @@ button.password-eye-btn:hover {
 }
 
 .dashboard-mid {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  border-top: 2px solid var(--line);
-  border-bottom: 2px solid var(--line);
-  padding: 21px 0;
-  margin-bottom: 25px;
+  margin-bottom: 0;
 }
 
 .section-head {
@@ -3447,7 +3441,7 @@ button.password-eye-btn:hover {
   .metric-value {
     font-size: 40px;
   }
-  .dashboard-mid, .dashboard-bottom {
+  .dashboard-bottom {
     grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
   }
   .data-table th {
@@ -3542,11 +3536,11 @@ button.password-eye-btn:hover {
   .spark-bars i {
     width: 4px;
   }
-  .dashboard-mid, .dashboard-bottom {
+  .dashboard-bottom {
     grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
     gap: 18px;
   }
-  .lab-health, .activity-section {
+  .activity-section {
     padding-left: 18px;
   }
   .chart-legend {
@@ -3600,10 +3594,10 @@ button.password-eye-btn:hover {
   .metric-card > p {
     font-size: 10px;
   }
-  .dashboard-mid, .dashboard-bottom {
+  .dashboard-bottom {
     grid-template-columns: 1fr;
   }
-  .lab-health, .activity-section {
+  .activity-section {
     border-left: 0;
     padding-left: 0;
     border-top: 2px solid var(--line);
@@ -3796,9 +3790,6 @@ button.password-eye-btn:hover {
   }
   .section-head h2 {
     font-size: 16px;
-  }
-  .dashboard-mid {
-    margin-bottom: 20px;
   }
   .dashboard-bottom {
     gap: 20px;
@@ -5420,12 +5411,12 @@ input[aria-invalid="true"] {
 
 .traffic-chart {
   width: 100%;
-  height: 280px;
+  min-height: 280px;
 }
 
 @media (max-width: 768px) {
   .traffic-chart {
-    height: 220px !important;
+    min-height: 220px;
   }
   .chart-legend {
     gap: 8px;

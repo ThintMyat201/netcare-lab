@@ -7,7 +7,7 @@ import {api,errorText,time} from '../lib/api';
 import {formatLocationWithCode, formatLocationBadge} from '../lib/workflow';
 export const Metrics=({stats,openTickets}:any)=><div className="metric-grid">{[{title:'Active Access Points',value:stats.online,suffix:`/ ${stats.total}`,icon:Radio,foot:`${stats.congested} congested · ${stats.offline} offline · ${stats.stale} unmonitored`,tone:'green'},{title:'Connected Devices',value:stats.clients,suffix:'',icon:Users,foot:stats.stale?'Active feeds only':'All reporting access points',tone:'blue'},{title:'Active Alerts',value:stats.congested+stats.offline+stats.stale,suffix:'',icon:Activity,foot:`${stats.offline} critical failures · ${stats.congested+stats.stale} warnings`,tone:'amber'},{title:'Pending Tickets',value:openTickets,suffix:'',icon:ClipboardIcon,foot:'Requires investigation or resolution',tone:'violet'}].map((m,i)=><div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}><div className="metric-top"><span>{m.title}</span><m.icon size={17}/></div><div className="metric-value">{m.value}<span>{m.suffix}</span><div className={`spark-bars spark-${i}`}>{[18,26,22,34,25,39,32,43,37,48,44,52].map((h,j)=><i key={j} style={{height:Math.max(8,h-(i*7+j%3*4))}}/>)}</div></div><p><span className="tiny-dot"/>{m.foot}</p></div>)}</div>;
 const ClipboardIcon=({size}:any)=><ArrowDownToLine size={size}/>;
-export const TrafficChart=({history,title='Network Traffic & Load',height=235}:any)=>{
+export const TrafficChart=({history,title='Network Traffic & Load',height}:any)=>{
  const [period,setPeriod]=useState('24h'),[showDevices,setShowDevices]=useState(true),[showBandwidth,setShowBandwidth]=useState(true),chartId=React.useId().replace(/:/g,'');
  const hours=period==='24h'?24:period==='6h'?6:1;
  const sorted=Array.isArray(history)?[...history].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime()):[];
@@ -37,8 +37,8 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=235}:a
  const sampledHist=bucketed.length<=histCap?bucketed:bucketed.filter((_,idx)=>idx===0||idx===bucketed.length-1||idx%Math.ceil(bucketed.length/histCap)===0).slice(-histCap);
  const filtered=[...sampledHist,...livePoints];
  return (
-  <section className="chart-section w-full">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+  <section className="chart-section w-full h-full flex flex-col flex-1">
+    <div className="flex items-center justify-between gap-3 mb-4">
       <div>
         <h2
           className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100"
@@ -47,14 +47,18 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=235}:a
           {title}
         </h2>
       </div>
-      <div className="segmented">
+      <div className="segmented inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200 dark:border-slate-700/80">
         {['1h', '6h', '24h'].map(p => (
           <button
             type="button"
             aria-pressed={period === p}
             data-testid={`chart-range-${p}`}
             onClick={() => setPeriod(p)}
-            className={period === p ? 'selected' : ''}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+              period === p
+                ? 'selected bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
+                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
             key={p}
           >
             {p}
@@ -87,8 +91,12 @@ export const TrafficChart=({history,title='Network Traffic & Load',height=235}:a
       </button>
       <span className="chart-unit ml-auto">TELEMETRY FEED</span>
     </div>
-    <div className="w-full overflow-x-auto">
-      <div data-testid="network-activity-chart" className="traffic-chart min-w-[500px] sm:min-w-0" style={{ height }}>
+    <div className="flex-1 w-full min-h-[320px] overflow-hidden">
+      <div
+        data-testid="network-activity-chart"
+        className="traffic-chart w-full min-w-0 h-full"
+        style={height ? { height } : { minHeight: 320, height: '100%' }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart key={period} data={filtered} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>
             <defs>
