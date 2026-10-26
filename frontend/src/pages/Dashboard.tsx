@@ -773,7 +773,7 @@ export default function Dashboard() {
                 {/* 1. Compact Header & Live Telemetry Badge */}
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <h2
-                    className="text-base font-semibold text-slate-900 dark:text-slate-100"
+                    className="min-w-0 text-base font-semibold leading-tight text-slate-900 dark:text-slate-100"
                     data-testid="section-lab-operational-health"
                   >
                     Lab Operational Health
@@ -821,12 +821,12 @@ export default function Dashboard() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <span
-                              className="block text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-200 truncate"
+                              className="block whitespace-normal break-words text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-200"
                               data-testid="network-health-label"
                             >
                               Network Health: {apStats.online}/{apStats.total} APs Operational
                             </span>
-                            <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                            <span className="block whitespace-normal break-words text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                               Real-time telemetry snapshot
                             </span>
                           </div>
@@ -880,12 +880,12 @@ export default function Dashboard() {
               </div>
 
               {/* 4. Card Footer */}
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-200 dark:border-slate-800/80 mt-auto">
-                <span className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-xs text-slate-500 pt-3 border-t border-slate-200 dark:border-slate-800/80 mt-auto">
+                <span className="flex min-w-0 items-center gap-1.5">
                   <span className="tiny-dot w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Telemetry Feed Active</span>
                 </span>
-                <span className="font-mono">Last sample {time(m.last_updated, false, true)} MYT</span>
+                <span className="min-w-0 break-words text-right font-mono">Last sample {time(m.last_updated, false, true)} MYT</span>
               </div>
             </section>
           </div>
