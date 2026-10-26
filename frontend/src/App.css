@@ -643,16 +643,7 @@ button.password-eye-btn:hover {
 }
 
 .spark-bars {
-  display: flex;
-  gap: 2px;
-  height: 24px;
-  align-items: flex-end;
-  opacity: .12;
-  position: absolute;
-  right: 14px;
-  bottom: 28px;
-  pointer-events: none;
-  z-index: 0;
+  display: none !important;
 }
 
 .spark-bars i {

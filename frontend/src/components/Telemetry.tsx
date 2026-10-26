@@ -7,7 +7,7 @@ import {api,errorText,time} from '../lib/api';
 import {formatLocationWithCode, formatLocationBadge} from '../lib/workflow';
 export const Metrics=({stats,openTickets}:any)=><div className="metric-grid">{[{title:'Active Access Points',value:stats.online,suffix:`/ ${stats.total}`,icon:Radio,foot:`${stats.congested} congested · ${stats.offline} offline · ${stats.stale} unmonitored`,tone:'green'},{title:'Connected Devices',value:stats.clients,suffix:'',icon:Users,foot:stats.stale?'Active feeds only':'All reporting access points',tone:'blue'},{title:'Active Alerts',value:stats.congested+stats.offline+stats.stale,suffix:'',icon:Activity,foot:`${stats.offline} critical failures · ${stats.congested+stats.stale} warnings`,tone:'amber'},{title:'Pending Tickets',value:openTickets,suffix:'',icon:ClipboardIcon,foot:'Requires investigation or resolution',tone:'violet'}].map((m,i)=><div className={`metric-card ${m.tone}`} data-testid={`metric-${i}`} key={m.title}><div className="metric-top"><span>{m.title}</span><m.icon size={17}/></div><div className="metric-value">{m.value}<span>{m.suffix}</span><div className={`spark-bars spark-${i}`}>{[18,26,22,34,25,39,32,43,37,48,44,52].map((h,j)=><i key={j} style={{height:Math.max(8,h-(i*7+j%3*4))}}/>)}</div></div><p><span className="tiny-dot"/>{m.foot}</p></div>)}</div>;
 const ClipboardIcon=({size}:any)=><ArrowDownToLine size={size}/>;
-export const TrafficChart=({history,title='Network Traffic & Load',height}:any)=>{
+export const TrafficChart=({history,title='Network Traffic & Load',height=260}:any)=>{
  const [period,setPeriod]=useState('24h'),[showDevices,setShowDevices]=useState(true),[showBandwidth,setShowBandwidth]=useState(true),chartId=React.useId().replace(/:/g,'');
  const hours=period==='24h'?24:period==='6h'?6:1;
  const sorted=Array.isArray(history)?[...history].sort((a:any,b:any)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime()):[];
@@ -37,7 +37,7 @@ export const TrafficChart=({history,title='Network Traffic & Load',height}:any)=
  const sampledHist=bucketed.length<=histCap?bucketed:bucketed.filter((_,idx)=>idx===0||idx===bucketed.length-1||idx%Math.ceil(bucketed.length/histCap)===0).slice(-histCap);
  const filtered=[...sampledHist,...livePoints];
  return (
-  <section className="chart-section w-full h-full flex flex-col flex-1">
+  <section className="chart-section w-full">
     <div className="flex items-center justify-between gap-3 mb-4">
       <div>
         <h2
@@ -91,11 +91,11 @@ export const TrafficChart=({history,title='Network Traffic & Load',height}:any)=
       </button>
       <span className="chart-unit ml-auto">TELEMETRY FEED</span>
     </div>
-    <div className="flex-1 w-full min-h-[320px] overflow-hidden">
+    <div className="w-full overflow-hidden">
       <div
         data-testid="network-activity-chart"
-        className="traffic-chart w-full min-w-0 h-full"
-        style={height ? { height } : { minHeight: 320, height: '100%' }}
+        className="traffic-chart w-full min-w-0"
+        style={{ height }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart key={period} data={filtered} margin={{ top: 10, right: 4, left: 0, bottom: 0 }}>

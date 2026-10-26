@@ -64,11 +64,6 @@ function RoleMetricsGrid({ cards }: { cards: any[] }) {
             {m.value}
             {m.suffix && <span>{m.suffix}</span>}
           </div>
-          <div className={`spark-bars spark-${i}`} aria-hidden="true">
-            {[18, 26, 22, 34, 25, 39, 32, 43, 37, 48, 44, 52].map((h, j) => (
-              <i key={j} style={{ height: Math.max(8, h - (i * 7 + (j % 3) * 4)) }} />
-            ))}
-          </div>
           <p>
             <span className="tiny-dot" />
             {m.foot}
@@ -766,50 +761,48 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="dashboard-mid grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6 w-full max-w-full">
-            {/* Left Column: Network Traffic & Load (lg:col-span-8) */}
-            <div className="lg:col-span-8 w-full max-w-full overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+          <div className="dashboard-mid grid grid-cols-1 xl:grid-cols-12 gap-6 items-start mb-6 w-full max-w-full">
+            {/* Left Card: Network Traffic & Load (xl:col-span-8) */}
+            <div className="xl:col-span-8 lg:col-span-8 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
               <TrafficChart history={m.history} />
             </div>
 
-            {/* Right Column: Lab Operational Health (lg:col-span-4) */}
-            <section className="lab-health lg:col-span-4 w-full max-w-full overflow-hidden flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm justify-between">
-              <div className="flex flex-col flex-1 justify-between">
-                <div>
-                  <SectionHead title="Lab Operational Health">
-                    <Link
-                      to="/monitoring"
-                      data-testid="view-labs-link"
-                      className="icon-button"
-                      title="View device monitoring"
-                    >
-                      <ArrowUpRight size={17} />
-                    </Link>
-                  </SectionHead>
+            {/* Right Card: Lab Operational Health (xl:col-span-4) */}
+            <section className="lab-health xl:col-span-4 lg:col-span-4 w-full max-w-full overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+              <SectionHead title="Lab Operational Health">
+                <Link
+                  to="/monitoring"
+                  data-testid="view-labs-link"
+                  className="icon-button"
+                  title="View device monitoring"
+                >
+                  <ArrowUpRight size={17} />
+                </Link>
+              </SectionHead>
 
-                  <div className="health-summary flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 !m-0 mb-3.5">
-                    <div
-                      className="health-ring shrink-0"
-                      style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
-                    >
-                      <span>
-                        {Math.round((apStats.online / apStats.total) * 100)}
-                        <small>%</small>
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <strong className="block text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="network-health-label">
-                        Network Health
-                      </strong>
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                        {apStats.online} of {apStats.total} access points operational
-                      </span>
-                      <small className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Real-time telemetry snapshot</small>
-                    </div>
+              <div className="flex flex-col gap-3.5 mb-4">
+                <div className="health-summary flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 !m-0">
+                  <div
+                    className="health-ring shrink-0"
+                    style={{ '--health': `${Math.round((apStats.online / apStats.total) * 100)}%` } as any}
+                  >
+                    <span>
+                      {Math.round((apStats.online / apStats.total) * 100)}
+                      <small>%</small>
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <strong className="block text-sm font-bold text-slate-900 dark:text-slate-100 truncate" data-testid="network-health-label">
+                      Network Health
+                    </strong>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      {apStats.online} of {apStats.total} access points operational
+                    </span>
+                    <small className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Real-time telemetry snapshot</small>
                   </div>
                 </div>
 
-                <div className="lab-list flex flex-col gap-2 my-auto py-2">
+                <div className="lab-list flex flex-col gap-2">
                   {[
                     { id: 'lab-1', name: 'Computing Lab A' },
                     { id: 'lab-2', name: 'Computing Lab B' },
@@ -844,10 +837,10 @@ export default function Dashboard() {
                     );
                   })}
                 </div>
+              </div>
 
-                <div className="lab-foot pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center gap-2 mt-3.5">
-                  <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
-                </div>
+              <div className="lab-foot pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+                <span className="tiny-dot" /> Last sample {time(m.last_updated, false, true)} MYT
               </div>
             </section>
           </div>
