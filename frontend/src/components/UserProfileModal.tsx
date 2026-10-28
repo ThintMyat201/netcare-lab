@@ -381,7 +381,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
               data-testid="logout-button"
               onClick={handleSignOut}
               disabled={saving || signingOut}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border-0 bg-rose-100/80 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-500/25 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border border-rose-200 dark:border-transparent bg-rose-100/85 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 shadow-sm dark:shadow-none hover:bg-rose-200/80 dark:hover:bg-rose-500/25 transition-colors disabled:opacity-50"
             >
               {signingOut ? (
                 <>
@@ -402,7 +402,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 data-testid="profile-cancel-button"
                 onClick={onClose}
                 disabled={saving || signingOut}
-                className="px-4 py-2 text-sm font-medium rounded-lg border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-slate-200/85 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700/60 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

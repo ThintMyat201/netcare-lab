@@ -578,10 +578,10 @@ export function Reports() {
                   type="button"
                   data-testid={`report-period-${key}`}
                   aria-pressed={active}
-                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap border-0 ${
+                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     active
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
+                      ? 'bg-blue-600 text-white border border-blue-600 shadow-sm'
+                      : 'bg-slate-200/85 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                   onClick={() => setPeriod(key as 'today' | '7d' | '30d')}
                 >
@@ -599,7 +599,7 @@ export function Reports() {
               data-testid="export-report-csv"
               disabled={!computedReport}
               onClick={exportCSV}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 border-0 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-200/85 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
             >
               <Download size={14} />
               <span>Export CSV</span>

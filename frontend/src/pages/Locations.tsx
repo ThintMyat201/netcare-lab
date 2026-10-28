@@ -547,7 +547,7 @@ export default function Locations() {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-200/85 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -650,7 +650,7 @@ export default function Locations() {
                       disabled={busy}
                       data-testid={`delete-loc-${selectedRoom.id}`}
                       onClick={() => handleDelete(selectedRoom)}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-rose-100/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-transparent bg-rose-100/85 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 shadow-sm dark:shadow-none hover:bg-rose-200/80 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                     >
                       <Trash2 size={13} />
                       Delete
@@ -664,7 +664,7 @@ export default function Locations() {
                         setSelectedRoom(null);
                         setIsEditing(false);
                       }}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-200/85 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                     >
                       Close
                     </button>

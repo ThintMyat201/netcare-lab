@@ -741,10 +741,10 @@ export default function Monitoring() {
               role="tab"
               aria-selected={isActive}
               data-testid={`ap-filter-${key}`}
-              className={`inline-flex items-center justify-between sm:justify-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer border-0 ${
+              className={`inline-flex items-center justify-between sm:justify-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-sm active'
-                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
+                  ? 'bg-blue-600 text-white border border-blue-600 shadow-sm active'
+                  : 'bg-slate-200/85 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
               onClick={() => setStatus(String(key))}
             >
@@ -753,7 +753,7 @@ export default function Monitoring() {
                 className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold leading-none ${
                   isActive
                     ? 'bg-white/20 text-white'
-                    : 'bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-sm dark:shadow-none'
                 }`}
               >
                 {count}

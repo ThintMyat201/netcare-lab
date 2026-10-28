@@ -493,17 +493,17 @@ button.password-eye-btn:hover {
 
 .light-theme .btn.secondary,
 .light-theme .btn.outline {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
 }
 
 .light-theme .btn.secondary:hover,
 .light-theme .btn.outline:hover {
-  background: #e2e8f0 !important;
+  background: #cbd5e1 !important;
   color: #0f172a !important;
-  border: none !important;
+  border: 1px solid #94a3b8 !important;
 }
 
 .btn.danger {
@@ -521,12 +521,14 @@ button.password-eye-btn:hover {
 .light-theme .btn.danger {
   background: #ffe4e6 !important;
   color: #e11d48 !important;
-  border: none !important;
+  border: 1px solid #fecdd3 !important;
+  box-shadow: 0 1px 2px rgba(225, 29, 72, 0.06) !important;
 }
 
 .light-theme .btn.danger:hover {
   background: #fecdd3 !important;
   color: #be123c !important;
+  border: 1px solid #fda4af !important;
 }
 
 .btn.compact {
@@ -765,7 +767,8 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .segmented {
-  background: #f1f5f9;
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 .segmented button {
@@ -823,8 +826,10 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .chart-legend > .legend-toggle {
-  background: #f1f5f9;
-  color: #475569;
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .chart-legend > .legend-toggle:hover {
@@ -833,7 +838,7 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .chart-legend > .legend-toggle:hover {
-  background: #e2e8f0;
+  background: #cbd5e1;
   color: #0f172a;
 }
 
@@ -1821,24 +1826,25 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .filter-tabs button {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
 }
 
 .light-theme .filter-tabs button:hover {
-  background: #e2e8f0 !important;
+  background: #cbd5e1 !important;
   color: #0f172a !important;
+  border-color: #94a3b8 !important;
 }
 
 .filter-tabs button.active,
 .light-theme .filter-tabs button.active {
   background: #2563eb !important;
   color: #ffffff !important;
-  border: none !important;
+  border: 1px solid #2563eb !important;
   font-weight: 600 !important;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2) !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25) !important;
 }
 
 .filter-tabs button.active:after {
@@ -1860,9 +1866,10 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .filter-tabs button > span {
-  background: rgba(226, 232, 240, 0.85) !important;
+  background: #ffffff !important;
   color: #334155 !important;
   border: none !important;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06) !important;
 }
 
 .filter-tabs button.active > span,
@@ -2323,24 +2330,27 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .shift-scope-segmented button {
-  background: #f1f5f9;
-  color: #475569;
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .light-theme .shift-scope-segmented button:hover {
-  background: #e2e8f0;
+  background: #cbd5e1;
   color: #0f172a;
 }
 
 .light-theme .shift-scope-segmented button.selected {
   background: #2563eb !important;
   color: #ffffff !important;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+  border: 1px solid #2563eb !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
 }
 
 .light-theme .shift-locked-btn {
-  background: #f1f5f9 !important;
-  border: none !important;
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
   color: #64748b !important;
 }
 
@@ -4721,23 +4731,24 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .role-pills button {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
 }
 
 .light-theme .role-pills button:hover {
-  background: #e2e8f0 !important;
+  background: #cbd5e1 !important;
   color: #0f172a !important;
+  border-color: #94a3b8 !important;
 }
 
 .role-pills button.active,
 .light-theme .role-pills button.active {
   background: #2563eb !important;
   color: #ffffff !important;
-  border: none !important;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2) !important;
+  border: 1px solid #2563eb !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25) !important;
 }
 
 .role-pills button > span {
@@ -4755,9 +4766,10 @@ button.password-eye-btn:hover {
 }
 
 .light-theme .role-pills button > span {
-  background: rgba(226, 232, 240, 0.85) !important;
+  background: #ffffff !important;
   color: #334155 !important;
   border: none !important;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06) !important;
 }
 
 .role-pills button.active > span,
@@ -5777,29 +5789,30 @@ input[aria-invalid='true'] {
 }
 
 .light-theme .monitoring-filter-tabs button {
-  background: #f1f5f9 !important;
-  border: none !important;
-  color: #475569 !important;
-  box-shadow: none !important;
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
 }
 
 .light-theme .monitoring-filter-tabs button:hover {
-  background: #e2e8f0 !important;
-  border: none !important;
+  background: #cbd5e1 !important;
+  border-color: #94a3b8 !important;
   color: #0f172a !important;
 }
 
 .light-theme .monitoring-filter-tabs button.active {
   background: #2563eb !important;
-  border: none !important;
+  border: 1px solid #2563eb !important;
   color: #ffffff !important;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2) !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25) !important;
 }
 
 .light-theme .monitoring-filter-tabs button > span {
-  background: rgba(226, 232, 240, 0.85) !important;
+  background: #ffffff !important;
   border: none !important;
   color: #334155 !important;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.06) !important;
 }
 
 .light-theme .monitoring-filter-tabs button.active > span {
@@ -6965,14 +6978,15 @@ input[aria-invalid='true'] {
 }
 
 .light-theme .btn-neutral-edit {
-  background: #f1f5f9;
-  border: none !important;
-  color: #475569;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .light-theme .btn-neutral-edit:hover {
-  background: #e2e8f0;
-  border: none !important;
+  background: #cbd5e1;
+  border-color: #94a3b8 !important;
   color: #0f172a;
 }
 
@@ -7628,16 +7642,16 @@ input[aria-invalid='true'] {
 }
 
 .light-theme .action-btn-uniform {
-  border: none !important;
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  box-shadow: none !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 
 .light-theme .action-btn-uniform:hover {
-  background: #e2e8f0 !important;
+  background: #cbd5e1 !important;
   color: #0f172a !important;
-  border: none !important;
+  border-color: #94a3b8 !important;
 }
 
 /* ==========================================================================

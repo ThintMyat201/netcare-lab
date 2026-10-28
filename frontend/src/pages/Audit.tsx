@@ -220,7 +220,7 @@ export function Audit() {
             ])
           }
           disabled={!data}
-          className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 border-0 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-200/85 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-transparent shadow-sm dark:shadow-none hover:bg-slate-300/75 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
         >
           <Download size={15} />
           <span>Export CSV</span>
