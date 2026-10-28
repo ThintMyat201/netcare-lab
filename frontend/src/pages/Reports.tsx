@@ -578,10 +578,10 @@ export function Reports() {
                   type="button"
                   data-testid={`report-period-${key}`}
                   aria-pressed={active}
-                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap border-0 ${
                     active
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border border-transparent shadow-sm'
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                   onClick={() => setPeriod(key as 'today' | '7d' | '30d')}
                 >
@@ -599,7 +599,7 @@ export function Reports() {
               data-testid="export-report-csv"
               disabled={!computedReport}
               onClick={exportCSV}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 border-0 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
             >
               <Download size={14} />
               <span>Export CSV</span>
@@ -611,7 +611,7 @@ export function Reports() {
               data-testid="export-report-pdf"
               disabled={!computedReport}
               onClick={exportPDF}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-transparent outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-0 outline-none focus:outline-none focus:ring-0 transition-colors whitespace-nowrap disabled:opacity-50"
             >
               <FileText size={14} />
               <span>Export PDF</span>

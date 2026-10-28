@@ -194,7 +194,7 @@ export default function Tickets() {
       )}
 
       <div className="listing-toolbar">
-        <div className="filter-tabs overflow-x-auto whitespace-nowrap no-scrollbar -webkit-overflow-scrolling-touch flex items-center gap-5">
+        <div className="filter-tabs flex flex-wrap items-center gap-2">
           {[
             ['all', 'All Tickets'],
             ['open', 'Open'],
@@ -204,7 +204,7 @@ export default function Tickets() {
             <button
               key={key}
               data-testid={`ticket-filter-${key}`}
-              className={`flex-shrink-0 ${filter === key ? 'active' : ''}`}
+              className={`border-0 ${filter === key ? 'active' : ''}`}
               onClick={() => setFilter(key)}
             >
               {label}

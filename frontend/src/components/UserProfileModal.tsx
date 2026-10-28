@@ -381,7 +381,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
               data-testid="logout-button"
               onClick={handleSignOut}
               disabled={saving || signingOut}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border-0 bg-rose-100/80 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-500/25 transition-colors disabled:opacity-50"
             >
               {signingOut ? (
                 <>
@@ -402,7 +402,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 data-testid="profile-cancel-button"
                 onClick={onClose}
                 disabled={saving || signingOut}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium rounded-lg border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -410,7 +410,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
                 type="submit"
                 data-testid="profile-submit-button"
                 disabled={saving || signingOut}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                className="px-4 py-2 text-sm font-semibold rounded-lg border-0 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors disabled:opacity-50 flex items-center gap-1.5"
               >
                 {saving ? (
                   <>

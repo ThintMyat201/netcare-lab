@@ -307,30 +307,31 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       </aside>
       {mobile && <div className="nav-scrim" onClick={() => setMobile(false)} data-testid="navigation-overlay" />}
       <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <button className="mobile-menu icon-button" data-testid="open-navigation" onClick={() => setMobile(true)}>
+        <header className="topbar flex items-center justify-between h-14 px-4 sm:px-6">
+          <div className="breadcrumb flex items-center gap-2 min-w-0">
+            <button
+              className="mobile-menu icon-button shrink-0"
+              data-testid="open-navigation"
+              onClick={() => setMobile(true)}
+            >
               <Menu size={20} />
             </button>
-            <span data-testid="breadcrumb-section">{sectionLabel}</span>
-            <ChevronRight size={14} />
-            <strong data-testid="breadcrumb-current">{current}</strong>
-          </div>
-          <div className="topbar-right">
-            <button
-              type="button"
-              className="cmd-palette-btn"
-              data-testid="command-palette-trigger"
-              onClick={() => {
-                setCmdQuery('');
-                setCmdOpen(true);
-              }}
+            <span
+              data-testid="breadcrumb-section"
+              className="hidden sm:inline whitespace-nowrap text-slate-500 dark:text-slate-400"
             >
-              <Search size={14} />
-              <span>Quick Jump…</span>
-              <kbd>⌘K</kbd>
-            </button>
-            <span className="timezone">
+              {sectionLabel}
+            </span>
+            <ChevronRight size={14} className="hidden sm:inline shrink-0 text-slate-400 dark:text-slate-500" />
+            <strong
+              data-testid="breadcrumb-current"
+              className="whitespace-nowrap truncate font-semibold text-slate-900 dark:text-slate-100"
+            >
+              {current}
+            </strong>
+          </div>
+          <div className="topbar-right flex items-center gap-2 shrink-0">
+            <span className="timezone hidden md:inline-flex items-center">
               Asia/Kuala Lumpur <span>MYT</span>
             </span>
             <button

@@ -547,7 +547,7 @@ export default function Locations() {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -556,7 +556,7 @@ export default function Locations() {
                     data-testid="save-edit-location-btn"
                     type="submit"
                     disabled={busy}
-                    className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold border-0 bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
                   >
                     <Save size={14} />
                     {busy ? 'Saving Changes…' : 'Save Changes'}
@@ -650,7 +650,7 @@ export default function Locations() {
                       disabled={busy}
                       data-testid={`delete-loc-${selectedRoom.id}`}
                       onClick={() => handleDelete(selectedRoom)}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-rose-100/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                     >
                       <Trash2 size={13} />
                       Delete
@@ -664,7 +664,7 @@ export default function Locations() {
                         setSelectedRoom(null);
                         setIsEditing(false);
                       }}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                     >
                       Close
                     </button>
@@ -673,7 +673,7 @@ export default function Locations() {
                       id="edit-room-button"
                       data-testid="edit-room-button"
                       onClick={() => startEdit(selectedRoom)}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold border-0 bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
                     >
                       <Pencil size={13} />
                       Edit Room

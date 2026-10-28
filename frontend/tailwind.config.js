@@ -15,7 +15,7 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       borderWidth: {
-        DEFAULT: '2px',
+        DEFAULT: '1px',
         '0': '0',
         '1': '1px',
         '2': '2px',

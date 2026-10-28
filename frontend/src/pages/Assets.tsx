@@ -331,7 +331,7 @@ export function Assets() {
 
       {/* 2-Row Layout: Row 1 = Full-width Category Tabs (overflow-x-auto); Row 2 = Location Filter & Search */}
       <div className="inventory-controls-stack">
-        <div className="filter-tabs inventory-filter-tabs w-full overflow-x-auto">
+        <div className="filter-tabs inventory-filter-tabs flex flex-wrap items-center gap-2 w-full">
           {[
             ['all', 'All Hardware'],
             ['AP', 'Access Points'],
@@ -733,7 +733,7 @@ export function Assets() {
                         disabled={busy}
                         data-testid={`archive-asset-${detailsAsset.id}`}
                         onClick={() => archive(detailsAsset)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-rose-100/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                       >
                         <Archive size={14} />
                         Archive
@@ -743,7 +743,7 @@ export function Assets() {
                         type="button"
                         disabled={busy}
                         onClick={() => restoreAsset(detailsAsset)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                       >
                         <CheckCheck size={14} />
                         Restore
@@ -755,7 +755,7 @@ export function Assets() {
                     <button
                       type="button"
                       onClick={() => setIsEditing(false)}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -764,7 +764,7 @@ export function Assets() {
                       data-testid="save-edit-asset"
                       type="submit"
                       disabled={busy}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold border-0 bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
                     >
                       <Save size={14} />
                       {busy ? 'Saving…' : 'Save Changes'}
@@ -835,7 +835,7 @@ export function Assets() {
                         disabled={busy}
                         data-testid={`archive-asset-${detailsAsset.id}`}
                         onClick={() => archive(detailsAsset)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-rose-100/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-200/70 dark:hover:bg-rose-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                       >
                         <Archive size={14} />
                         Archive
@@ -846,7 +846,7 @@ export function Assets() {
                           type="button"
                           disabled={busy}
                           onClick={() => restoreAsset(detailsAsset)}
-                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/50 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                         >
                           <CheckCheck size={14} />
                           Restore
@@ -856,7 +856,7 @@ export function Assets() {
                           disabled={busy}
                           data-testid={`delete-asset-${detailsAsset.id}`}
                           onClick={() => handleDelete(detailsAsset)}
-                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-300 dark:border-rose-800 bg-rose-600 text-white hover:bg-rose-700 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-rose-600 text-white hover:bg-rose-700 transition-colors inline-flex items-center gap-1.5 focus:outline-none cursor-pointer"
                         >
                           <Trash2 size={14} />
                           Delete
@@ -872,7 +872,7 @@ export function Assets() {
                         setDetailsAsset(null);
                         setIsEditing(false);
                       }}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors focus:outline-none cursor-pointer"
                     >
                       Close
                     </button>
@@ -881,7 +881,7 @@ export function Assets() {
                       id="edit-asset-button"
                       data-testid="edit-asset-button"
                       onClick={() => startEdit(detailsAsset)}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold border-0 bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none shadow-sm cursor-pointer"
                     >
                       <Pencil size={13} />
                       Edit

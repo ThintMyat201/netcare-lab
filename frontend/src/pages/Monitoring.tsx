@@ -725,30 +725,42 @@ export default function Monitoring() {
         )}
       </div>
 
-      <div
-        className="flex items-center gap-2.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 monitoring-filter-tabs"
-        role="tablist"
-        aria-label="Access Point Status Filter"
-      >
+      <div className="flex flex-wrap items-center gap-2 w-full" role="tablist" aria-label="Access Point Status Filter">
         {[
           ['all', 'All Access Points', stats.total],
           ['online', 'Online', stats.online],
           ['congested', 'Congested', stats.congested],
           ['offline', 'Offline', stats.offline],
           ['stale', 'Feed Interrupted', stats.stale],
-        ].map(([key, label, count]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={status === key}
-            data-testid={`ap-filter-${key}`}
-            className={`flex-shrink-0 whitespace-nowrap ${status === key ? 'active' : ''}`}
-            onClick={() => setStatus(String(key))}
-          >
-            {label}
-            <span>{count}</span>
-          </button>
-        ))}
+        ].map(([key, label, count]) => {
+          const isActive = status === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`ap-filter-${key}`}
+              className={`inline-flex items-center justify-between sm:justify-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer border-0 ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-sm active'
+                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100'
+              }`}
+              onClick={() => setStatus(String(key))}
+            >
+              <span className="whitespace-nowrap">{label}</span>
+              <span
+                className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold leading-none ${
+                  isActive
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">

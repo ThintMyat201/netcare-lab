@@ -28,6 +28,30 @@
   --line-strong: #41516c;
 }
 
+.light-theme {
+  --background: 210 20% 98%;
+  --foreground: 218 30% 18%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 30% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 218 30% 18%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 215 25% 27%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 218 30% 18%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 221 83% 53%;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+}
+
 * {
   box-sizing: border-box;
   border-color: hsl(var(--border));
@@ -199,11 +223,15 @@ select option {
 
 /* Global Interactive Element Borders */
 button,
+[role='button'] {
+  border-width: 0;
+  border-color: transparent;
+}
+
 input,
 select,
-textarea,
-[role='button'] {
-  border-width: 2px;
+textarea {
+  border-width: 1px;
 }
 
 /* Charts & Recharts Global High-Contrast Stroke Styling */

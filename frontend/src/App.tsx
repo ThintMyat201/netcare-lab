@@ -89,7 +89,7 @@ const Protected = () => {
 };
 export default function App() {
   return (
-    <ThemeProvider forcedTheme="dark">
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <BrowserRouter>
         <AuthProvider>
           <Protected />

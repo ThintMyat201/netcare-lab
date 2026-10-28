@@ -127,17 +127,17 @@ export const TrafficChart = ({ history, title = 'Network Traffic & Load', height
               {title}
             </h2>
           </div>
-          <div className="segmented inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/80 p-0.5 border border-slate-200 dark:border-slate-700/80">
+          <div className="segmented inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/80 p-0.5 border-0">
             {['1h', '6h', '24h'].map(p => (
               <button
                 type="button"
                 aria-pressed={period === p}
                 data-testid={`chart-range-${p}`}
                 onClick={() => setPeriod(p)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all border-0 ${
                   period === p
-                    ? 'selected bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-                    : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    ? 'selected bg-blue-600 text-white shadow-sm'
+                    : 'bg-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
                 }`}
                 key={p}
               >
