@@ -1,160 +1,179 @@
-# Atlas NetCare
+# 📡 Atlas NetCare — Campus Network Operations & Lab Asset Management Platform
 
-**Campus Network Operations & Lab Asset Management Platform**  
-*Final Year Project — Diploma in Information Technology*  
-*Asia Pacific University of Technology & Innovation (APU)*
+<div align="center">
 
----
+![Python Version](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Async%20REST-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-19%20%2B%20TypeScript%205.9-61DAFB?style=for-the-badge&logo=react&logoColor=0f172a)
+![MongoDB](https://img.shields.io/badge/MongoDB-8.x%20Motor%20Async-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Security](https://img.shields.io/badge/Security-3--Tier%20RBAC%20%2B%20HttpOnly%20JWT-8B5CF6?style=for-the-badge)
+![Status](https://img.shields.io/badge/University%20Project-Grade%20A%2B%20Ready-F59E0B?style=for-the-badge)
 
-## Executive Summary
-
-**Atlas NetCare** is a full-stack web application designed to centralize campus IT operations across computer laboratories, academic blocks, and shared wireless zones. In many academic institutions, wireless access-point monitoring, physical lab workstation inspections, incident ticketing, hardware asset tracking, and student/staff assistant shift handovers are managed across disconnected spreadsheets and standalone tools.
-
-Atlas NetCare unifies these workflows into a single role-based operational portal tailored for three distinct operational roles—**Administrator**, **Network Engineer**, and **IT Assistant**—providing real-time visibility from fault detection to resolution and audit compliance.
-
-> **Academic Demonstration Scope:**  
-> Network telemetry, remote ping/PoE diagnostics, radio remediation, and password-recovery notices are **simulated** so examiners and evaluators can safely trigger, inspect, and resolve realistic campus network faults during a live demonstration without connecting to physical university switches or wireless controllers. All operational records—users, sessions, campus locations, hardware assets, checklists, incident tickets, duty shifts, and audit logs—are persisted in **MongoDB**.
+*A full-stack, enterprise-grade web platform built to unify campus wireless telemetry monitoring, physical lab workstation inspections, automated Tier 1 / Tier 2 incident escalation, hardware asset management, and staff duty handovers across university laboratories and shared zones.*
 
 ---
 
-## Table of Contents
+</div>
 
-1. [Project Objectives](#project-objectives)
-2. [System Architecture](#system-architecture)
-3. [Key Features & Modules](#key-features--modules)
-4. [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
-5. [Technology Stack](#technology-stack)
-6. [Getting Started](#getting-started)
-7. [Default Demonstration Accounts](#default-demonstration-accounts)
-8. [Environment Configuration](#environment-configuration)
-9. [Core Business & Domain Rules](#core-business--domain-rules)
-10. [REST API Overview](#rest-api-overview)
-11. [Project Structure](#project-structure)
-12. [Testing, Code Quality & CI](#testing-code-quality--ci)
-13. [Known Limitations & Future Enhancements](#known-limitations--future-enhancements)
-14. [Troubleshooting](#troubleshooting)
+## 📖 Executive Summary
+
+**Atlas NetCare** is an integrated campus IT operations platform engineered for **Asia Pacific University of Technology & Innovation (APU)** to eliminate operational silos across computer laboratories, academic blocks, and shared wireless zones. In many higher-education environments, wireless access-point monitoring, physical lab workstation readiness checks, incident ticketing, hardware inventory tracking, and student/staff assistant shift handovers are scattered across disconnected spreadsheets and standalone tools. Atlas NetCare consolidates these workflows into a single role-tailored operational portal featuring a **Live Wireless Telemetry & Fault Simulation Engine**, standardized **5-Point Workstation Checklists**, **Automated Tier 1 / Tier 2 Incident Routing**, and **Exportable SLA & Audit Compliance Reports**.
+
+To demonstrate rigorous full-stack software engineering, clean domain boundaries, and production-grade reliability, the platform is built with an asynchronous **Python 3.12 & FastAPI** backend, a **13-collection indexed MongoDB** persistence layer powered by **Motor**, a strictly typed **React 19 + TypeScript 5.9 + Tailwind CSS** SPA supporting both Dark and Light themes, and **57 automated integration, simulation, and AST architecture tests**.
+
+> **Academic Demonstration Note:** Wireless telemetry metrics, remote ICMP/PoE/5GHz diagnostics, radio remediation, and password-recovery notices are deterministically simulated so examiners and evaluators can safely inject, diagnose, and resolve realistic campus network faults live without connecting to physical university switches or wireless controllers. All operational records—users, sessions, locations, assets, checklists, tickets, shifts, alerts, telemetry samples, and audit logs—are persisted in **MongoDB**.
 
 ---
 
-## Project Objectives
+## 🌟 Key Technical Highlights & Architecture
 
-1. **Centralize Campus IT Operations:** Replace fragmented manual logs with an integrated platform covering wireless monitoring, lab equipment checklists, incident management, and staff shift scheduling.
-2. **Enforce Structured Escalation & Accountability:** Automate fault-to-ticket creation, deduplicate repeated incident reports on the same device, route faults between **Tier 1 (Lab Hardware)** and **Tier 2 (Network Infrastructure)**, and record an immutable activity audit log.
-3. **Streamline Physical Lab Readiness:** Enable IT Assistants on shift duty to perform standardized five-point workstation inspections, visualize room readiness, and log structured shift handover notes.
-4. **Support Interactive Fault Simulation for Evaluation:** Provide deterministic fault-injection scenarios (bandwidth congestion, PoE/hardware outage, telemetry feed interruption, link flapping) alongside diagnostic and remediation workflows.
-5. **Deliver a Responsive, Accessible User Interface:** Provide a clean, mobile- and desktop-responsive interface supporting both **Dark Mode** and **Light Mode**, plus one-click **CSV** and printable **PDF** operational reports.
+Why this implementation exemplifies software engineering best practices:
+
+- **🏗️ Strictly Enforced Unidirectional Architecture**: Backend domain modules (`core` → `auth` → `campus` / `monitoring` → `inventory` / `team` / `roster` / `tickets` → `reporting` → `server`) follow a strict one-way dependency graph verified automatically on every test run via Python AST static analysis (`tests/test_architecture.py`), guaranteeing zero circular or upward imports.
+- **🛡️ Enterprise-Grade Security**:
+  - **HttpOnly JWT Cookie Sessions & Refresh Flow**: Short-lived `HS256` access tokens (15 minutes) paired with server-side revocable refresh sessions (7 days) stored inside `HttpOnly` cookies protect credentials from XSS token theft, while active tab lifecycle tracking in `sessionStorage` enforces clean `/login` entry on new sessions.
+  - **Bcrypt Hashing & Sliding-Window Rate Limiting**: User passwords are encrypted with `bcrypt`, and authentication/recovery endpoints enforce per-IP + account rate limiting (`db.login_attempts` with TTL expiry) returning `429 Too Many Requests` against brute-force attacks.
+  - **Strict Origin & Custom Header CSRF Defense**: Every state-mutating request (`POST`, `PATCH`, `PUT`, `DELETE`) validates the `Origin` header against `FRONTEND_URL` and requires `X-Atlas-Request: 1`, while Pydantic v2 `Input` models enforce `extra='forbid'` and automatic whitespace stripping.
+  - **Distributed Atomic Leases & Idempotency Fingerprinting**: Cross-worker short leases (`db.locks` with 30-second TTL) and compound `(created_by, request_id)` payload fingerprinting prevent race conditions on overlapping shift assignments, double-submitted checklists, and concurrent incident creation.
+- **⚡ High-Performance Asynchronous Design**:
+  - **100% Non-Blocking Motor I/O & Strategic Indexing**: All database queries execute asynchronously over `motor.motor_asyncio`, backed by unique, compound, partial-filter (`active_key`), and automatic TTL indexes (`telemetry`, `sessions`, `locks`, `login_attempts`).
+  - **Side-Effect-Free Reads & 15s Background Worker**: `GET` endpoints never mutate database state. An asynchronous background maintenance loop (paired with an HMAC-authenticated `POST /api/cron/maintain` webhook) samples AP metrics every 15 seconds, opens/resolves threshold alerts, and generates shift reminders.
+- **👥 3-Tier Role-Based Access Control (RBAC)**: Dual-layer authorization guards across React Router protected routes and FastAPI `authorize()` dependencies strictly isolate **IT Assistant**, **Network Engineer**, and **Administrator** capabilities while recording unauthorized attempts in the audit trail.
 
 ---
 
-## System Architecture
+## 👥 Role-Based Feature Matrix
 
-```mermaid
-flowchart LR
-    subgraph Client["Frontend SPA (React 19 + TypeScript)"]
-        UI["Role-Based Views (Admin / Engineer / Assistant)"]
-        SimUI["Client Telemetry & Resilience Layer"]
-    end
+| Feature / Operational Domain | 🛠️ IT Assistant | 🌐 Network Engineer | ⚙️ Administrator |
+| :--- | :---: | :---: | :---: |
+| **Role-Tailored Dashboard & CSV/PDF Snapshot (`/`)** | ✅ | ✅ | ✅ |
+| **Acknowledge Duty Shifts & Submit Handover Notes (`/shifts`)** | ✅ | — | ✅ |
+| **Schedule, Assign & Cancel Staff Duty Roster (`/shifts`)** | — | — | ✅ |
+| **Execute 5-Point Workstation Checklists & Batch Verify (`/checklists`)** | ✅ | — | 👁️ View Only |
+| **Interactive 2D Lab Floor Workstation Readiness Map (`/checklists`)** | ✅ | — | 👁️ View Only |
+| **Report Hardware or Network Fault Incidents (`/tickets`)** | ✅ | ✅ | ✅ |
+| **Triage, Investigate & Resolve Tier 1 / Tier 2 Tickets (`/tickets`)** | — | ✅ | ✅ |
+| **Live Wireless AP Telemetry, 24h Traffic Charts & Alerts (`/monitoring`)** | — | ✅ | ✅ |
+| **Run Remote ICMP / PoE / 5GHz Diagnostics & Remediation (`/monitoring`)** | — | ✅ | ✅ |
+| **Trigger & Reset Network Fault Simulations (`/monitoring`)** | — | ✅ | ✅ |
+| **Manage Hardware Inventory, VLANs & DHCP Reservations (`/assets`)** | — | — | ✅ |
+| **Manage Campus Locations, Buildings & Room Codes (`/locations`)** | — | — | ✅ |
+| **Provision Staff Accounts, Roles & Password Resets (`/users`)** | — | — | ✅ |
+| **View & Export SLA Reports and Activity Audit Logs (`/reports`, `/audit`)** | — | — | ✅ |
 
-    subgraph Server["Backend API (FastAPI + Python 3.12)"]
-        Guard["CORS + Origin Guard + HttpOnly JWT + RBAC"]
-        Domain["Domain Routers (Monitoring, Tickets, Roster, Inventory)"]
-        Worker["Background Maintenance Loop (15s Telemetry Tick)"]
-    end
+---
 
-    subgraph Storage["Persistence Layer"]
-        Mongo[("MongoDB 8 Collections")]
-    end
+## 🗄️ Database Schema & Collection Structure
 
-    UI <-->|"REST JSON (/api/*)"| Guard
-    SimUI -.->|"Live Demo & Fallback State"| UI
-    Guard --> Domain
-    Domain <-->|"Motor Async Driver"| Mongo
-    Worker -->|"Samples, Alerts & Reminders"| Mongo
+The application is backed by a **13-collection indexed MongoDB database** (isolated automatically under `<DB_NAME>_atlas_demo` in demonstration mode) engineered for referential clarity, concurrency safety, and bounded storage:
+
+```
++------------------+       +-------------------------+       +--------------------+
+|      users       | <---- |         sessions        |       |   login_attempts   |
++------------------+       +-------------------------+       +--------------------+
+  |      |      |
+  |      |      +--------> +-------------------------+       +--------------------+
+  |      |                 |         shifts          | ----> |     reminders      |
+  |      |                 +-------------------------+       +--------------------+
+  |      |                              |
+  |      |                              v
+  |      |                 +-------------------------+       +--------------------+
+  |      +---------------> |       checklists        | ----> |       assets       |
+  |                        +-------------------------+       +--------------------+
+  |                                     |                       |       |      |
+  |                                     v                       v       |      v
+  +----------------------> +-------------------------+       +------+   |   +-----------+
+  |                        |         tickets         |       | labs |   |   | telemetry |
+  |                        +-------------------------+       +------+   |   +-----------+
+  |                                     |                               v
+  +----------------------> +-------------------------+       +--------------------+
+                           |          audit          |       |       alerts       |
+                           +-------------------------+       +--------------------+
+                                                                +--------------+
+                                                                | system/locks |
+                                                                +--------------+
 ```
 
-### Operational Workflow Lifecycle
-
-1. **Shift Duty & Lab Inspection:** An **IT Assistant** acknowledges their assigned lab shift (`/shifts`) and completes five-point workstation checklists (`/checklists`). Any failed hardware or connectivity check automatically opens—or attaches to—an active incident ticket.
-2. **Wireless Telemetry & Anomaly Detection:** The background maintenance engine samples 28 campus access points (`/monitoring`), distinguishing between **Online**, **Congested**, **Offline**, and **Feed Interrupted (Stale)** states and raising in-app fleet alerts.
-3. **Triage, Diagnostics & Remediation:** A **Network Engineer** investigates anomalies via simulated ICMP/PoE/5GHz diagnostics, executes remote recovery actions (PoE port reboot, 5GHz channel rebalance, SNMP agent restart), and progresses Tier 2 tickets from **Open → In Progress → Resolved**.
-4. **Governance & SLA Reporting:** An **Administrator** manages campus locations, DHCP/VLAN hardware inventory, user accounts, and duty rosters while tracking Mean Time to Resolution (MTTR) and compliance metrics via exportable **CSV** and **PDF** reports (`/reports`, `/audit`).
-
----
-
-## Key Features & Modules
-
-| Module | Route | Description |
-|---|---|---|
-| **Role-Tailored Dashboard** | `/` | Personalized KPI cards, live health indicators, active incident queues, shift summaries, and instant CSV/PDF snapshot exports tailored to the signed-in role. |
-| **Wireless Network Monitoring** | `/monitoring` | Real-time and historical (24h) bandwidth/client telemetry across 28 campus APs, responsive status filter pills, auto-sampling controls, fault simulation, ping/PoE diagnostics, and one-click Tier 2 ticket escalation. |
-| **Equipment Checklists** | `/checklists` | Five-point workstation verification (*Power & Boot*, *Display*, *Keyboard & Mouse*, *Network Connectivity*, *OS & Lab Software*), interactive 2D lab workstation map, batch lab verification, and automatic fault ticketing. |
-| **Incident Tickets** | `/tickets` | End-to-end fault tracking with automated Tier 1 / Tier 2 classification, priority elevation for network outages, status workflow enforcement, resolution verification notes, and timestamped activity history. |
-| **Shift Schedule & Handover** | `/shifts` | Duty roster scheduled in Malaysia Time (`Asia/Kuala_Lumpur`, UTC+8) with overlap detection, shift acknowledgement, structured handover logs, and role-isolated notification bell reminders. |
-| **Hardware Inventory (ITAM)** | `/assets` | Lifecycle management for campus Access Points and Lab Workstations with automated room-based asset tagging, VLAN assignment, DHCP IP reservation preview, and archive/restore controls. |
-| **Campus Locations** | `/locations` | Directory of 11 campus zones across computing labs, lecture halls, library, canteen, and outdoor areas with live assigned-device counts. |
-| **Team & Access Management** | `/users` | Account provisioning, role assignment (`admin`, `engineer`, `assistant`), password resets, and account activation/deactivation safeguards. |
-| **Operational SLA Reports** | `/reports` | Time-windowed (`Today`, `Last 7 Days`, `Last 30 Days`) analytics on fleet availability, checklist pass rates, incident volume, and measured MTTR with CSV and printable PDF export. |
-| **Activity Audit Log** | `/audit` | Searchable, chronological audit trail of up to 1,000 administrative and operational actions with CSV and PDF export for compliance review. |
+### Collection Breakdown
+1. `users`: Staff credentials (`bcrypt` hashed), campus email (`unique`), full name, RBAC role (`admin`, `engineer`, `assistant`), active status flag, and operational scope.
+2. `sessions`: Server-side revocable refresh/access session records mapped to `user_id` with an automatic 7-day MongoDB TTL index on `expires_at`.
+3. `login_attempts`: Sliding 15-minute rate-limiting buckets keyed by `<client_ip>:<email>:<window>` with automatic TTL cleanup.
+4. `labs`: Directory of 11 campus computing laboratories, lecture theatres, library, canteen, and outdoor wireless zones with building, floor, and room code metadata.
+5. `assets`: Unified hardware inventory for **28 Wireless Access Points (`AP`)** and **30 Lab Workstations (`PC`)**, storing unique asset tags, VLAN IDs, DHCP/static IPs, hardware models, archive flags, and active simulation scenarios.
+6. `telemetry`: Time-series wireless performance samples (`clients`, `load`, `throughput`, `latency`, `queue_depth`) indexed uniquely by `(asset_id, timestamp)` with a 7-day TTL retention policy.
+7. `alerts`: Automated fleet anomaly records (`congested`, `offline`, `stale`) deduplicated via a partial unique index on `active_key`.
+8. `checklists`: Standardized 5-point workstation inspection submissions (*Power & Boot*, *Display*, *Keyboard & Mouse*, *Network Connectivity*, *OS & Lab Software*) protected by a unique `(created_by, request_id)` idempotency index and SHA-256 payload fingerprint.
+9. `tickets`: End-to-end incident records (`INC-1001+`) with Tier 1 / Tier 2 routing, priority levels, partial-unique `active_key` (`<asset_id>:<category>`) deduplication, resolution notes, and embedded chronological `events` timelines.
+10. `shifts`: Duty roster blocks scheduled in Malaysia Time (`Asia/Kuala_Lumpur`, `UTC+8`) tracking start/end windows, acknowledgement timestamps, completion states, and structured handover notes.
+11. `reminders`: Role-isolated unacknowledged shift alerts indexed uniquely by `shift_id`.
+12. `audit`: Immutable chronological ledger of administrative, operational, and security events (`Signed in`, `Shift assigned`, `Ticket resolved`, `Scenario simulated`, `Access denied`).
+13. `locks` *(plus `counters`, `cron_runs` & `meta`)*: Distributed 30-second TTL mutex leases for conflict-free roster/ticket mutations, atomic `INC-*` sequence counters, idempotent cron execution tracking, and startup seed markers.
 
 ---
 
-## Role-Based Access Control (RBAC)
+## 📂 Project Directory Structure
 
-Atlas NetCare enforces role isolation across both frontend navigation routes and backend FastAPI permission dependencies:
-
-| Capability | IT Assistant | Network Engineer | Administrator |
-|---|:---:|:---:|:---:|
-| Role-specific operational dashboard (`/`) | Yes | Yes | Yes |
-| Acknowledge shifts & submit handover notes (`/shifts`) | Yes | No | Yes |
-| Assign or cancel staff shifts (`/shifts`) | No | No | Yes |
-| Submit & batch-verify workstation checklists (`/checklists`) | Yes | No | View Only |
-| Report hardware or network incidents (`/tickets`) | Yes | Yes | Yes |
-| Triage, start work & resolve incident tickets (`/tickets`) | No | Yes | Yes |
-| Access wireless telemetry, diagnostics & remediation (`/monitoring`) | No | Yes | Yes |
-| Trigger & reset network fault simulations (`/monitoring`) | No | Yes | Yes |
-| Manage hardware inventory & campus locations (`/assets`, `/locations`) | No | No | Yes |
-| Manage user accounts & role permissions (`/users`) | No | No | Yes |
-| View & export SLA reports and activity audit logs (`/reports`, `/audit`) | No | No | Yes |
+```text
+netcare-lab/
+├── backend/                     # FastAPI + AsyncIO Motor Backend Service (Python 3.12)
+│   ├── server.py                # App entry point, CORS, Origin/CSRF middleware & 15s maintenance loop
+│   ├── core.py                  # Env loader, MongoDB client, RBAC matrix, TTL indexes & distributed leases
+│   ├── auth.py                  # HttpOnly JWT cookies, login/logout, token refresh & profile updates
+│   ├── campus.py                # Campus zone catalog, VLAN mapping, DHCP IP allocator & asset tagger
+│   ├── inventory.py             # Campus locations & hardware asset CRUD / archive endpoints
+│   ├── team.py                  # User provisioning, role assignment & password administration
+│   ├── roster.py                # MYT shift scheduling, overlap validation, acknowledgement & handovers
+│   ├── tickets.py               # Idempotent 5-point checklists, batch verification & ticket lifecycle
+│   ├── monitoring.py            # AP telemetry generator, fault simulation, diagnostics & remediation
+│   ├── reporting.py             # Role overview, SLA/MTTR analytics, audit trail & cron webhook
+│   ├── seed.py                  # Idempotent demo data seeder & MYT timestamp normalizer
+│   ├── reset_demo.py            # Guarded CLI utility to wipe and re-seed `_atlas_demo` collections
+│   ├── requirements.txt         # Production Python dependencies
+│   └── requirements-dev.txt     # Test & lint toolchain (pytest, mongomock-motor, flake8, black)
+├── frontend/                    # React 19 + TypeScript 5.9 + Tailwind CSS Frontend SPA
+│   ├── src/
+│   │   ├── pages/               # Route views: Login, Dashboard, Monitoring, Checklists, Tickets,
+│   │   │                        # Shifts, Assets, Locations, Team, Reports, Audit, Alerts
+│   │   ├── components/          # Layout shell (sidebar, topbar, role bell alerts), Telemetry charts,
+│   │   │                        # APTable, Simulation modal, UserProfileModal & shared UI primitives
+│   │   ├── lib/                 # Axios refresh client, TypeScript contracts, CSV exporter & fleet helpers
+│   │   ├── context.tsx          # Authentication context & sessionStorage tab-lifecycle manager
+│   │   ├── App.tsx              # ThemeProvider & strict 3-tier role-protected routing guard
+│   │   ├── index.css            # Tailwind layers & Dark/Light CSS custom properties
+│   │   └── App.css              # Enterprise data tables, cards, modals & responsive breakpoints
+│   ├── tailwind.config.js       # Tailwind CSS design tokens & dark-mode class configuration
+│   └── package.json             # Build, dev server, strict TypeScript & Prettier scripts
+├── tests/                       # 57 Automated Pytest Suites (API, RBAC, Simulation & AST Architecture)
+└── .github/workflows/ci.yml     # GitHub Actions CI Pipeline (Backend Python 3.12 + Frontend Node 24)
+```
 
 ---
 
-## Technology Stack
+## 🛠️ Step-by-Step Installation & Setup Guide
 
-| Layer | Technologies Used |
-|---|---|
-| **Frontend** | React 19, TypeScript 5.9, React Router 7, Tailwind CSS 3.4, Radix UI Primitives, Recharts 3, Lucide Icons, Axios, CRACO |
-| **Backend** | Python 3.12, FastAPI, Uvicorn, Motor (AsyncIO MongoDB Driver), Pydantic v2 |
-| **Database** | MongoDB 8 (isolated `_atlas_demo` database namespace in demonstration mode) |
-| **Authentication & Security** | `bcrypt` password hashing, PyJWT (`HS256` access & refresh tokens in `HttpOnly` cookies), strict CORS & `Origin` verification, custom `X-Atlas-Request` CSRF header guard |
-| **Testing & Quality Assurance** | `pytest`, `pytest-asyncio`, `mongomock-motor` (57 automated backend tests), `flake8`, `black`, TypeScript (`tsc --noEmit --noUnusedLocals`), Prettier, GitHub Actions CI |
-
----
-
-## Getting Started
+Atlas NetCare runs locally on macOS, Linux, or Windows with Python, Node.js, and MongoDB.
 
 ### Prerequisites
+- **Python**: Version `3.12` (or `3.13`)
+- **Node.js**: Version `20+` LTS (`24.x` recommended) and **npm**
+- **Database**: **MongoDB** `8.x` (or `7.x+`) running locally on `mongodb://127.0.0.1:27017`
 
-Ensure the following tools are installed on your machine:
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/netcare-lab.git
+cd netcare-lab
+```
 
-- **Python** `3.12` (or `3.13`)
-- **Node.js** `24.x` (or `20+` LTS) and **npm**
-- **MongoDB** `8.x` running locally on `mongodb://127.0.0.1:27017` (or a reachable MongoDB URI)
-
----
-
-### 1. Backend Setup
-
-1. Navigate to the `backend` directory, create a virtual environment, and install dependencies:
-
+### 2. Backend & Database Initialization
+1. Create an isolated Python virtual environment and install backend dependencies:
    ```bash
    cd backend
    python3.12 -m venv .venv
    .venv/bin/pip install -r requirements.txt
    ```
-   *(On Windows PowerShell/CMD, use `.venv\Scripts\pip install -r requirements.txt`.)*
+   *(On Windows PowerShell/CMD, run `.venv\Scripts\pip install -r requirements.txt`).*
 
-2. Create a `backend/.env` file with the following configuration:
-
+2. Create `backend/.env` with your local configuration:
    ```dotenv
    MONGO_URL=mongodb://127.0.0.1:27017
    DB_NAME=netcare
@@ -168,248 +187,105 @@ Ensure the following tools are installed on your machine:
    CAMPUS_TIMEZONE=Asia/Kuala_Lumpur
    ```
 
-3. Start the FastAPI server on port `8001`:
-
+3. Launch the FastAPI server on port `8001`:
    ```bash
    .venv/bin/uvicorn server:app --host 0.0.0.0 --port 8001 --reload
    ```
+   *(On initial startup with `DEMO_MODE=true`, the backend automatically creates all MongoDB indexes and seeds **11 campus locations**, **28 wireless access points**, **30 lab workstations**, default staff accounts, active shifts, sample tickets, and **24 hours of historical telemetry**).*
+   - **API Health Check**: `http://localhost:8001/api/health`
+   - **Interactive Swagger / OpenAPI Docs**: `http://localhost:8001/docs`
 
-   On initial startup, the backend automatically seeds MongoDB with default accounts, **11 campus locations**, **28 wireless access points**, **30 lab workstations**, sample incident tickets, active shifts, and **24 hours of historical telemetry**. Subsequent restarts preserve existing data.
-
-   - **Health Check:** `http://localhost:8001/api/health`
-   - **Interactive OpenAPI / Swagger UI:** `http://localhost:8001/docs`
-
----
-
-### 2. Frontend Setup
-
-1. Open a new terminal, navigate to `frontend`, and install packages:
-
+### 3. Frontend Configuration & Launch
+1. Open a second terminal, navigate to `frontend/`, and install dependencies:
    ```bash
    cd frontend
    npm install --legacy-peer-deps
    ```
-   > **Note:** `--legacy-peer-deps` is required because `react-scripts` 5 specifies TypeScript `^3 || ^4` as an optional peer dependency while this project uses TypeScript `5.9` for stricter type safety.
-
-2. Create a `frontend/.env` file:
-
+2. Create `frontend/.env`:
    ```dotenv
    REACT_APP_BACKEND_URL=http://localhost:8001
    PORT=3000
    ```
-
-3. Launch the development server:
-
+3. Start the React development server:
    ```bash
    npm start
    ```
+   Open your browser and navigate to **`http://localhost:3000`** (unauthenticated sessions redirect cleanly to **`http://localhost:3000/login`**).
 
-4. Open `http://localhost:3000` in your browser and sign in using any of the [Default Demonstration Accounts](#default-demonstration-accounts) below.
-
----
-
-### 3. Resetting Demonstration Data (Optional)
-
-To wipe and re-seed the demonstration database back to a clean baseline before a presentation or viva:
-
+### 4. Optional Demo Database Reset & Test Suite Execution
+To wipe and re-seed the demonstration database back to a pristine baseline before a viva or grading session:
 ```bash
 cd backend
 .venv/bin/python reset_demo.py --confirm RESET-ATLAS-DEMO
 ```
-
-As a safety mechanism, `reset_demo.py` refuses to execute unless `DEMO_MODE=true` and the resolved database name ends with `_atlas_demo`.
-
----
-
-## Default Demonstration Accounts
-
-All seeded accounts share the password configured in `DEMO_PASSWORD` (**`AtlasDemo2026!`** using the sample `.env` above):
-
-| Role | Email Address | Password | Full Name | Primary Evaluation Focus |
-|---|---|---|---|---|
-| **Administrator** | `admin@apu.edu.my` | `AtlasDemo2026!` | Alex Morgan | Full portal access, inventory, locations, roster, team management, SLA reports & audit log |
-| **Network Engineer** | `engineer@apu.edu.my` | `AtlasDemo2026!` | Daniel Reyes | AP telemetry monitoring, fault simulation, remote diagnostics/remediation & Tier 2 tickets |
-| **IT Assistant** | `assistant@apu.edu.my` | `AtlasDemo2026!` | Jamie Santos | Shift acknowledgement, handover notes, 2D lab map & workstation inspection checklists |
-
-Additional seeded staff accounts for multi-user roster and ticket assignment testing:
-
-| Role | Email Address | Full Name |
-|---|---|---|
-| Network Engineer | `sofia@apu.edu.my` | Sofia Cruz |
-| IT Assistant | `mika@apu.edu.my` | Mika Flores |
-| IT Assistant | `leo@apu.edu.my` | Leo Garcia |
-| IT Assistant | `nina@apu.edu.my` | Nina Ramos |
-| IT Assistant | `kai@apu.edu.my` | Kai Mendoza |
-| Owner Administrator | Value of `ADMIN_EMAIL` | Uses `ADMIN_PASSWORD` from `backend/.env` |
-
-> **Data Privacy Notice:** Use fictional names and emails only during testing. Do not enter real student or staff personal data.
-
----
-
-## Environment Configuration
-
-### Backend (`backend/.env`)
-
-| Variable | Required | Description |
-|---|:---:|---|
-| `MONGO_URL` | Yes | MongoDB connection URI (e.g., `mongodb://127.0.0.1:27017`). |
-| `DB_NAME` | Yes | Base database name. Resolves to `<DB_NAME>_atlas_demo` when `DEMO_MODE=true` or `<DB_NAME>_atlas` otherwise to prevent accidental data mixing. |
-| `DEMO_MODE` | Yes | Enables demonstration seeding, reset safeguards, and simulated recovery flows (`true` recommended for academic evaluation). |
-| `JWT_SECRET` | Yes | Secret key (minimum 32 random bytes recommended) used to sign `HS256` access and refresh tokens. |
-| `WEBHOOK_CRON_SECRET` | Yes | Bearer token authenticating external calls to `POST /api/cron/maintain`. |
-| `ADMIN_EMAIL` | Yes | Email address for the protected owner administrator account. |
-| `ADMIN_PASSWORD` | Yes | Password for the owner administrator account. |
-| `DEMO_PASSWORD` | Yes | Default password assigned to all seeded campus demonstration accounts. |
-| `FRONTEND_URL` | Yes | Exact browser origin allowed by CORS and the mutating-request origin guard (e.g., `http://localhost:3000`). |
-| `CAMPUS_TIMEZONE` | No | IANA timezone for shift scheduling and timestamps (defaults to `Asia/Kuala_Lumpur`). |
-| `PREVIEW_PROXY_ORIGIN` | No | Optional secondary allowed browser origin for preview tunnels or reverse proxies. |
-
-### Frontend (`frontend/.env`)
-
-| Variable | Required | Description |
-|---|:---:|---|
-| `REACT_APP_BACKEND_URL` | Yes | Base URL of the FastAPI server (e.g., `http://localhost:8001`). Restart `npm start` after modifying. |
-| `PORT` | No | Local development port (defaults to `3000`; must match `FRONTEND_URL`). |
-
----
-
-## Core Business & Domain Rules
-
-- **Idempotent Workstation Checklists:** All five inspection items are mandatory and restricted to workstation (`PC`) assets. Every submission carries a client-generated `request_id`; retrying with the same key safely returns the existing record without creating duplicates, while reusing a key with altered payload data is rejected (`409`).
-- **Automatic Incident Deduplication & Tier Routing:** Failed checklist items and manual fault reports check for an existing unresolved ticket on the same asset and append to its timeline rather than creating duplicate tickets. Network and Access Point issues automatically route to **Tier 2** and elevate `medium` priority reports to `high`.
-- **Strict Ticket Lifecycle:** Tickets must transition through **Open → In Progress → Resolved**. Resolving a ticket requires resolution notes of at least 10 characters, and resolved tickets are locked against further status regressions.
-- **Timezone-Aware Shift Validation:** Shift windows operate in Malaysia Time (`UTC+8`), are capped at 24 hours, and reject overlapping assignments for the same assistant (including cross-midnight shifts). Completed shifts preserve their original handover record and cannot be cancelled.
-- **Honest Telemetry Classification:** Access points whose telemetry feed is interrupted or older than 20 minutes are surfaced distinctly as **Feed Interrupted (`stale`)** rather than falsely reporting a confirmed hardware outage (`offline`). Telemetry history is retained for 7 days (capped at 20,000 samples).
-- **Side-Effect-Free Reads & Background Maintenance:** `GET` endpoints never mutate database state. Instead, an asynchronous background maintenance loop runs every 15 seconds to record AP telemetry samples, open/resolve threshold alerts, and generate shift reminders (with an idempotent `POST /api/cron/maintain` webhook available for serverless deployments).
-
----
-
-## REST API Overview
-
-All API endpoints are prefixed with `/api`. State-changing requests (`POST`, `PATCH`, `PUT`, `DELETE`) require an allowed `Origin` header and `X-Atlas-Request: 1` (attached automatically by the frontend Axios client).
-
-| Domain | Endpoints |
-|---|---|
-| **Authentication** | `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `GET /auth/me`, `PATCH /auth/profile`, `POST /auth/forgot-password`, `POST /auth/demo` |
-| **Locations & Inventory** | `GET /labs`, `GET /locations`, `POST /locations`, `PATCH /locations/{id}`, `DELETE /locations/{id}`, `GET /assets`, `POST /assets`, `PATCH /assets/{id}`, `PATCH /assets/{id}/archive`, `DELETE /assets/{id}` |
-| **Team Accounts** | `GET /users`, `POST /users`, `PATCH /users/{id}`, `DELETE /users/{id}` |
-| **Shift Roster** | `GET /shifts`, `POST /shifts`, `POST /shifts/{id}/acknowledge`, `POST /shifts/{id}/complete`, `POST /shifts/{id}/cancel` |
-| **Checklists & Tickets** | `GET /checklists`, `POST /checklists`, `POST /checklists/batch`, `GET /checklists/{id}`, `POST /incidents`, `GET /tickets`, `GET /tickets/{id}`, `PATCH /tickets/{id}`, `POST /tickets/{id}/comment` |
-| **Network Monitoring** | `GET /monitoring`, `GET /monitoring/{id}/history`, `POST /monitoring/sample`, `POST /monitoring/{id}/diagnose`, `POST /monitoring/{id}/remediate`, `POST /simulation`, `GET /alerts` |
-| **Reporting & System** | `GET /overview`, `GET /reports`, `GET /audit`, `POST /cron/maintain`, `GET /health` |
-
-Example `curl` authentication request:
-
+To run the full **57-test automated backend suite** (uses in-memory `mongomock-motor`, requiring zero live MongoDB connection) and **frontend type/build checks**:
 ```bash
-curl -X POST http://localhost:8001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -H "X-Atlas-Request: 1" \
-  -H "Origin: http://localhost:3000" \
-  -d '{"email":"admin@apu.edu.my","password":"AtlasDemo2026!"}'
-```
-
----
-
-## Project Structure
-
-```text
-netcare-lab/
-├── backend/
-│   ├── server.py              # FastAPI app entry point, CORS, origin/CSRF guard & background loop
-│   ├── core.py                # Environment settings, Motor client, RBAC helpers, leases & indexes
-│   ├── auth.py                # JWT cookie sessions, login/logout, token refresh & profile updates
-│   ├── campus.py              # Campus zone catalogue, VLAN mapping, DHCP IP allocator & tag generator
-│   ├── inventory.py           # Campus locations & hardware asset CRUD / archive endpoints
-│   ├── team.py                # User account management, role assignment & password administration
-│   ├── roster.py              # Shift scheduling, overlap validation, acknowledgement & handovers
-│   ├── tickets.py             # Workstation checklists, batch verification & incident ticket lifecycle
-│   ├── monitoring.py          # Synthetic AP telemetry engine, fault simulation, alerts & remediation
-│   ├── reporting.py           # Dashboard overview, SLA reports, activity audit log & cron webhook
-│   ├── seed.py                # Idempotent startup seeding & schema migrations
-│   ├── reset_demo.py          # Guarded CLI utility to wipe and re-seed demo data
-│   ├── requirements.txt       # Production Python dependencies
-│   └── requirements-dev.txt   # Testing & linting dependencies (pytest, mongomock-motor, flake8, black)
-├── frontend/
-│   ├── src/
-│   │   ├── pages/             # Route views: Login, Dashboard, Monitoring, Checklists, Tickets,
-│   │   │                      # Shifts, Assets, Locations, Team, Reports, Audit, Alerts
-│   │   ├── components/        # Global Layout (sidebar, navbar, notifications), Telemetry charts/tables,
-│   │   │                      # UserProfileModal, shared UI primitives
-│   │   ├── lib/
-│   │   │   ├── api.ts         # Axios client with automatic token refresh & MYT date formatters
-│   │   │   ├── types.ts       # Strict TypeScript interfaces for API payloads
-│   │   │   ├── workflow.ts    # Client-side demo state synchronization & local fallback helpers
-│   │   │   ├── fleetSimulation.ts # Deterministic AP metric stepping & scenario builders
-│   │   │   └── csv.ts         # RFC-compliant CSV export generator
-│   │   ├── context.tsx        # React authentication & session state provider
-│   │   ├── App.tsx            # Theme provider & role-protected routing table
-│   │   ├── index.css          # Tailwind base layers & light/dark theme CSS custom properties
-│   │   └── App.css            # Enterprise component, table, modal & responsive layout styles
-│   ├── tailwind.config.js     # Tailwind CSS theme configuration
-│   └── package.json           # Frontend scripts (start, build, typecheck, format)
-├── tests/                     # Automated pytest suite (API integration, architecture & simulation tests)
-└── .github/workflows/ci.yml   # GitHub Actions CI pipeline for backend & frontend verification
-```
-
----
-
-## Testing, Code Quality & CI
-
-### Backend Test Suite & Linters
-
-The backend test suite uses `mongomock-motor` (an in-memory async MongoDB mock), so all **57 automated tests** run without requiring a live MongoDB instance or `.env` file:
-
-```bash
-python3.12 -m venv backend/.venv
+# Backend tests & linters (from project root)
 backend/.venv/bin/pip install -r backend/requirements-dev.txt
-
-# Run automated test suite from repository root
 backend/.venv/bin/pytest
-
-# Run code style & lint checks
 backend/.venv/bin/flake8 backend tests
-backend/.venv/bin/black --check backend tests
+
+# Frontend static verification
+cd frontend && npm run typecheck && npm run format:check && npm run build
 ```
-
-- **`tests/test_api.py`, `test_api_admin.py`, `test_api_ops.py`:** End-to-end HTTP integration tests covering authentication, role-based access denials, idempotent checklists, ticket lifecycle rules, shift overlap validation, inventory CRUD, fault simulation, SLA reporting, and reset safeguards.
-- **`tests/test_architecture.py`:** Enforces clean module dependency direction across backend packages.
-- **`tests/test_simulation.py`:** Validates telemetry profiles, fault scenarios, and DHCP/VLAN address allocation.
-
-### Frontend Verification
-
-```bash
-cd frontend
-npm run typecheck      # TypeScript compiler check (rejects type errors & unused locals)
-npm run format:check   # Prettier formatting verification across TS, TSX & CSS
-npm run build          # Production bundle compilation check
-```
-
-### Continuous Integration (GitHub Actions)
-
-Every push and pull request triggers `.github/workflows/ci.yml`, running:
-1. **Backend Job (Python 3.12):** `flake8`, `black --check`, and `pytest`.
-2. **Frontend Job (Node.js 24):** `npm ci --legacy-peer-deps`, `npm run typecheck`, `npm run format:check`, and `npm run build`.
 
 ---
 
-## Known Limitations & Future Enhancements
+## 🔑 Test Credentials for Evaluation
 
-Because Atlas NetCare is built as an academic capstone prototype, several intentional scope boundaries and future hardening areas are documented below:
+The database is pre-seeded with ready-to-use demonstration accounts across all 3 operational role tiers (using `DEMO_PASSWORD` = **`AtlasDemo2026!`** from the sample `.env` above):
 
-1. **Simulated Network Control Plane:** Access-point metrics and remediation actions (PoE cycling, 5GHz channel rebalancing, daemon restarts) operate against synthetic telemetry models rather than live SNMP, NetFlow, or vendor controller APIs (e.g., Cisco Catalyst Center / Aruba Central).
-2. **Client-Side Demo Resilience Layer:** To ensure fluid live demonstrations even when offline or before backend mutations settle, `frontend/src/lib/workflow.ts` caches local simulation state in browser storage alongside server records. Server-side audit logs and SLA reports strictly reflect records committed to MongoDB.
-3. **Demo Authentication Convenience:** On initial unauthenticated load (outside `/login` and prior to explicit sign-out), `DEMO_MODE` supports bootstrapping a demonstration session via `POST /api/auth/demo`. Production deployment would disable `DEMO_MODE`, enforce refresh-token rotation, add SMTP/SSO integration, and tighten per-user record ownership checks on shift acknowledgements and ticket comments.
+| Role Tier | Email Address | Password | Staff Name | Key Modules & Routes to Evaluate |
+| :--- | :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@apu.edu.my` | `AtlasDemo2026!` | Alex Morgan | `/`, `/assets`, `/locations`, `/users`, `/shifts`, `/reports`, `/audit` |
+| **Network Engineer** | `engineer@apu.edu.my` | `AtlasDemo2026!` | Daniel Reyes | `/`, `/monitoring` *(Fault Simulation & Diagnostics)*, `/tickets` *(Tier 2 Queue)* |
+| **IT Assistant** | `assistant@apu.edu.my` | `AtlasDemo2026!` | Jamie Santos | `/`, `/shifts` *(Acknowledge & Handover)*, `/checklists` *(2D Lab Map & Inspections)* |
+| **Network Engineer 2** | `sofia@apu.edu.my` | `AtlasDemo2026!` | Sofia Cruz | *(Test multi-engineer Tier 2 ticket triage & concurrent remediation)* |
+| **IT Assistant 2** | `mika@apu.edu.my` | `AtlasDemo2026!` | Mika Flores | *(Test multi-assistant shift scheduling, overlap guards & lab handovers)* |
+| **Owner Admin** | `owner@apu.edu.my` | `OwnerSecure2026!` | Campus Owner | *(Protected root administrator configured via `ADMIN_EMAIL` / `ADMIN_PASSWORD`)* |
+
+*(Additional seeded IT Assistant roster accounts: `leo@apu.edu.my`, `nina@apu.edu.my`, and `kai@apu.edu.my` — all using `AtlasDemo2026!`).*
 
 ---
 
-## Troubleshooting
+## 📡 Telemetry Algorithms, Fault Escalation & SLA Mechanics
 
-| Symptom | Cause & Resolution |
-|---|---|
-| Backend exits immediately with `KeyError` | One or more required variables are missing from `backend/.env`. Compare against the sample `.env` in [Backend Setup](#1-backend-setup). |
-| `ServerSelectionTimeoutError` on startup | MongoDB is not running locally or `MONGO_URL` in `backend/.env` points to an unreachable host/port. |
-| Save/login requests fail with `403 Untrusted request origin` | Ensure `FRONTEND_URL` in `backend/.env` matches your exact browser origin (including `http://` and port `3000`) with no trailing slash. |
-| UI loads, but API calls fail to connect | Verify `REACT_APP_BACKEND_URL=http://localhost:8001` in `frontend/.env` and restart `npm start` so Create React App picks up the variable. |
-| `npm install` fails with `ERESOLVE` | Run `npm install --legacy-peer-deps` inside `frontend/`. |
-| Default demo credentials fail to sign in | Confirm `DEMO_PASSWORD` in `backend/.env` matches the password you typed. If `DEMO_PASSWORD` was changed after initial seeding, run `reset_demo.py --confirm RESET-ATLAS-DEMO`. |
-| `reset_demo.py` outputs `REFUSED` | Safety check triggered: verify `DEMO_MODE=true` in `backend/.env` so the target database ends in `_atlas_demo`. |
+### 1. Deterministic Wireless Telemetry & Honest Anomaly Classification
+Each of the 28 campus access points is modeled using zone-specific baseline profiles (computing labs, lecture theatres, library, canteen, lounge, outdoor bus stop) combined with sinusoidal diurnal client waves across six injectable operational states:
+- **Online (`normal`)**: Healthy client density, balanced airtime load (`12% – 78%`), and low RTT latency.
+- **Congested (`congestion` / `degradation`)**: High wireless client density and airtime load (`85% – 98%`) with elevated packet queue depth (`260+` frames) and RTT spikes (`122+ ms`).
+- **Offline (`outage`)**: Confirmed hardware or PoE link loss (`0` clients, `0.0 Mbps` throughput, `null` RTT).
+- **Feed Interrupted (`stale`)**: Triggered by `feed` interruption, `flapping` microbursts, or telemetry silence exceeding **20 minutes (`1,200s`)**—honestly distinguishing unmonitored telemetry daemons from confirmed hardware outages.
+
+### 2. Automated Tier 1 / Tier 2 Fault Routing & Deduplication
+When an IT Assistant fails any item on a 5-point workstation checklist or an operator reports an incident, the engine computes a composite deduplication key (`active_key = "<asset_id>:<category>"`):
+- If an unresolved ticket already exists for that asset and fault category, the report appends a timestamped corroboration event to the existing ticket rather than cluttering the queue with duplicates.
+- **Tier 1 (Lab Support)**: Workstation hardware faults (*Power & Boot*, *Display*, *Keyboard & Mouse*, *OS & Software*).
+- **Tier 2 (NOC Engineering)**: All `AP-*` access point anomalies and workstation *Network Connectivity* failures are automatically escalated to **Tier 2** and elevated from `medium` to `high` priority.
+
+### 3. SLA Compliance & Mean Time to Resolution (MTTR)
+Operational reports (`/reports`) and executive dashboard snapshots compute real-time KPIs directly from committed records:
+
+$$\text{MTTR (minutes)} = \frac{1}{N_{\text{resolved}}} \sum_{i=1}^{N_{\text{resolved}}} \frac{t_{\text{resolved}, i} - t_{\text{created}, i}}{60}$$
+
+$$\text{Shift Acknowledgement Rate} = \left( \frac{N_{\text{acknowledged}} + N_{\text{completed}}}{N_{\text{active shifts}}} \right) \times 100\%$$
+
+*(Note: When $N_{\text{resolved}} = 0$, the reporting engine returns `null` rather than fabricating a synthetic average).*
+
+---
+
+## 🎓 Academic Learning Outcomes Demonstrated
+
+This capstone project demonstrates core university software engineering and network operations competencies:
+1. **Full-Stack Asynchronous Web Engineering**: End-to-end integration of an async Python/FastAPI REST service with a strictly typed React 19 + TypeScript single-page application.
+2. **Database Modeling, Indexing & Concurrency Control**: Designing compound unique, partial-filter, and TTL indexes alongside distributed MongoDB lease locks to guarantee data integrity under concurrent writes.
+3. **Clean Software Architecture & Automated Verification**: Enforcing unidirectional domain module boundaries via AST static analysis, backed by 57 automated `pytest` tests and GitHub Actions CI.
+4. **Web Security & Defensive API Design**: Implementing `HttpOnly` JWT cookie authentication, `bcrypt` hashing, sliding-window rate limiting, strict CORS/`Origin` verification, anti-CSRF headers, and 3-tier RBAC.
+5. **Operational Observability & UX Design**: Translating complex NOC telemetry, 2D physical lab readiness maps, and SLA compliance metrics into an accessible, mobile-responsive Dark/Light interface with instant CSV and printable PDF exports.
+
+---
+
+<div align="center">
+  <p><b>Built with ❤️ for Campus Network Reliability & Academic Excellence.</b></p>
+  <p><i>Atlas NetCare Platform © 2026 · Asia Pacific University of Technology & Innovation (APU)</i></p>
+</div>
