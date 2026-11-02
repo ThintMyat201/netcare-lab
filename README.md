@@ -263,15 +263,6 @@ When an IT Assistant fails any item on a 5-point workstation checklist or an ope
 - **Tier 1 (Lab Support)**: Workstation hardware faults (*Power & Boot*, *Display*, *Keyboard & Mouse*, *OS & Software*).
 - **Tier 2 (NOC Engineering)**: All `AP-*` access point anomalies and workstation *Network Connectivity* failures are automatically escalated to **Tier 2** and elevated from `medium` to `high` priority.
 
-### 3. SLA Compliance & Mean Time to Resolution (MTTR)
-Operational reports (`/reports`) and executive dashboard snapshots compute real-time KPIs directly from committed records:
-
-$$\text{MTTR (minutes)} = \frac{1}{N_{\text{resolved}}} \sum_{i=1}^{N_{\text{resolved}}} \frac{t_{\text{resolved}, i} - t_{\text{created}, i}}{60}$$
-
-$$\text{Shift Acknowledgement Rate} = \left( \frac{N_{\text{acknowledged}} + N_{\text{completed}}}{N_{\text{active shifts}}} \right) \times 100\%$$
-
-*(Note: When $N_{\text{resolved}} = 0$, the reporting engine returns `null` rather than fabricating a synthetic average).*
-
 ---
 
 ## 🎓 Academic Learning Outcomes Demonstrated
