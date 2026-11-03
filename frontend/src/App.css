@@ -3112,8 +3112,8 @@ button.password-eye-btn:hover {
 .login-form form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin-top: 25px;
+  gap: 16px;
+  margin-top: 0;
 }
 
 .login-form form .btn {

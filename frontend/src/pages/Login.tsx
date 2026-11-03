@@ -1,15 +1,15 @@
 import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, Lock, KeyRound } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
-import campusBg from '../assets/A-CONNECTED-CAMPUS-2.jpg';
 
 export default function Login() {
   const { user, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [recover, setRecover] = useState(false);
@@ -35,44 +35,25 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page relative min-h-screen flex flex-col justify-between overflow-hidden">
-      {/* Background Image Layer */}
-      <div
-        className="login-photo absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${campusBg})` }}
-      />
-      {/* Rich Dark Gradient Overlay */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-950/85 via-slate-950/80 to-slate-950/90 backdrop-blur-[2px]" />
+    <div className="login-page relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      <div className="login-photo" />
 
-      <div className="login-top relative z-10">
-        <Logo />
-      </div>
-      <main className="login-main relative z-10 flex flex-col items-center">
-        <span className="eyebrow">CAMPUS NETWORK OPERATIONS</span>
-        <h1>
-          Every connection.
-          <br />
-          Under your care.
-        </h1>
-        <div className="login-form max-w-md w-full bg-slate-900/85 border border-slate-800/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
-          <div className="mb-4">
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm">
-              {recover ? <KeyRound size={20} /> : <Lock size={20} />}
-            </span>
+      <main className="relative z-10 w-full max-w-[380px]">
+        <div className="login-form bg-slate-900/90 border border-slate-800/90 backdrop-blur-md rounded-2xl p-7 shadow-2xl">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <Logo />
+            <h1 className="mt-4 text-lg font-semibold text-slate-100">{recover ? 'Reset password' : 'Sign in'}</h1>
           </div>
-          <h2>{recover ? 'Account Recovery' : 'Sign In to Atlas NetCare'}</h2>
-          <p>
-            {recover
-              ? 'Enter your campus email to receive recovery instructions.'
-              : 'Enter your campus credentials to access the operational portal.'}
-          </p>
 
-          <form onSubmit={submit}>
-            <Field label="Campus Email Address" id="login-email">
+          <form onSubmit={submit} className="mt-0 flex flex-col gap-4">
+            <Field label="Email" id="login-email">
               <input
                 id="login-email"
+                name="email"
                 data-testid="login-email"
                 type="email"
+                autoComplete="username"
+                spellCheck={false}
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -81,17 +62,51 @@ export default function Login() {
             </Field>
 
             {!recover && (
-              <Field label="Account Password" id="login-password">
-                <input
-                  id="login-password"
-                  data-testid="login-password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter your account password"
-                />
-              </Field>
+              <div className="field">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="current-password"
+                    data-testid="login-password-label"
+                    className="text-[11px] font-semibold text-[#9ba8bc]"
+                  >
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="toggle-recovery"
+                    className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                    onClick={() => {
+                      setRecover(true);
+                      setNotice('');
+                      setError('');
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    id="current-password"
+                    name="password"
+                    data-testid="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
             )}
 
             <ErrorBox error={error} />
@@ -102,29 +117,28 @@ export default function Login() {
               </div>
             )}
 
-            <Button id="login-submit" variant="primary" disabled={busy} type="submit">
-              {busy ? 'Authenticating…' : recover ? 'Send Recovery Instructions' : 'Sign In'}
-              <ArrowRight size={16} />
+            <Button id="login-submit" variant="primary" disabled={busy} type="submit" className="w-full mt-1">
+              {busy ? 'Signing in…' : recover ? 'Send reset link' : 'Sign in'}
+              <ArrowRight size={15} />
             </Button>
           </form>
 
-          <button
-            data-testid="toggle-recovery"
-            className="text-button"
-            onClick={() => {
-              setRecover(!recover);
-              setNotice('');
-              setError('');
-            }}
-          >
-            {recover ? '← Return to Sign In' : 'Forgot your password?'}
-          </button>
+          {recover && (
+            <button
+              type="button"
+              data-testid="toggle-recovery"
+              className="text-button mt-4 mx-auto"
+              onClick={() => {
+                setRecover(false);
+                setNotice('');
+                setError('');
+              }}
+            >
+              ← Back to sign in
+            </button>
+          )}
         </div>
       </main>
-
-      <div className="login-bottom relative z-10">
-        ATLAS NETCARE <span>Campus Network Operations · Asia/Kuala Lumpur (MYT)</span>
-      </div>
     </div>
   );
 }
