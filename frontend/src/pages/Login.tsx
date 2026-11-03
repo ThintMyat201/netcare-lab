@@ -1,9 +1,33 @@
 import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ShieldCheck, Network, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
+
+const DEMO_ACCOUNTS = [
+  {
+    id: 'owner',
+    label: 'Owner',
+    email: 'owner@apu.edu.my',
+    password: 'OwnerSecure2026!',
+    icon: ShieldCheck,
+  },
+  {
+    id: 'engineer',
+    label: 'Engineer',
+    email: 'engineer@apu.edu.my',
+    password: 'AtlasDemo2026',
+    icon: Network,
+  },
+  {
+    id: 'assistant',
+    label: 'Assistant',
+    email: 'assistant@apu.edu.my',
+    password: 'AtlasDemo2026',
+    icon: ClipboardCheck,
+  },
+] as const;
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -16,6 +40,14 @@ export default function Login() {
   const [notice, setNotice] = useState('');
 
   if (user) return <Navigate to="/" replace />;
+
+  const fillDemoCredentials = (demoEmail: string, demoPassword: string) => {
+    setRecover(false);
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError('');
+    setNotice('');
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -123,7 +155,28 @@ export default function Login() {
             </Button>
           </form>
 
-          {recover && (
+          {!recover ? (
+            <div>
+              <div className="demo-divider">QUICK DEMO ACCESS</div>
+              <div className="demo-roles" role="group" aria-label="Quick Demo Access">
+                {DEMO_ACCOUNTS.map(({ id, label, email: demoEmail, password: demoPassword, icon: Icon }) => {
+                  const selected = email.toLowerCase() === demoEmail;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      data-testid={`demo-${id}`}
+                      onClick={() => fillDemoCredentials(demoEmail, demoPassword)}
+                      className={selected ? '!border-blue-500/70 !bg-blue-500/15 !text-white shadow-sm' : undefined}
+                    >
+                      <Icon size={16} />
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
               data-testid="toggle-recovery"

@@ -237,14 +237,14 @@ The database is pre-seeded with ready-to-use demonstration accounts across all 3
 
 | Role Tier | Email Address | Password | Staff Name | Key Modules & Routes to Evaluate |
 | :--- | :--- | :--- | :--- | :--- |
-| **Administrator** | `admin@apu.edu.my` | `AtlasDemo2026!` | Alex Morgan | `/`, `/assets`, `/locations`, `/users`, `/shifts`, `/reports`, `/audit` |
-| **Network Engineer** | `engineer@apu.edu.my` | `AtlasDemo2026!` | Daniel Reyes | `/`, `/monitoring` *(Fault Simulation & Diagnostics)*, `/tickets` *(Tier 2 Queue)* |
-| **IT Assistant** | `assistant@apu.edu.my` | `AtlasDemo2026!` | Jamie Santos | `/`, `/shifts` *(Acknowledge & Handover)*, `/checklists` *(2D Lab Map & Inspections)* |
-| **Network Engineer 2** | `sofia@apu.edu.my` | `AtlasDemo2026!` | Sofia Cruz | *(Test multi-engineer Tier 2 ticket triage & concurrent remediation)* |
-| **IT Assistant 2** | `mika@apu.edu.my` | `AtlasDemo2026!` | Mika Flores | *(Test multi-assistant shift scheduling, overlap guards & lab handovers)* |
+| **Administrator** | `admin@apu.edu.my` | `AtlasDemo2026` | Alex Morgan | `/`, `/assets`, `/locations`, `/users`, `/shifts`, `/reports`, `/audit` |
+| **Network Engineer** | `engineer@apu.edu.my` | `AtlasDemo2026` | Daniel Reyes | `/`, `/monitoring` *(Fault Simulation & Diagnostics)*, `/tickets` *(Tier 2 Queue)* |
+| **IT Assistant** | `assistant@apu.edu.my` | `AtlasDemo2026` | Jamie Santos | `/`, `/shifts` *(Acknowledge & Handover)*, `/checklists` *(2D Lab Map & Inspections)* |
+| **Network Engineer 2** | `sofia@apu.edu.my` | `AtlasDemo2026` | Sofia Cruz | *(Test multi-engineer Tier 2 ticket triage & concurrent remediation)* |
+| **IT Assistant 2** | `mika@apu.edu.my` | `AtlasDemo2026` | Mika Flores | *(Test multi-assistant shift scheduling, overlap guards & lab handovers)* |
 | **Owner Admin** | `owner@apu.edu.my` | `OwnerSecure2026!` | Campus Owner | *(Protected root administrator configured via `ADMIN_EMAIL` / `ADMIN_PASSWORD`)* |
 
-*(Additional seeded IT Assistant roster accounts: `leo@apu.edu.my`, `nina@apu.edu.my`, and `kai@apu.edu.my` — all using `AtlasDemo2026!`).*
+*(Additional seeded IT Assistant roster accounts: `leo@apu.edu.my`, `nina@apu.edu.my`, and `kai@apu.edu.my` — all using `AtlasDemo2026`).*
 
 ---
 
