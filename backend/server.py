@@ -3,8 +3,8 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.cors import CORSMiddleware
 from core import db, client
 from seed import seed
 from auth import router as auth_router
@@ -55,16 +55,21 @@ async def lifespan(app):
 
 
 app = FastAPI(title='Atlas NetCare Academic Demo', lifespan=lifespan)
-allowed_origins = [os.environ['FRONTEND_URL']]
-if os.environ.get('PREVIEW_PROXY_ORIGIN'):
-    allowed_origins.append(os.environ['PREVIEW_PROXY_ORIGIN'])
+origins = [
+    'https://netcare-lab.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+for env_origin in [os.environ.get('FRONTEND_URL'), os.environ.get('PREVIEW_PROXY_ORIGIN')]:
+    if env_origin and env_origin.rstrip('/') not in origins:
+        origins.append(env_origin.rstrip('/'))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=origins,
     allow_credentials=True,
-    # DELETE is listed because the admin pages remove assets, locations and team members.
-    allow_methods=['GET', 'POST', 'PATCH', 'DELETE'],
-    allow_headers=['Content-Type', 'Authorization', 'X-Atlas-Request'],
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
 
@@ -72,7 +77,7 @@ app.add_middleware(
 async def guard_origin(request: Request, call_next):
     if request.method in ['POST', 'PATCH', 'PUT', 'DELETE'] and not request.url.path.startswith('/api/cron/'):
         origin = request.headers.get('origin')
-        if origin and origin not in allowed_origins:
+        if origin and origin.rstrip('/') not in origins:
             return JSONResponse({'detail': 'Untrusted request origin.'}, status_code=403)
         if (
             origin or request.cookies.get('access_token') or request.cookies.get('refresh_token')
