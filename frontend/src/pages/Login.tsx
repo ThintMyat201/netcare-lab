@@ -8,7 +8,7 @@ import { api, errorText } from '../lib/api';
 const DEMO_ACCOUNTS = [
   {
     id: 'owner',
-    label: 'Owner',
+    label: 'Administrator',
     email: 'owner@apu.edu.my',
     password: 'OwnerSecure2026!',
     icon: ShieldCheck,
