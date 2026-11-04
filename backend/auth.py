@@ -87,9 +87,14 @@ def cookies(response, token):
 async def session(user, response):
     sid = uid()
     await db.sessions.insert_one({'id': sid, 'user_id': user['id'], 'expires_at': now() + timedelta(days=7)})
-    cookies(response, tokens(user, sid))
+    t = tokens(user, sid)
+    cookies(response, t)
     await audit(user, 'Signed in', 'Demo workspace session')
-    return public(user)
+    res = public(user)
+    res['token'] = t['access']
+    res['access_token'] = t['access']
+    res['refresh_token'] = t['refresh']
+    return res
 
 
 async def current(request: Request):
@@ -201,15 +206,25 @@ async def logout(request: Request, response: Response, user=Depends(current)):
 @router.post('/refresh')
 async def refresh(request: Request, response: Response):
     try:
-        data = jwt.decode(request.cookies.get('refresh_token', ''), os.environ['JWT_SECRET'], algorithms=['HS256'])
+        raw_refresh = (
+            request.cookies.get('refresh_token')
+            or request.headers.get('X-Refresh-Token')
+            or request.headers.get('Authorization', '').removeprefix('Bearer ')
+        )
+        data = jwt.decode(raw_refresh or '', os.environ['JWT_SECRET'], algorithms=['HS256'])
         if data['type'] != 'refresh':
             raise ValueError()
         s = await db.sessions.find_one({'id': data['sid'], 'expires_at': {'$gt': now()}}, {'_id': 0})
         user = await db.users.find_one({'id': data['sub'], 'active': True}, {'_id': 0, 'password_hash': 0})
         if not s or not user:
             raise ValueError()
-        cookies(response, tokens(user, data['sid']))
-        return user
+        t = tokens(user, data['sid'])
+        cookies(response, t)
+        res = public(user)
+        res['token'] = t['access']
+        res['access_token'] = t['access']
+        res['refresh_token'] = t['refresh']
+        return res
     except (jwt.PyJWTError, ValueError, KeyError):
         raise HTTPException(401, 'Please sign in again.')
 

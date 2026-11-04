@@ -19,13 +19,21 @@ import { Alerts } from './pages/Alerts';
 import './App.css';
 const Protected = () => {
   const { user, ready } = useAuth();
-  if (!ready)
+
+  if (!ready) {
     return (
       <div className="full-loading">
         <Loading />
       </div>
     );
-  if (!user) return <Login />;
+  }
+
+  if (!user) {
+    console.log('[Protected Router] No active user; rendering Login component.');
+    return <Login />;
+  }
+
+  console.log('[Protected Router] User authenticated:', user.email, 'Role:', user.role);
   const isAssistant = user.role === 'assistant';
   const isEngineer = user.role === 'engineer';
   return (

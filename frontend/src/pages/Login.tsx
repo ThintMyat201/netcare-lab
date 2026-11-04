@@ -39,7 +39,10 @@ export default function Login() {
   const [recover, setRecover] = useState(false);
   const [notice, setNotice] = useState('');
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) {
+    console.log('[Login Page] Active user detected, navigating to root:', user.email);
+    return <Navigate to="/" replace />;
+  }
 
   const fillDemoCredentials = (demoEmail: string, demoPassword: string) => {
     setRecover(false);
@@ -55,11 +58,15 @@ export default function Login() {
     setError('');
     try {
       if (recover) {
+        console.log('[Login Form] Requesting password recovery for:', email);
         setNotice((await api.post('/auth/forgot-password', { email })).data.message);
       } else {
+        console.log('[Login Form] Submitting authentication request for:', email);
         await login({ email, password });
+        console.log('[Login Form] Login call completed.');
       }
     } catch (e) {
+      console.error('[Login Form] Sign in submission failed:', e);
       setError(errorText(e));
     } finally {
       setBusy(false);

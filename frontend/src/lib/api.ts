@@ -9,20 +9,54 @@ export const api = axios.create({
   timeout: 12000,
   headers: { 'X-Atlas-Request': '1' },
 });
+
+// Attach JWT access token to every outgoing request if available
+api.interceptors.request.use(
+  config => {
+    const token = sessionStorage.getItem('atlas_token') || localStorage.getItem('atlas_token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    console.error('[API Request Error]', error);
+    return Promise.reject(error);
+  },
+);
+
 let refresh: Promise<AxiosResponse> | null = null;
 api.interceptors.response.use(
   r => r,
   async (error: AxiosError) => {
     const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     if (error.response?.status === 401 && !config?._retry && !config?.url?.startsWith('/auth/')) {
+      console.warn('[API Interceptor] 401 Unauthorized for endpoint:', config?.url);
       config._retry = true;
       try {
-        refresh = refresh || api.post('/auth/refresh');
-        await refresh;
+        const refreshToken =
+          sessionStorage.getItem('atlas_refresh_token') || localStorage.getItem('atlas_refresh_token');
+        const headers: Record<string, string> = {};
+        if (refreshToken) {
+          headers['X-Refresh-Token'] = refreshToken;
+          headers['Authorization'] = `Bearer ${refreshToken}`;
+        }
+        refresh = refresh || api.post('/auth/refresh', {}, { headers });
+        const res = await refresh;
         refresh = null;
+        const newToken = res.data?.token || res.data?.access_token;
+        if (newToken) {
+          sessionStorage.setItem('atlas_token', newToken);
+          localStorage.setItem('atlas_token', newToken);
+          if (config.headers) {
+            config.headers.Authorization = `Bearer ${newToken}`;
+          }
+        }
+        console.log('[API Interceptor] Session token refreshed successfully; retrying:', config?.url);
         return api(config);
-      } catch {
+      } catch (refreshErr) {
         refresh = null;
+        console.error('[API Interceptor] Token refresh failed:', refreshErr);
         window.dispatchEvent(new Event('session-expired'));
       }
     }

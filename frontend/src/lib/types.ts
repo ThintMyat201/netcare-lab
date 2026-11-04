@@ -13,6 +13,9 @@ export interface User {
   active: boolean;
   scope?: string;
   created_at?: string;
+  token?: string;
+  access_token?: string;
+  refresh_token?: string;
 }
 
 export interface Asset {
