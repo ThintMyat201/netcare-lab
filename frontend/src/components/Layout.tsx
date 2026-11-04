@@ -230,28 +230,30 @@ export const Layout = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className={`app-shell ${light ? 'light-theme' : 'dark'}`}>
-      <aside className={`sidebar ${mobile ? 'is-open' : ''}`}>
-        <Link to="/" data-testid="brand-home">
-          <Logo />
-        </Link>
-        <button className="mobile-close icon-button" data-testid="close-navigation" onClick={() => setMobile(false)}>
-          <X size={18} />
-        </button>
-        <div className="workspace-switch flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700/80 p-1 shrink-0">
-            <img src={logoNewApu} alt="APU University Logo" className="w-full h-full object-contain" />
+      <aside className={`sidebar ${mobile ? 'is-open' : ''} h-screen h-[100dvh] flex flex-col`}>
+        <div className="sidebar-header shrink-0">
+          <Link to="/" data-testid="brand-home">
+            <Logo />
+          </Link>
+          <button className="mobile-close icon-button" data-testid="close-navigation" onClick={() => setMobile(false)}>
+            <X size={18} />
+          </button>
+          <div className="workspace-switch flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700/80 p-1 shrink-0">
+              <img src={logoNewApu} alt="APU University Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <strong className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block leading-tight">
+                APU University
+              </strong>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5 leading-tight">
+                Main Campus
+              </span>
+            </div>
+            <span className="campus-dot shrink-0" />
           </div>
-          <div className="min-w-0 flex-1">
-            <strong className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate block leading-tight">
-              APU University
-            </strong>
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate block mt-0.5 leading-tight">
-              Main Campus
-            </span>
-          </div>
-          <span className="campus-dot shrink-0" />
         </div>
-        <nav>
+        <nav className="sidebar-nav flex-1 min-h-0 overflow-y-auto">
           {links.map(
             group =>
               group.items.length > 0 && (
@@ -275,7 +277,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
               ),
           )}
         </nav>
-        <div className="sidebar-bottom">
+        <div className="sidebar-bottom shrink-0 mt-auto pb-safe">
           <div className="environment" data-testid="sidebar-heartbeat-badge">
             <FlaskConical size={18} />
             <div>
