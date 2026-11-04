@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, ShieldCheck, Network, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ShieldCheck, Network, ClipboardCheck, Info } from 'lucide-react';
 import { useAuth } from '../context';
 import { Logo, Button, Field, ErrorBox } from '../components/shared';
 import { api, errorText } from '../lib/api';
@@ -174,6 +174,18 @@ export default function Login() {
                     </button>
                   );
                 })}
+              </div>
+
+              <div
+                data-testid="cloud-tier-notice"
+                className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] leading-relaxed text-amber-200/90"
+              >
+                <Info size={15} className="mt-0.5 shrink-0 text-amber-400" />
+                <p>
+                  <strong className="font-semibold text-amber-300">Note:</strong> Since the backend is hosted on a free
+                  cloud tier, the server may take up to 30 seconds to wake up. If you see a server error, please wait a
+                  moment, refresh, or try signing in 2-3 times.
+                </p>
               </div>
             </div>
           ) : (
